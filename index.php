@@ -10,7 +10,6 @@ use PhpParser\Node;
 use PhpParser\Node\Stmt\Function_;
 use PhpParser\Node\Expr\Include_;
 use PhpParser\Node\Expr\FuncCall;
-use PhpParser\Node\Expr\MethodCall;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
@@ -37,7 +36,7 @@ $traverser = new NodeTraverser();
 $traverser->addVisitor(new class extends NodeVisitorAbstract {
 
     // буфер функций
-    protected $buffer = [];
+    public $buffer = [];
 
     public function enterNode(Node $node)
     {
@@ -45,16 +44,10 @@ $traverser->addVisitor(new class extends NodeVisitorAbstract {
             // включить в файл, предварительно рекурсивно обработав
         }
         if ($node instanceof Function_) {
-
             $fVisitor = new FunctionVisitor();
-            $fVisitor->enterNode($node);
-//            $this->buffer[$node->name] = $traverserInFunction->traverse([$node]);
-
-            echo (new NodeDumper)->dump($node) . "\n";
+            $this->buffer[$node->name] = $fVisitor->enterNode($node);
         }
-        if ($node instanceof FuncCall) {
-        }
-//        echo (new NodeDumper)->dump($node) . "\n";
+//        echo (new NodeDumper)->dump($node) . "\n";die();
     }
 
     public function leaveNode(Node $node)
@@ -66,9 +59,9 @@ $traverser->addVisitor(new class extends NodeVisitorAbstract {
 
         // если пользовательская функция - заменяем на тело из буфера
         if ($node instanceof FuncCall) {
-            $funcName = $node->name->getLast();
-            if (array_key_exists($funcName, $this->buffer)) {
-                return $this->buffer[$funcName];
+//            return NodeTraverser::REMOVE_NODE;
+            if (array_key_exists($node->name->getLast(), $this->buffer)) {
+                return $this->buffer[$node->name->getLast()];
             }
         }
     }
