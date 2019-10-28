@@ -2,7 +2,20 @@
 
 require './vendor/autoload.php';
 
-use Recombinator\Runner;
+use Recombinator\Parser;
 
 $code = file_get_contents('./tests/code/index.php');
-echo Runner::flatting($code);
+
+$rec = new Parser($code);
+
+/**
+ * Запускает парсинг и начинает строить дерево скопов c заданным уровнем вложености
+ */
+$rec->parseScopeWithLevel(0);
+/**
+ * Подменяет код, используя дерево скопов
+ */
+$rec->collapseScope();
+
+echo $rec->dump();
+//echo $rec->print();
