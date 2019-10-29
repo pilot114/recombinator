@@ -11,46 +11,63 @@ use PhpParser\NodeDumper;
 
 class Parser
 {
+    protected $entryPoint;
     protected $code;
     protected $ast;
+    protected $scopes;
 
-    public function __construct($code)
+    public function __construct($path)
     {
-        $this->code = $code;
+        $this->entryPoint = realpath($path);
+        $this->code = file_get_contents($this->entryPoint);
     }
 
-    public function parseScopeWithLevel($level)
+    /**
+     * Запускает парсинг и начинает строить дерево скопов c заданным уровнем вложенности
+     */
+    public function parseScope()
     {
         $this->buildAST();
 
         $nodeFinder = new NodeFinder;
         $assigns = $nodeFinder->findInstanceOf($this->ast, Assign::class);
 
-        // получить переменныe в текущем скопе
-        $vars = array_map(function($x) { return $x->var; }, $assigns);
+        // includes и определения отправляем на выполнение
+
+        // TODO комментарии вырезаем ...
+
+        // TODO на остальное применяем маппер эквивалентных преобразований ...
+
+//        $vars = array_map(function($x) { return $x->var->name; }, $assigns);
+
+        var_dump($this->dump());
+        die();
     }
 
+    /**
+     * Подменяет код, используя дерево скопов
+     */
     public function collapseScope()
     {
         
     }
 
     /**
-     * Выводит AST дерево
+     * Выводит результирующий код
      * @return string
      */
-    public function dump()
+    public function prettyPrint()
     {
-        return (new NodeDumper)->dump($this->ast) . "\n";
+        return (new StandardPrinter)->prettyPrint($this->ast) . "\n";
     }
 
     /**
-     * Выводит код
+     * Выводит AST дерево
      * @return string
      */
-    public function print()
+    protected function dump()
     {
-        return (new StandardPrinter)->prettyPrint($this->ast) . "\n";
+        return (new NodeDumper)->dump($this->ast) . "\n";
     }
 
     /**
@@ -66,6 +83,26 @@ class Parser
             exit;
         }
         return $this->ast;
+    }
+
+    /**
+     * Запрос к сокету - выполнить кусок кода
+     */
+    protected function runCode($code)
+    {
+//        $socket = socket_create(AF_UNIX, SOCK_DGRAM, 0);
+//        socket_sendto($socket, "Hello World!", 12, 0, "/tmp/myserver.sock", 0);
+//        echo "sent\n";
+    }
+
+    /**
+     * Запрос к сокету - получить тело функции / класса
+     */
+    protected function getDefinition($callName)
+    {
+//        $socket = socket_create(AF_UNIX, SOCK_DGRAM, 0);
+//        socket_sendto($socket, "Hello World!", 12, 0, "/tmp/myserver.sock", 0);
+//        echo "sent\n";
     }
 
 // использовать для модификации кода

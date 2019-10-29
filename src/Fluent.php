@@ -13,9 +13,6 @@ use Recombinator\Visitor\FunctionVisitor;
 
 /**
  * Класс для упрощения прохода по AST дереву
- *
- * Цель - выполнять любые сложные модификации
- * кода через инстанс Fluent
  */
 class Fluent
 {
