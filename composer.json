@@ -2,7 +2,8 @@
     "name": "pilot114/recombinator",
     "type": "library",
     "require": {
-        "nikic/php-parser": "^4.2"
+        "nikic/php-parser": "^4.2",
+        "ext-sockets": "*"
     },
     "authors": [
         {
