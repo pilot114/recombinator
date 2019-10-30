@@ -27,10 +27,18 @@ class Parser
      */
     public function parseScope()
     {
-        $this->buildAST();
+        $modifyAST = (new Fluent($this->buildAST()))
+            ->withVisitors([
+            ])
+            ->modify();
 
-        $nodeFinder = new NodeFinder;
-        $assigns = $nodeFinder->findInstanceOf($this->ast, Assign::class);
+        $this->ast = $modifyAST;
+
+//        $nodeFinder = new NodeFinder;
+//        $assigns = $nodeFinder->findInstanceOf($this->ast, Assign::class);
+//        $vars = array_map(function($x) { return $x->var->name; }, $assigns);
+
+
 
         // includes и определения отправляем на выполнение
 
@@ -38,7 +46,6 @@ class Parser
 
         // TODO на остальное применяем маппер эквивалентных преобразований ...
 
-//        $vars = array_map(function($x) { return $x->var->name; }, $assigns);
 
         var_dump($this->dump());
         die();

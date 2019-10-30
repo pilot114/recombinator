@@ -28,7 +28,7 @@ class Fluent
 
     public function withVisitors(array $visitors)
     {
-        $this->visitors = $visitors;
+        $this->visitors = array_merge($this->visitors, $visitors);
         return $this;
     }
 
@@ -73,6 +73,6 @@ class Fluent
                 }
             }
         });
-        return $traverser->traverse($ast);
+        return $traverser->traverse($this->nodes);
     }
 }
