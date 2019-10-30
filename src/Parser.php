@@ -27,28 +27,22 @@ class Parser
      */
     public function parseScope()
     {
-        $modifyAST = (new Fluent($this->buildAST()))
+        $this->ast = $this->buildAST();
+
+        $this->ast = (new Fluent($this->ast))
             ->withVisitors([
             ])
             ->modify();
 
-        $this->ast = $modifyAST;
-
 //        $nodeFinder = new NodeFinder;
 //        $assigns = $nodeFinder->findInstanceOf($this->ast, Assign::class);
 //        $vars = array_map(function($x) { return $x->var->name; }, $assigns);
-
-
 
         // includes и определения отправляем на выполнение
 
         // TODO комментарии вырезаем ...
 
         // TODO на остальное применяем маппер эквивалентных преобразований ...
-
-
-        var_dump($this->dump());
-        die();
     }
 
     /**
@@ -69,12 +63,12 @@ class Parser
     }
 
     /**
-     * Выводит AST дерево
+     * Выводит AST дерево, используя кастомный дампер
      * @return string
      */
-    protected function dump()
+    public function dump()
     {
-        return (new NodeDumper)->dump($this->ast) . "\n";
+        return (new PrettyDumper())->dump($this->ast) . "\n";
     }
 
     /**
@@ -91,28 +85,4 @@ class Parser
         }
         return $this->ast;
     }
-
-    /**
-     * Запрос к сокету - выполнить кусок кода
-     */
-    protected function runCode($code)
-    {
-//        $socket = socket_create(AF_UNIX, SOCK_DGRAM, 0);
-//        socket_sendto($socket, "Hello World!", 12, 0, "/tmp/myserver.sock", 0);
-//        echo "sent\n";
-    }
-
-    /**
-     * Запрос к сокету - получить тело функции / класса
-     */
-    protected function getDefinition($callName)
-    {
-//        $socket = socket_create(AF_UNIX, SOCK_DGRAM, 0);
-//        socket_sendto($socket, "Hello World!", 12, 0, "/tmp/myserver.sock", 0);
-//        echo "sent\n";
-    }
-
-// использовать для модификации кода
-//        $fluent = new Fluent($this->ast);
-//        $this->ast = $fluent->modify();
 }
