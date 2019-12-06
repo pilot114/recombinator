@@ -53,6 +53,6 @@ echo "success\n";
 
 <!-- Супероптимизация - ситуация, когда остались только побочные эффекты. Должно быть промежуточным звеном -->
 <!-- Тут особую проблему создают порядок в скобочках и отличия кавычках -->
-echo 3 . true
-    . ($_GET['username'] ?? 'default_username' . '_' . $_GET['pass'] ?? 'default_pass' == 'test_test') ? 'success' : 'fail'
-    . "\nsuccess\n";
+echo "31\n" .
+    . (($_GET['username'] ?? 'default_username' . '_' . $_GET['pass'] ?? 'default_pass') == 'test_test') ? 'success' : 'fail'
+    . "\n";
