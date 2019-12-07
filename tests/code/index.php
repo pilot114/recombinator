@@ -55,11 +55,12 @@ echo "success\n";
 <!-- Тут особую проблему создают порядок в скобочках и отличия кавычках -->
 echo "31\n" .
     . (($_GET['username'] ?? 'default_username' . '_' . $_GET['pass'] ?? 'default_pass') == 'test_test') ? 'success' : 'fail'
-    . "\n";
+    . "success\n";
 
-<!-- Пример обратного преобразования -->
+<!-- Пример обратного преобразования. разделение побочных эффектов разного типа -->
 $username = $_GET['username'] ?? 'default_username';
 $pass = $_GET['pass'] ?? 'default_pass';
+
 $isCorrectAuth = ($username. '_' . $pass) === 'test_test';
 
-echo "31\n" . ($isCorrectAuth ? 'success' : 'fail') . "\n";
+echo "31\n" . ($isCorrectAuth ? 'success' : 'fail') . "success\n";
