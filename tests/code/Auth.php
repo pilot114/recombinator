@@ -1,7 +1,7 @@
 <?php
 
 /**
- * simple Auth
+ * dump Auth
  */
 class Auth
 {

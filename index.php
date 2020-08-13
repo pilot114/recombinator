@@ -10,5 +10,5 @@ $rec = new Parser($path);
 $rec->parseScope();
 $rec->collapseScope();
 
-echo $rec->dump();
+//echo $rec->dumpAST();
 echo $rec->prettyPrint();
