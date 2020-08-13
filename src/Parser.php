@@ -2,12 +2,11 @@
 
 namespace Recombinator;
 
-use PhpParser\Node\Expr\Assign;
+use PhpParser\NodeFinder;
+use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use PhpParser\Error;
-use PhpParser\NodeFinder;
-use PhpParser\NodeDumper;
 
 class Parser
 {
@@ -27,22 +26,14 @@ class Parser
      */
     public function parseScope()
     {
+        $equal = new EqualVisitor();
+        // для доступа к $node->getAttribute('parent')
+        $parent = new ParentConnectingVisitor();
+
         $this->ast = $this->buildAST();
-
         $this->ast = (new Fluent($this->ast))
-            ->withVisitors([
-            ])
+            ->withVisitors([$equal, $parent])
             ->modify();
-
-//        $nodeFinder = new NodeFinder;
-//        $assigns = $nodeFinder->findInstanceOf($this->ast, Assign::class);
-//        $vars = array_map(function($x) { return $x->var->name; }, $assigns);
-
-        // includes и определения отправляем на выполнение
-
-        // TODO комментарии вырезаем ...
-
-        // TODO на остальное применяем маппер эквивалентных преобразований ...
     }
 
     /**
@@ -66,9 +57,22 @@ class Parser
      * Выводит AST дерево, используя кастомный дампер
      * @return string
      */
-    public function dump()
+    public function dumpAST()
     {
         return (new PrettyDumper())->dump($this->ast) . "\n";
+    }
+
+    /**
+     * упрощенный способ найти узлы определенного типа
+     *
+     * Пример:
+     * $assigns = $p->findNodeByClass(Assign::class);
+     * $vars = array_map(function($x) { return $x->var->name; }, $assigns);
+     */
+    public function findNode($className)
+    {
+        $nodeFinder = new NodeFinder();
+        return $nodeFinder->findInstanceOf($this->ast, $className);
     }
 
     /**
@@ -84,5 +88,26 @@ class Parser
             exit;
         }
         return $this->ast;
+    }
+
+
+    /**
+     * Запрос к сокету - выполнить кусок кода
+     */
+    protected function runCode($code)
+    {
+        $socket = socket_create(AF_UNIX, SOCK_DGRAM, 0);
+        socket_sendto($socket, "Hello World!", 12, 0, "/tmp/myserver.sock", 0);
+        echo "sent\n";
+    }
+
+    /**
+     * Запрос к сокету - получить тело функции / класса
+     */
+    protected function getDefinition($callName)
+    {
+        $socket = socket_create(AF_UNIX, SOCK_DGRAM, 0);
+        socket_sendto($socket, "Hello World!", 12, 0, "/tmp/myserver.sock", 0);
+        echo "sent\n";
     }
 }
