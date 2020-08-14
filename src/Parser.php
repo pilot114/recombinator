@@ -2,6 +2,7 @@
 
 namespace Recombinator;
 
+use PhpParser\Lexer;
 use PhpParser\NodeFinder;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
@@ -48,9 +49,19 @@ class Parser
      * Выводит результирующий код
      * @return string
      */
-    public function prettyPrint()
+    public function prettyPrint($lined = false)
     {
-        return (new StandardPrinter)->prettyPrint($this->ast) . "\n";
+        $output = (new StandardPrinter)->prettyPrint($this->ast);
+        if ($lined) {
+            $lines = explode("\n", $output);
+            $numOutput = '';
+            foreach ($lines as $i => $line) {
+                // поправка на нулевой индекс и на <?php строку
+                $numOutput .= $i+2 . ') ' . $line . "\n";
+            }
+            $output = $numOutput;
+        }
+        return $output . "\n";
     }
 
     /**
@@ -63,29 +74,27 @@ class Parser
     }
 
     /**
-     * упрощенный способ найти узлы определенного типа
-     *
-     * Пример:
-     * $assigns = $p->findNodeByClass(Assign::class);
-     * $vars = array_map(function($x) { return $x->var->name; }, $assigns);
-     */
-    public function findNode($className)
-    {
-        $nodeFinder = new NodeFinder();
-        return $nodeFinder->findInstanceOf($this->ast, $className);
-    }
-
-    /**
      * @return \PhpParser\Node[]|null
      */
     protected function buildAST()
     {
-        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+        // настраиваем лексер, чтобы узлы содержали информацию о своем положении
+        $lexer = new Lexer([
+            'usedAttributes' => [
+                'comments', 'startLine', 'endLine',
+                'startTokenPos', 'endTokenPos',
+                'startFilePos', 'endFilePos'
+            ]
+        ]);
+        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7, $lexer);
         try {
             $this->ast = $parser->parse($this->code);
-        } catch (Error $error) {
-            echo "Parse error: {$error->getMessage()}\n";
-            exit;
+        } catch (Error $e) {
+            if ($e->hasColumnInfo()) {
+                echo $e->getMessageWithColumnInfo();
+            } else {
+                echo $e->getMessage();
+            }
         }
         return $this->ast;
     }

@@ -2,11 +2,7 @@
 
 namespace Recombinator;
 
-use PhpParser\Node;
-use PhpParser\Node\Stmt\Function_;
-use PhpParser\Node\Stmt\Expression;
 use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 
 /**
  * Класс для упрощения прохода по AST дереву
@@ -30,6 +26,9 @@ class Fluent
 
     public function modify()
     {
+        // TODO: перед модификацией нужно делать файловый кэш со скопами - так удобнее дебажить
+        // TODO файловый кэш также нужно обновлять после каждого цикла
+
         $traverser = new NodeTraverser();
         foreach ($this->visitors as $visitor) {
             $traverser->addVisitor($visitor);
