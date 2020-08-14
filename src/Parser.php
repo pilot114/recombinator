@@ -11,47 +11,89 @@ use PhpParser\Error;
 
 class Parser
 {
-    protected $entryPoint;
-    protected $code;
-    protected $ast;
-    protected $scopes;
+    protected $scopes = [];
+    protected $ast = [];
+    protected $cacheDir;
 
-    public function __construct($path)
+    public function __construct($path, $cachePath)
     {
-        $this->entryPoint = realpath($path);
-        $this->code = file_get_contents($this->entryPoint);
+        $this->cacheDir = realpath($cachePath);
+        $cacheFiles = glob($this->cacheDir . '/*');
+
+        if (count($cacheFiles) > 0) {
+            foreach ($cacheFiles as $cacheFile) {
+                $basename = basename($cacheFile);
+                if ($basename === 'index.php') {
+                    $this->entryPoint = $cacheFile;
+                }
+                $this->scopes[$basename] = file_get_contents($cacheFile);
+            }
+        } else {
+            $this->entryPoint = realpath($path);
+            $this->scopes = [ 'index.php' => file_get_contents($this->entryPoint) ];
+        }
+    }
+
+    public function updateCache()
+    {
+        foreach ($this->ast as $name => $ast) {
+            file_put_contents(
+                $this->cacheDir . '/' . $name,
+                "<?php\n" . $this->prettyPrint($name)
+            );
+        }
+    }
+
+    protected function buildAST($name, $code)
+    {
+        // настраиваем лексер, чтобы узлы содержали информацию о своем положении
+        $lexer = new Lexer([
+            'usedAttributes' => [
+                'comments', 'startLine', 'endLine',
+                'startTokenPos', 'endTokenPos',
+                'startFilePos', 'endFilePos'
+            ]
+        ]);
+        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7, $lexer);
+        try {
+            $this->ast[$name] = $parser->parse($code);
+        } catch (Error $e) {
+            if ($e->hasColumnInfo()) {
+                echo $e->getMessageWithColumnInfo();
+            } else {
+                echo $e->getMessage();
+            }
+        }
+        return $this->ast[$name];
     }
 
     /**
      * Запускает парсинг и начинает строить дерево скопов c заданным уровнем вложенности
      */
-    public function parseScope()
+    public function parseScopes()
     {
-        $equal = new EqualVisitor();
-        // для доступа к $node->getAttribute('parent')
-        $parent = new ParentConnectingVisitor();
+        $visitors = [
+            // для доступа к $node->getAttribute('parent')
+            new ParentConnectingVisitor(),
+            new EqualVisitor(),
+        ];
 
-        $this->ast = $this->buildAST();
-        $this->ast = (new Fluent($this->ast))
-            ->withVisitors([$equal, $parent])
-            ->modify();
-    }
+        foreach ($this->scopes as $name => $scope) {
+            $this->ast[$name] = $this->buildAST($name, $scope);
+            $this->ast[$name] = (new Fluent($this->ast[$name]))
+                ->withVisitors($visitors)
+                ->modify();
+        }
 
-    /**
-     * Подменяет код, используя дерево скопов
-     */
-    public function collapseScope()
-    {
-        
     }
 
     /**
      * Выводит результирующий код
      * @return string
      */
-    public function prettyPrint($lined = false)
+    public function prettyPrint($name, $lined = false)
     {
-        $output = (new StandardPrinter)->prettyPrint($this->ast);
+        $output = (new StandardPrinter)->prettyPrint($this->ast[$name]);
         if ($lined) {
             $lines = explode("\n", $output);
             $numOutput = '';
@@ -68,55 +110,8 @@ class Parser
      * Выводит AST дерево, используя кастомный дампер
      * @return string
      */
-    public function dumpAST()
+    public function dumpAST($name)
     {
-        return (new PrettyDumper())->dump($this->ast) . "\n";
-    }
-
-    /**
-     * @return \PhpParser\Node[]|null
-     */
-    protected function buildAST()
-    {
-        // настраиваем лексер, чтобы узлы содержали информацию о своем положении
-        $lexer = new Lexer([
-            'usedAttributes' => [
-                'comments', 'startLine', 'endLine',
-                'startTokenPos', 'endTokenPos',
-                'startFilePos', 'endFilePos'
-            ]
-        ]);
-        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7, $lexer);
-        try {
-            $this->ast = $parser->parse($this->code);
-        } catch (Error $e) {
-            if ($e->hasColumnInfo()) {
-                echo $e->getMessageWithColumnInfo();
-            } else {
-                echo $e->getMessage();
-            }
-        }
-        return $this->ast;
-    }
-
-
-    /**
-     * Запрос к сокету - выполнить кусок кода
-     */
-    protected function runCode($code)
-    {
-        $socket = socket_create(AF_UNIX, SOCK_DGRAM, 0);
-        socket_sendto($socket, "Hello World!", 12, 0, "/tmp/myserver.sock", 0);
-        echo "sent\n";
-    }
-
-    /**
-     * Запрос к сокету - получить тело функции / класса
-     */
-    protected function getDefinition($callName)
-    {
-        $socket = socket_create(AF_UNIX, SOCK_DGRAM, 0);
-        socket_sendto($socket, "Hello World!", 12, 0, "/tmp/myserver.sock", 0);
-        echo "sent\n";
+        return (new PrettyDumper())->dump($this->ast[$name]) . "\n";
     }
 }
