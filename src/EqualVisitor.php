@@ -20,21 +20,23 @@ class EqualVisitor extends NodeVisitorAbstract
 {
     protected $scopeVarsReplace = [];
     protected $ast;
+    protected $modifyCount = 0;
+
 
     public function beforeTraverse(array $nodes)
     {
-        echo "*** beforeTraverse ***\n\n";
         $this->ast = $nodes;
-        $this->printNodesPos(Node\Expr\Variable::class);
+//        $this->printNodesPos(Node\Expr\Variable::class);
+        echo "*** startTraverse ***\n";
     }
     public function afterTraverse(array $nodes)
     {
-        echo "*** afterTraverse ***\n\n";
+        echo "*** endTraverse ***\n\n";
     }
 
     public function enterNode(Node $node)
     {
-        // TODO includes и определения надо отправлять на выполнение, пока просто вырезаем
+        // TODO includes и определения надо обрабатывать как отдельный скоп, пока просто вырезаем
         if (
             $node instanceof Function_ ||
             $node instanceof Node\Stmt\Class_ ||
@@ -45,32 +47,38 @@ class EqualVisitor extends NodeVisitorAbstract
             return NodeTraverser::DONT_TRAVERSE_CHILDREN;
         }
 
-        if (isset($node->expr) && $node->expr instanceof Node\Expr\Assign) {
+        /**
+         * Замена переменных 1/3 - Запись скаляра
+         * Переменная "кэширует" значение, поэтому чтобы избежать сайд-эффектов
+         * подменяем только переменные со скалярным значением
+         */
+        if (isset($node->expr) && $node->expr instanceof Assign) {
             $assign = $node->expr;
-
-            /**
-             * Инициализация переменной (запись)
-             * Переменная "кэширует" значение, поэтому чтобы избежать сайд-эффектов
-             * подменяем только переменные со скалярным значением
-             */
             $varName = $assign->var->name;
             if ($assign->expr instanceof Node\Scalar) {
                 // заносим в кеш
                 $varExprScalar = $assign->expr;
                 $varExprScalar->setAttributes([]);
                 $this->scopeVarsReplace[$varName] = $varExprScalar;
-
                 $node->setAttribute('remove', true);
-                var_dump('set to cache ' . $varName);
-                return null;
-            } else {
-                /**
-                 * Если значение не скалярное - удаляем из кеша
-                 */
-                if (isset($this->scopeVarsReplace[$varName])) {
-                    var_dump('delete from cache ' . $varName);
-                    unset($this->scopeVarsReplace[$varName]);
-                }
+            }
+        }
+
+        /**
+         * Замена переменных 2/3 - чтение переменной
+         * Если переменная читается и есть в кеше скаляров - можно смело заменять
+         */
+        if ($node instanceof Node\Expr\Variable) {
+            $varName = $node->name;
+
+            $isWrite = false;
+            $parent = $node->getAttribute('parent');
+            if ($parent instanceof Assign && $parent->var->name === $varName) {
+                $isWrite = true;
+            }
+
+            if (!$isWrite && isset($this->scopeVarsReplace[$varName])) {
+                $node->setAttribute('replace', $this->scopeVarsReplace[$varName]);
             }
         }
     }
@@ -79,6 +87,23 @@ class EqualVisitor extends NodeVisitorAbstract
     {
         if ($node->getAttribute('remove')) {
             return NodeTraverser::REMOVE_NODE;
+        }
+        if ($node->getAttribute('replace')) {
+            return $node->getAttribute('replace');
+        }
+
+        /**
+         * Замена переменных 3/3 - Запись нескаляра
+         * Очищаем замену из кеша, если модифицируем переменную не скаляром
+         */
+        if (isset($node->expr) && $node->expr instanceof Assign) {
+            $assign = $node->expr;
+            $varName = $assign->var->name;
+            if (!$assign->expr instanceof Node\Scalar) {
+                if (isset($this->scopeVarsReplace[$varName])) {
+                    unset($this->scopeVarsReplace[$varName]);
+                }
+            }
         }
 
         /**
@@ -97,7 +122,7 @@ class EqualVisitor extends NodeVisitorAbstract
                 } else {
                     throw new \Exception('New BinaryOp! : ' . get_class($node));
                 }
-                $GLOBALS['modify_count']++;
+                $this->modifyCount++;
                 return is_int($calc) ? new Node\Scalar\LNumber($calc) : new Node\Scalar\DNumber($calc);
             }
         }
@@ -113,56 +138,32 @@ class EqualVisitor extends NodeVisitorAbstract
             if ($node->cond instanceof Node\Expr\Isset_ && count($node->stmts) === 1) {
                 $expr = $node->stmts[0]->expr;
                 if ($expr instanceof Assign) {
-                    $GLOBALS['modify_count']++;
+                    $this->modifyCount++;
                     $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
                     $newAssign = new Assign($expr->var, $newExp);
                     return new Expression($newAssign);
                 }
             }
         }
-
-//
-//        /**
-//         * Подмена чтения переменной
-//         */
-//        if ($node instanceof Node\Expr\Variable) {
-//            $parent = $node->getAttribute('parent');
-//            /**
-//             * Если проверяемая переменная перезаписывается - проходим мимо
-//             */
-//            if ($parent instanceof Node\Expr\Assign && $parent->var->name === $node->name) {
-//            } else {
-//                if (isset($this->scopeVarsReplace[$node->name])) {
-//                    $GLOBALS['modify_count']++;
-//                    var_dump('usage ' . $node->name);
-//                    return $this->scopeVarsReplace[$node->name];
-//                }
-//            }
-//        }
-
-        return null;
-
-        /**
-         * TODO:
-         * Если все аргументы функции известны и нет побочных эффектов - заменяем выполнением
-         * Если побочки есть - заменяем на тело из буфера
-         */
-//        if ($node instanceof FuncCall) {
-//            if (array_key_exists($node->name->getLast(), $this->buffer)) {
-//                return $this->buffer[$node->name->getLast()];
-//            }
-//        }
     }
 
     /**
      * напечатать AST и и соответствующий ему код
      */
-    protected function debug($stmt, $onlyClass = false)
+    protected function debug(Node $stmt, $onlyClass = false)
     {
-        echo get_class($stmt) . "\n";
+        // удаленный узел - у него нет позиции
+        if ($stmt->getStartLine() < 0) {
+            echo sprintf("%s\n", get_class($stmt));
+        } else {
+            echo sprintf(
+                "%s %s:%s-%s\n", get_class($stmt),
+                $stmt->getStartLine(), $stmt->getStartFilePos(), $stmt->getEndFilePos()
+            );
+        }
         if ($onlyClass) return;
         echo (new PrettyDumper())->dump($stmt) . "\n";
-        echo (new StandardPrinter)->prettyPrint([$stmt]) . "\n\n";
+        echo (new StandardPrinter)->prettyPrint([$stmt]) . "\n";
     }
 
     /**

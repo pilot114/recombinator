@@ -4,11 +4,12 @@ require './vendor/autoload.php';
 
 use Recombinator\Parser;
 
-$path = './tests/code/index2.php';
-$rec = new Parser($path);
+$path = './tests/code/index.php';
+$cachePath = './tests/cache';
+$rec = new Parser($path, $cachePath);
 
-$rec->parseScope();
-$rec->collapseScope();
+$rec->parseScopes();
 
-//echo $rec->dumpAST();
-echo $rec->prettyPrint(true);
+//echo $rec->dumpAST('index.php');
+echo $rec->prettyPrint('index.php', true);
+$rec->updateCache();
