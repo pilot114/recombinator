@@ -1,48 +1,28 @@
 <?php
 
-namespace Recombinator;
+namespace Recombinator\Visitor;
 
 use PhpParser\Node;
-use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Stmt\Expression;
 use PhpParser\Node\Stmt\Function_;
-use PhpParser\NodeDumper;
-use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
-use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 
 /**
- * Выполняет эквивалентные замены выражений
+ * Выполняет простейшие эквивалентные замены выражений
+ *
+ * - Бинарные операции (математика, логика, конкатенация)
+ * - Подмена переменных их значениями (скаляры)
+ * - if (isset(var)) var2 = var;    =>    var2 = var ?? var2;
  */
-class EqualVisitor extends NodeVisitorAbstract
+class SimpleEqualVisitor extends BaseVisitor
 {
     protected $scopeVarsReplace = [];
-    protected $ast;
     protected $modifyCount = 0;
-
-
-    public function beforeTraverse(array $nodes)
-    {
-        $this->ast = $nodes;
-//        $this->printNodesPos(Node\Expr\Variable::class);
-        echo "*** startTraverse ***\n";
-    }
-    public function afterTraverse(array $nodes)
-    {
-        echo "*** endTraverse ***\n\n";
-    }
 
     public function enterNode(Node $node)
     {
-        // TODO includes и определения надо обрабатывать как отдельный скоп, пока просто вырезаем
-        if (
-            $node instanceof Function_ ||
-            $node instanceof Node\Stmt\Class_ ||
-            isset($node->expr) && $node->expr instanceof Node\Expr\Include_ ||
-            $node instanceof Node\Stmt\InlineHTML
-        ) {
+        if ($node instanceof Node\Stmt\InlineHTML) {
             $node->setAttribute('remove', true);
             return NodeTraverser::DONT_TRAVERSE_CHILDREN;
         }
@@ -85,12 +65,7 @@ class EqualVisitor extends NodeVisitorAbstract
 
     public function leaveNode(Node $node)
     {
-        if ($node->getAttribute('remove')) {
-            return NodeTraverser::REMOVE_NODE;
-        }
-        if ($node->getAttribute('replace')) {
-            return $node->getAttribute('replace');
-        }
+        parent::leaveNode($node);
 
         /**
          * Замена переменных 3/3 - Запись нескаляра
@@ -119,6 +94,9 @@ class EqualVisitor extends NodeVisitorAbstract
                     $calc = $node->left->value * $node->right->value;
                 } else if ($node instanceof Node\Expr\BinaryOp\Div) {
                     $calc = $node->left->value / $node->right->value;
+                } else if ($node instanceof Node\Expr\BinaryOp\Concat) {
+                    $this->modifyCount++;
+                    return new Node\Scalar\String_( $node->left->value . $node->right->value );
                 } else {
                     throw new \Exception('New BinaryOp! : ' . get_class($node));
                 }
@@ -145,66 +123,5 @@ class EqualVisitor extends NodeVisitorAbstract
                 }
             }
         }
-    }
-
-    /**
-     * напечатать AST и и соответствующий ему код
-     */
-    protected function debug(Node $stmt, $onlyClass = false)
-    {
-        // удаленный узел - у него нет позиции
-        if ($stmt->getStartLine() < 0) {
-            echo sprintf("%s\n", get_class($stmt));
-        } else {
-            echo sprintf(
-                "%s %s:%s-%s\n", get_class($stmt),
-                $stmt->getStartLine(), $stmt->getStartFilePos(), $stmt->getEndFilePos()
-            );
-        }
-        if ($onlyClass) return;
-        echo (new PrettyDumper())->dump($stmt) . "\n";
-        echo (new StandardPrinter)->prettyPrint([$stmt]) . "\n";
-    }
-
-    /**
-     * упрощенный способ найти узлы определенного типа
-     *
-     * Пример:
-     * $assigns = $p->findNode(Assign::class);
-     * $vars = array_map(function($x) { return $x->var->name; }, $assigns);
-     */
-    protected function findNode($className)
-    {
-        $nodeFinder = new NodeFinder();
-        return $nodeFinder->findInstanceOf($this->ast, $className);
-    }
-
-    /**
-     * Выводит список нод с их позициями (строка:смещение в файле)
-     */
-    protected function printNodesPos($className)
-    {
-        $nodes = $this->findNode($className);
-
-        $maxLenToken = 0;
-        foreach ($nodes as $node) {
-            $lenToken = strlen((new StandardPrinter)->prettyPrint([$node]));
-            if ($maxLenToken < $lenToken) {
-                $maxLenToken = $lenToken;
-            }
-            $node->setAttribute('lenToken', $lenToken);
-        }
-        echo $className . " count: " . count($nodes) . "\n";
-        foreach ($nodes as $node) {
-            echo sprintf(
-                "%s%s%s:%s-%s\n",
-                (new StandardPrinter)->prettyPrint([$node]),
-                str_repeat(' ', ($maxLenToken+3) - $node->getAttribute('lenToken')),
-                $node->getAttribute('startLine'),
-                $node->getAttribute('startFilePos'),
-                $node->getAttribute('endFilePos')
-            );
-        }
-        echo "\n";
     }
 }

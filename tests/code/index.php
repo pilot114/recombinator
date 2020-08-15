@@ -7,6 +7,8 @@ function test($x, $y)
     return $x + $y;
 }
 
+echo 1 . 2 . 3 . 4 . 5;
+
 echo 1 / (2 + 3);
 
 echo test(1, 2);
