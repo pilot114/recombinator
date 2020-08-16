@@ -9,12 +9,14 @@ use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use PhpParser\Error;
 use Recombinator\Visitor\ConcatAssertVisitor;
+use Recombinator\Visitor\EvalStandartFunction;
 use Recombinator\Visitor\IncludeVisitor;
 use Recombinator\Visitor\ScopeVisitor;
 use Recombinator\Visitor\SimpleEqualVisitor;
 
 // TODO: https://github.com/rectorphp/rector
-// TODO IncludeVisitor надо прогонять пока есть что подключать
+// TODO: IncludeVisitor надо прогонять пока есть что подключать
+// TODO: возможность указать входные параметры для выполнения
 
 class Parser
 {
@@ -51,32 +53,38 @@ class Parser
     {
         if ($this->isDry) {
             $visitors = [
-                new ParentConnectingVisitor(), // getAttribute('parent')
-                new IncludeVisitor($this->entryPoint),
+                [
+                    new ParentConnectingVisitor(), // getAttribute('parent')
+                    new IncludeVisitor($this->entryPoint),
+                ],
+                [
+                    new ScopeVisitor($this->entryPoint, $this->cacheDir)
+                ]
             ];
-
-            // global scope
-            list($scope, $name) = [
-                $this->scopes[array_key_first($this->scopes)],
-                array_key_first($this->scopes)
-            ];
-            $this->ast[$name] = $this->buildAST($name, $scope);
-            $this->ast[$name] = (new Fluent($this->ast[$name]))
-                ->withVisitors($visitors)
-                ->modify();
-            $this->ast[$name] = (new Fluent($this->ast[$name]))
-                ->withVisitors([new ScopeVisitor($this->entryPoint, $this->cacheDir)])
-                ->modify();
+            $this->parseScopesWithVisitors($visitors);
         } else {
             $visitors = [
-                new NodeConnectingVisitor(), // getAttribute('parent') / getAttribute('previous') / getAttribute('next')
-                new SimpleEqualVisitor(),
-                new ConcatAssertVisitor(),
+                [
+                    new NodeConnectingVisitor(), // getAttribute('parent') / getAttribute('previous') / getAttribute('next')
+                    new SimpleEqualVisitor(),
+                    new ConcatAssertVisitor(),
+                    new EvalStandartFunction(),
+                ]
             ];
-            foreach ($this->scopes as $name => $scope) {
-                $this->ast[$name] = $this->buildAST($name, $scope);
+            $this->parseScopesWithVisitors($visitors);
+        }
+    }
+
+    /**
+     *  $visitors - массив этапов обхода (в одном этапе может быть несколько visitor)
+     */
+    protected function parseScopesWithVisitors($visitors)
+    {
+        foreach ($this->scopes as $name => $scope) {
+            $this->ast[$name] = $this->buildAST($name, $scope);
+            foreach ($visitors as $visitorBatch) {
                 $this->ast[$name] = (new Fluent($this->ast[$name]))
-                    ->withVisitors($visitors)
+                    ->withVisitors($visitorBatch)
                     ->modify();
             }
         }

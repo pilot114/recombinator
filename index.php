@@ -10,5 +10,6 @@ $rec = new Parser($path, $cachePath);
 
 $rec->parseScopes();
 
+//echo $rec->dumpAST('index.php');
 echo $rec->prettyPrint('index.php', true);
 //$rec->updateCache();
