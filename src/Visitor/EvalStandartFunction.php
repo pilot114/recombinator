@@ -3,6 +3,7 @@
 namespace Recombinator\Visitor;
 
 use PhpParser\Node;
+use PhpParser\Node\Name;
 
 /**
  * Выполняет стандартные детерминированные функции (без побочных эффектов)
@@ -37,10 +38,20 @@ class EvalStandartFunction extends BaseVisitor
                 }
                 if (in_array($nameParts[0], array_keys($this->specialFunction))) {
                     $handlerName = $this->specialFunction[$nameParts[0]];
-                    var_dump($handlerName);
+                    if (method_exists($this, $handlerName)) {
+                        return $this->{$handlerName}($node);
+                    }
                 }
             }
         }
+    }
+
+    protected function isArrayHandler(Node\Expr\FuncCall $node)
+    {
+        if ($node->args[0]->value instanceof Node\Expr\Array_) {
+            return new Name('true');
+        }
+        return new Name('false');
     }
 
     /**

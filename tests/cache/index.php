@@ -1,5 +1,5 @@
 <?php
-echo 12345;
+echo 12345 . true . false;;
 echo 0.2;
 echo test(1, 2);
 echo is_array([1, null, '']);
