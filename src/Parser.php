@@ -51,25 +51,20 @@ class Parser
      */
     public function parseScopes()
     {
+        // пока все visitors выполняются последовательно. Возможно, некоторые потом можно выполнить параллельно
         if ($this->isDry) {
             $visitors = [
-                [
-                    new ParentConnectingVisitor(), // getAttribute('parent')
-                    new IncludeVisitor($this->entryPoint),
-                ],
-                [
-                    new ScopeVisitor($this->entryPoint, $this->cacheDir)
-                ]
+                [ new ParentConnectingVisitor() ], // getAttribute('parent')
+                [ new IncludeVisitor($this->entryPoint) ],
+                [ new ScopeVisitor($this->entryPoint, $this->cacheDir) ],
             ];
             $this->parseScopesWithVisitors($visitors);
         } else {
             $visitors = [
-                [
-                    new NodeConnectingVisitor(), // getAttribute('parent') / getAttribute('previous') / getAttribute('next')
-                    new SimpleEqualVisitor(),
-                    new ConcatAssertVisitor(),
-                    new EvalStandartFunction(),
-                ]
+                [ new NodeConnectingVisitor() ], // getAttribute('parent') / getAttribute('previous') / getAttribute('next')
+                [ new SimpleEqualVisitor() ],
+                [ new ConcatAssertVisitor() ],
+                [ new EvalStandartFunction() ],
             ];
             $this->parseScopesWithVisitors($visitors);
         }
