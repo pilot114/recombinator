@@ -8,8 +8,10 @@ use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use PhpParser\Error;
+use Recombinator\Visitor\CallFunctionVisitor;
 use Recombinator\Visitor\ConcatAssertVisitor;
 use Recombinator\Visitor\EvalStandartFunction;
+use Recombinator\Visitor\FunctionScopeVisitor;
 use Recombinator\Visitor\IncludeVisitor;
 use Recombinator\Visitor\ScopeVisitor;
 use Recombinator\Visitor\SimpleEqualVisitor;
@@ -51,6 +53,10 @@ class Parser
      */
     public function parseScopes()
     {
+        $scopeStore = new class {
+            public $functions = [];
+        };
+
         // пока все visitors выполняются последовательно. Возможно, некоторые потом можно выполнить параллельно
         if ($this->isDry) {
             $visitors = [
@@ -65,6 +71,8 @@ class Parser
                 [ new SimpleEqualVisitor() ],
                 [ new ConcatAssertVisitor() ],
                 [ new EvalStandartFunction() ],
+                [ new FunctionScopeVisitor($scopeStore, $this->cacheDir) ],
+                [ new CallFunctionVisitor($scopeStore) ],
             ];
             $this->parseScopesWithVisitors($visitors);
         }
@@ -75,14 +83,29 @@ class Parser
      */
     protected function parseScopesWithVisitors($visitors)
     {
-        foreach ($this->scopes as $name => $scope) {
-            $this->ast[$name] = $this->buildAST($name, $scope);
+        foreach ($this->scopes as $scopeName => $scope) {
+            $this->ast[$scopeName] = $this->buildAST($scopeName, $scope);
             foreach ($visitors as $visitorBatch) {
-                $this->ast[$name] = (new Fluent($this->ast[$name]))
+                foreach ($visitorBatch as $v) {
+                    $v->scopeName = $scopeName;
+                }
+                $this->ast[$scopeName] = (new Fluent($this->ast[$scopeName]))
                     ->withVisitors($visitorBatch)
                     ->modify();
             }
         }
+    }
+
+    public function prettyPrintScopes($lined = false)
+    {
+        $output = '';
+        foreach ($this->ast as $name => $item) {
+            $code = $this->prettyPrint($name, $lined);
+            if ($code) {
+                $output .= sprintf("### %s ###\n%s", $name, $code);
+            }
+        }
+        return $output;
     }
 
     /**
@@ -92,6 +115,10 @@ class Parser
     public function prettyPrint($name, $lined = false)
     {
         $output = (new StandardPrinter)->prettyPrint($this->ast[$name]);
+        if (!strlen($output)) {
+            return null;
+        }
+
         if ($lined) {
             $lines = explode("\n", $output);
             $numOutput = '';

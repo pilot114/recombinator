@@ -2,6 +2,7 @@
 
 namespace Recombinator\Visitor;
 
+use phpDocumentor\Reflection\Types\Scalar;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Stmt\Expression;
@@ -18,7 +19,6 @@ use PhpParser\NodeTraverser;
 class SimpleEqualVisitor extends BaseVisitor
 {
     protected $scopeVarsReplace = [];
-    protected $modifyCount = 0;
 
     public function enterNode(Node $node)
     {
@@ -85,6 +85,13 @@ class SimpleEqualVisitor extends BaseVisitor
          *  Бинарные операции (математика, логика, конкатенация)
          */
         if ($node instanceof Node\Expr\BinaryOp) {
+            if ($node->right instanceof Node\Expr\ConstFetch) {
+                $node->right = $this->booleanBinaryTyping($node, $node->right);
+            }
+            if ($node->left instanceof Node\Expr\ConstFetch) {
+                $node->left = $this->booleanBinaryTyping($node, $node->left);
+            }
+
             if ($node->left instanceof Node\Scalar && $node->right instanceof Node\Scalar) {
                 if ($node instanceof Node\Expr\BinaryOp\Plus) {
                     $calc = $node->left->value + $node->right->value;
@@ -95,12 +102,10 @@ class SimpleEqualVisitor extends BaseVisitor
                 } else if ($node instanceof Node\Expr\BinaryOp\Div) {
                     $calc = $node->left->value / $node->right->value;
                 } else if ($node instanceof Node\Expr\BinaryOp\Concat) {
-                    $this->modifyCount++;
                     return new Node\Scalar\String_( $node->left->value . $node->right->value );
                 } else {
                     throw new \Exception('New BinaryOp! : ' . get_class($node));
                 }
-                $this->modifyCount++;
                 return is_int($calc) ? new Node\Scalar\LNumber($calc) : new Node\Scalar\DNumber($calc);
             }
         }
@@ -116,11 +121,31 @@ class SimpleEqualVisitor extends BaseVisitor
             if ($node->cond instanceof Node\Expr\Isset_ && count($node->stmts) === 1) {
                 $expr = $node->stmts[0]->expr;
                 if ($expr instanceof Assign) {
-                    $this->modifyCount++;
                     $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
                     $newAssign = new Assign($expr->var, $newExp);
                     return new Expression($newAssign);
                 }
+            }
+        }
+    }
+
+    protected function booleanBinaryTyping($expression, $bool)
+    {
+        $name = strtolower($bool->name->parts[0]);
+        if ($expression instanceof Node\Expr\BinaryOp\Concat) {
+            if ($name === 'true') {
+                return new Node\Scalar\String_('1');
+            }
+            if ($name === 'false') {
+                return new Node\Scalar\String_('');
+            }
+        // math ?
+        } else {
+            if ($name === 'true') {
+                return new Node\Scalar\LNumber(1);
+            }
+            if ($name === 'false') {
+                return new Node\Scalar\LNumber(0);
             }
         }
     }

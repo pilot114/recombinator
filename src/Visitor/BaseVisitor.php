@@ -11,6 +11,7 @@ use Recombinator\PrettyDumper;
 
 class BaseVisitor extends NodeVisitorAbstract
 {
+    public $scopeName;
     protected $ast;
 
     public function beforeTraverse(array $nodes)
@@ -61,10 +62,10 @@ class BaseVisitor extends NodeVisitorAbstract
      * $assigns = $p->findNode(Assign::class);
      * $vars = array_map(function($x) { return $x->var->name; }, $assigns);
      */
-    protected function findNode($className)
+    protected function findNode($className, $node = null)
     {
         $nodeFinder = new NodeFinder();
-        return $nodeFinder->findInstanceOf($this->ast, $className);
+        return $nodeFinder->findInstanceOf($node ?? $this->ast, $className);
     }
 
     /**
