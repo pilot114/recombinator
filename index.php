@@ -6,10 +6,14 @@ use Recombinator\Parser;
 
 $path = './tests/code/index.php';
 $cachePath = './tests/cache';
+if (!is_dir($cachePath)) {
+    mkdir($cachePath);
+}
 $rec = new Parser($path, $cachePath);
 
 $rec->parseScopes();
 
 //echo $rec->dumpAST('index.php');
-echo $rec->prettyPrint('index.php', true);
-//$rec->updateCache();
+echo $rec->prettyPrintScopes(true);
+$rec->updateCache();
+
