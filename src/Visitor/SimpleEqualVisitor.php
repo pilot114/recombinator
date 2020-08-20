@@ -2,11 +2,9 @@
 
 namespace Recombinator\Visitor;
 
-use phpDocumentor\Reflection\Types\Scalar;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Stmt\Expression;
-use PhpParser\Node\Stmt\Function_;
 use PhpParser\NodeTraverser;
 
 /**

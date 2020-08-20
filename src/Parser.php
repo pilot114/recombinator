@@ -70,9 +70,9 @@ class Parser
                 [ new NodeConnectingVisitor() ], // getAttribute('parent') / getAttribute('previous') / getAttribute('next')
                 [ new SimpleEqualVisitor() ],
                 [ new ConcatAssertVisitor() ],
-                [ new EvalStandartFunction() ],
-                [ new FunctionScopeVisitor($scopeStore, $this->cacheDir) ],
-                [ new CallFunctionVisitor($scopeStore) ],
+//                [ new EvalStandartFunction() ],
+//                [ new FunctionScopeVisitor($scopeStore, $this->cacheDir) ],
+//                [ new CallFunctionVisitor($scopeStore) ],
             ];
             $this->parseScopesWithVisitors($visitors);
         }
