@@ -13,7 +13,6 @@ $rec = new Parser($path, $cachePath);
 
 $rec->parseScopes();
 
-//echo $rec->dumpAST('index.php');
-echo $rec->prettyPrintScopes(true);
+//echo $rec->prettyPrintScopes(true);
 $rec->updateCache();
 
