@@ -1,6 +1,8 @@
 <?php
-echo '123451' . 0.2 . test(1, 2) . is_array([]);
+echo '1234510.231';
+$username = 'default_username';
 $username = $_GET['username'] ?? $username;
+$pass = 'default_pass';
 $pass = $_GET['pass'] ?? $pass;
 $auth = new Auth();
 $result = $auth->login($username, $pass);

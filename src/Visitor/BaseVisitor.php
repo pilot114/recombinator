@@ -12,6 +12,7 @@ use Recombinator\PrettyDumper;
 class BaseVisitor extends NodeVisitorAbstract
 {
     public $scopeName;
+    public $diff;
     protected $ast;
 
     public function beforeTraverse(array $nodes)
@@ -22,7 +23,7 @@ class BaseVisitor extends NodeVisitorAbstract
 
     public function afterTraverse(array $nodes)
     {
-        echo sprintf("*** %s end ***\n", (new \ReflectionClass(static::class))->getShortName());
+//        echo sprintf("*** %s end ***\n", (new \ReflectionClass(static::class))->getShortName());
     }
 
     public function leaveNode(Node $node)

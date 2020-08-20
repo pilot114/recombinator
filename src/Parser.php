@@ -8,13 +8,13 @@ use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use PhpParser\Error;
+use Recombinator\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Visitor\CallFunctionVisitor;
 use Recombinator\Visitor\ConcatAssertVisitor;
 use Recombinator\Visitor\EvalStandartFunction;
 use Recombinator\Visitor\FunctionScopeVisitor;
 use Recombinator\Visitor\IncludeVisitor;
 use Recombinator\Visitor\ScopeVisitor;
-use Recombinator\Visitor\SimpleEqualVisitor;
 
 // TODO: https://github.com/rectorphp/rector
 // TODO: IncludeVisitor надо прогонять пока есть что подключать
@@ -24,6 +24,7 @@ class Parser
 {
     protected $scopes = [];
     protected $ast = [];
+    protected $visitors = [];
     protected $cacheDir;
     protected $isDry = false;
 
@@ -57,41 +58,43 @@ class Parser
             public $functions = [];
         };
 
-        // пока все visitors выполняются последовательно. Возможно, некоторые потом можно выполнить параллельно
         if ($this->isDry) {
-            $visitors = [
-                [ new ParentConnectingVisitor() ], // getAttribute('parent')
-                [ new IncludeVisitor($this->entryPoint) ],
-                [ new ScopeVisitor($this->entryPoint, $this->cacheDir) ],
+            $this->visitors = [
+                new ParentConnectingVisitor(), // getAttribute('parent')
+                new IncludeVisitor($this->entryPoint),
+                new ScopeVisitor($this->entryPoint, $this->cacheDir),
             ];
-            $this->parseScopesWithVisitors($visitors);
+            $this->parseScopesWithVisitors();
         } else {
-            $visitors = [
-                [ new NodeConnectingVisitor() ], // getAttribute('parent') / getAttribute('previous') / getAttribute('next')
-                [ new SimpleEqualVisitor() ],
-                [ new ConcatAssertVisitor() ],
-//                [ new EvalStandartFunction() ],
-//                [ new FunctionScopeVisitor($scopeStore, $this->cacheDir) ],
-//                [ new CallFunctionVisitor($scopeStore) ],
+            $this->visitors = [
+                new NodeConnectingVisitor(), // getAttribute('parent') / getAttribute('previous') / getAttribute('next')
+                new BinaryAndIssetVisitor(),
+                new ConcatAssertVisitor(),
+                new EvalStandartFunction(),
+                new FunctionScopeVisitor($scopeStore, $this->cacheDir),
+                new CallFunctionVisitor($scopeStore),
             ];
-            $this->parseScopesWithVisitors($visitors);
+            $this->parseScopesWithVisitors();
         }
     }
 
-    /**
-     *  $visitors - массив этапов обхода (в одном этапе может быть несколько visitor)
-     */
-    protected function parseScopesWithVisitors($visitors)
+    protected function parseScopesWithVisitors()
     {
+        $differ = new \Recombinator\ColorDiffer();
+        $printer = new StandardPrinter();
+
         foreach ($this->scopes as $scopeName => $scope) {
             $this->ast[$scopeName] = $this->buildAST($scopeName, $scope);
-            foreach ($visitors as $visitorBatch) {
-                foreach ($visitorBatch as $v) {
-                    $v->scopeName = $scopeName;
-                }
+            foreach ($this->visitors as $visitor) {
+                $visitor->scopeName = $scopeName;
+                $textBefore = $printer->prettyPrint($this->ast[$scopeName]);
                 $this->ast[$scopeName] = (new Fluent($this->ast[$scopeName]))
-                    ->withVisitors($visitorBatch)
+                    ->withVisitors([$visitor])
                     ->modify();
+                $textAfter = $printer->prettyPrint($this->ast[$scopeName]);
+                $visitor->diff = $differ->diff($textBefore, $textAfter);
+
+                echo $visitor->diff;
             }
         }
     }
