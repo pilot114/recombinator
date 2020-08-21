@@ -19,6 +19,8 @@ class FunctionScopeVisitor extends BaseVisitor
     public function __construct($scopeStore, $cacheDir)
     {
         $this->scopeStore = $scopeStore;
+        $this->scopeStore->currentScope = $this->scopeName;
+
         $this->cacheDir = $cacheDir;
     }
 

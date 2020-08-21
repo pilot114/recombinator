@@ -14,5 +14,5 @@ $rec = new Parser($path, $cachePath);
 $rec->parseScopes();
 
 //echo $rec->prettyPrintScopes(true);
-$rec->updateCache();
+//$rec->updateCache();
 

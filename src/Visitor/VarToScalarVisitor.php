@@ -3,6 +3,7 @@
 namespace Recombinator\Visitor;
 
 use PhpParser\Node;
+use Recombinator\ScopeStore;
 
 /**
  * Подмена переменных их значениями (скаляры)
@@ -11,27 +12,10 @@ class VarToScalarVisitor extends BaseVisitor
 {
     protected $scopeStore;
 
-    public function __construct($scopeStore)
+    public function __construct(ScopeStore $scopeStore)
     {
         $this->scopeStore = $scopeStore;
-    }
-
-    public function setVarToScope($name, $value)
-    {
-        if (!isset($this->scopeStore->scopes[$this->scopeName])) {
-            $this->scopeStore->scopes[$this->scopeName] = [
-                'vars' => []
-            ];
-        }
-        $this->scopeStore->scopes[$this->scopeName]['vars'][$name] = $value;
-    }
-    public function getVarFromScope($name)
-    {
-        return $this->scopeStore->scopes[$this->scopeName]['vars'][$name] ?? null;
-    }
-    public function removeVarFromScope($name)
-    {
-        unset($this->scopeStore->scopes[$this->scopeName]['vars'][$name]);
+        $this->scopeStore->currentScope = $this->scopeName;
     }
 
     public function enterNode(Node $node)
@@ -48,7 +32,7 @@ class VarToScalarVisitor extends BaseVisitor
                 // заносим в кеш
                 $varExprScalar = clone $assign->expr;
                 $varExprScalar->setAttributes([]);
-                $this->setVarToScope($varName, $varExprScalar);
+                $this->scopeStore->setVarToScope($varName, $varExprScalar);
                 $node->setAttribute('remove', true);
             }
         }
@@ -61,8 +45,8 @@ class VarToScalarVisitor extends BaseVisitor
             $varName = $node->name;
 
             $isRead = $this->isVarRead($node, $varName);
-            if ($isRead && $this->getVarFromScope($varName)) {
-                $node->setAttribute('replace', $this->getVarFromScope($varName));
+            if ($isRead && $this->scopeStore->getVarFromScope($varName)) {
+                $node->setAttribute('replace', $this->scopeStore->getVarFromScope($varName));
             }
         }
 
@@ -74,17 +58,17 @@ class VarToScalarVisitor extends BaseVisitor
             $assign = $node->expr;
             $varName = $assign->var->name;
             if (!$assign->expr instanceof Node\Scalar) {
-                if ($this->getVarFromScope($varName)) {
+                if ($this->scopeStore->getVarFromScope($varName)) {
                     // Если внутри присвоения читается эта переменная - сначала пробуем её подменить
                     $innerVars = $this->findNode(Node\Expr\Variable::class, $assign);
                     foreach ($innerVars as $innerVar) {
                         $isRead = $this->isVarRead($innerVar, $innerVar->name);
-                        if ($isRead && $this->getVarFromScope($innerVar->name)) {
-                            $innerVar->setAttribute('replace', $this->getVarFromScope($innerVar->name));
+                        if ($isRead && $this->scopeStore->getVarFromScope($innerVar->name)) {
+                            $innerVar->setAttribute('replace', $this->scopeStore->getVarFromScope($innerVar->name));
                         }
                     }
 
-                    $this->removeVarFromScope($varName);
+                    $this->scopeStore->removeVarFromScope($varName);
                 }
             }
         }

@@ -16,6 +16,7 @@ class CallFunctionVisitor extends BaseVisitor
     public function __construct($scopeStore)
     {
         $this->scopeStore = $scopeStore;
+        $this->scopeStore->currentScope = $this->scopeName;
     }
 
     public function enterNode(Node $node)
