@@ -11,6 +11,8 @@ use PhpParser\Error;
 use Recombinator\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Visitor\CallFunctionVisitor;
 use Recombinator\Visitor\ConcatAssertVisitor;
+use Recombinator\Visitor\ConstClassVisitor;
+use Recombinator\Visitor\ConstructVisitor;
 use Recombinator\Visitor\EvalStandartFunction;
 use Recombinator\Visitor\FunctionScopeVisitor;
 use Recombinator\Visitor\IncludeVisitor;
@@ -55,10 +57,7 @@ class Parser
      */
     public function parseScopes()
     {
-        $scopeStore = new class {
-            public $functions = [];
-            public $scopes = [];
-        };
+        $ss = new ScopeStore();
 
         if ($this->isDry) {
             $this->visitors = [
@@ -66,19 +65,19 @@ class Parser
                 new IncludeVisitor($this->entryPoint),
                 new ScopeVisitor($this->entryPoint, $this->cacheDir),
             ];
-            $this->parseScopesWithVisitors();
         } else {
             $this->visitors = [
                 new NodeConnectingVisitor(), // getAttribute('parent') / getAttribute('previous') / getAttribute('next')
                 new BinaryAndIssetVisitor(),
-                new ConcatAssertVisitor(),
-                new EvalStandartFunction(),
-                new VarToScalarVisitor($scopeStore),
-                new FunctionScopeVisitor($scopeStore, $this->cacheDir),
-                new CallFunctionVisitor($scopeStore),
+//                new ConcatAssertVisitor(),
+//                new EvalStandartFunction(),
+                new VarToScalarVisitor($ss),
+//                new FunctionScopeVisitor($ss, $this->cacheDir),
+//                new CallFunctionVisitor($ss),
+//                new ConstClassVisitor($ss),
             ];
-            $this->parseScopesWithVisitors();
         }
+        $this->parseScopesWithVisitors();
     }
 
     protected function parseScopesWithVisitors()
@@ -86,6 +85,7 @@ class Parser
         $differ = new \Recombinator\ColorDiffer();
         $printer = new StandardPrinter();
 
+        $superOptimize = true;
         foreach ($this->scopes as $scopeName => $scope) {
             $this->ast[$scopeName] = $this->buildAST($scopeName, $scope);
             foreach ($this->visitors as $visitor) {
@@ -101,8 +101,12 @@ class Parser
                 if (count(explode("\n", $visitor->diff)) > 3) {
                     echo sprintf("*** %s ***\n", get_class($visitor));
                     echo $visitor->diff;
+                    $superOptimize = false;
                 }
             }
+        }
+        if ($superOptimize) {
+//            $this->printEndBanner();
         }
     }
 
@@ -181,5 +185,21 @@ class Parser
             }
         }
         return $this->ast[$name];
+    }
+
+    protected function printEndBanner()
+    {
+        $text = "
+███████╗██╗   ██╗██████╗ ███████╗██████╗      ██████╗ ██████╗ ████████╗██╗███╗   ███╗██╗███████╗███████╗    ██╗
+██╔════╝██║   ██║██╔══██╗██╔════╝██╔══██╗    ██╔═══██╗██╔══██╗╚══██╔══╝██║████╗ ████║██║╚══███╔╝██╔════╝    ██║
+███████╗██║   ██║██████╔╝█████╗  ██████╔╝    ██║   ██║██████╔╝   ██║   ██║██╔████╔██║██║  ███╔╝ █████╗      ██║
+╚════██║██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗    ██║   ██║██╔═══╝    ██║   ██║██║╚██╔╝██║██║ ███╔╝  ██╔══╝      ╚═╝
+███████║╚██████╔╝██║     ███████╗██║  ██║    ╚██████╔╝██║        ██║   ██║██║ ╚═╝ ██║██║███████╗███████╗    ██╗
+╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝     ╚═════╝ ╚═╝        ╚═╝   ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚══════╝    ╚═╝";
+        $differ = new \Recombinator\ColorDiffer();
+        $colors = ['red', 'green', 'blue', 'yellow'];
+        foreach (explode("\n", $text) as $line) {
+            echo $differ->getColoredString($line, $colors[rand(0, 3)]) . "\n";
+        }
     }
 }

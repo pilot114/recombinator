@@ -15,6 +15,8 @@ echo test(1, 2);
 
 echo is_array([]);
 
+echo Auth::HASH;
+
 $username = 'default_username';
 if (isset($_GET['username'])) {
     $username = $_GET['username'];
