@@ -15,6 +15,7 @@ use Recombinator\Visitor\EvalStandartFunction;
 use Recombinator\Visitor\FunctionScopeVisitor;
 use Recombinator\Visitor\IncludeVisitor;
 use Recombinator\Visitor\ScopeVisitor;
+use Recombinator\Visitor\VarToScalarVisitor;
 
 // TODO: https://github.com/rectorphp/rector
 // TODO: IncludeVisitor надо прогонять пока есть что подключать
@@ -56,6 +57,7 @@ class Parser
     {
         $scopeStore = new class {
             public $functions = [];
+            public $scopes = [];
         };
 
         if ($this->isDry) {
@@ -71,6 +73,7 @@ class Parser
                 new BinaryAndIssetVisitor(),
                 new ConcatAssertVisitor(),
                 new EvalStandartFunction(),
+                new VarToScalarVisitor($scopeStore),
                 new FunctionScopeVisitor($scopeStore, $this->cacheDir),
                 new CallFunctionVisitor($scopeStore),
             ];
@@ -94,7 +97,11 @@ class Parser
                 $textAfter = $printer->prettyPrint($this->ast[$scopeName]);
                 $visitor->diff = $differ->diff($textBefore, $textAfter);
 
-                echo $visitor->diff;
+                // выводим только по тем визиторам, у которых есть diff
+                if (count(explode("\n", $visitor->diff)) > 3) {
+                    echo sprintf("*** %s ***\n", get_class($visitor));
+                    echo $visitor->diff;
+                }
             }
         }
     }
