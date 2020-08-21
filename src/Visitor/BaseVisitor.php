@@ -18,7 +18,7 @@ class BaseVisitor extends NodeVisitorAbstract
     public function beforeTraverse(array $nodes)
     {
         $this->ast = $nodes;
-        echo sprintf("*** %s start ***\n", (new \ReflectionClass(static::class))->getShortName());
+//        echo sprintf("*** %s start ***\n", (new \ReflectionClass(static::class))->getShortName());
     }
 
     public function afterTraverse(array $nodes)
