@@ -6,6 +6,7 @@ use SebastianBergmann\Diff\Differ;
 
 class ColorDiffer
 {
+    public $hasDiff;
     private $foreground_colors = [];
     private $background_colors = [];
     private $differ;
@@ -70,6 +71,9 @@ class ColorDiffer
     public function diff($a, $b, $withNotModified = false)
     {
         $out = $this->differ->diff($a, $b);
+        $noDiffResult = "--- Original+++ New";
+        $this->hasDiff = str_replace("\n", "", $out) !== $noDiffResult;
+
         $colorOut = "";
         foreach (explode("\n", $out) as $line) {
             if (!$line) continue;

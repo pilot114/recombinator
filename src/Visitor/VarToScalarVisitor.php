@@ -10,12 +10,20 @@ use Recombinator\ScopeStore;
  */
 class VarToScalarVisitor extends BaseVisitor
 {
-    protected $scopeStore;
+    public $scopeStore;
+    /**
+     * TODO не всегда возможно удалить
+     * $test = 'abc';
+     * if ($b) {
+     *    $test = $b;
+     * }
+     * тут удалить скаляр нельзя
+     */
+    public $maybeRemove;
 
     public function __construct(ScopeStore $scopeStore)
     {
         $this->scopeStore = $scopeStore;
-        $this->scopeStore->currentScope = $this->scopeName;
     }
 
     public function enterNode(Node $node)
@@ -25,21 +33,21 @@ class VarToScalarVisitor extends BaseVisitor
          * Переменная "кэширует" значение, поэтому чтобы избежать сайд-эффектов
          * подменяем только переменные со скалярным значением
          */
-        if (isset($node->expr) && $node->expr instanceof Node\Expr\Assign) {
-            $assign = $node->expr;
-            $varName = $assign->var->name;
-            if ($assign->expr instanceof Node\Scalar) {
+        if ($node instanceof Node\Expr\Assign) {
+            $varName = $node->var->name;
+            if ($node->expr instanceof Node\Scalar) {
                 // заносим в кеш
-                $varExprScalar = clone $assign->expr;
+                $varExprScalar = clone $node->expr;
                 $varExprScalar->setAttributes([]);
                 $this->scopeStore->setVarToScope($varName, $varExprScalar);
-                $node->setAttribute('remove', true);
+
+                $node->getAttribute('parent')->setAttribute('remove', true);
             }
         }
 
         /**
          * Замена переменных 2/3 - чтение переменной
-         * Если переменная читается и есть в кеше скаляров - можно смело заменять
+         * Если переменная читается и есть в кеше скаляров - обновляем
          */
         if ($node instanceof Node\Expr\Variable) {
             $varName = $node->name;
@@ -62,6 +70,8 @@ class VarToScalarVisitor extends BaseVisitor
                     // Если внутри присвоения читается эта переменная - сначала пробуем её подменить
                     $innerVars = $this->findNode(Node\Expr\Variable::class, $assign);
                     foreach ($innerVars as $innerVar) {
+                        if ($innerVar->name !== $varName) continue;
+
                         $isRead = $this->isVarRead($innerVar, $innerVar->name);
                         if ($isRead && $this->scopeStore->getVarFromScope($innerVar->name)) {
                             $innerVar->setAttribute('replace', $this->scopeStore->getVarFromScope($innerVar->name));

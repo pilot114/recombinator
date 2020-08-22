@@ -5,24 +5,15 @@ namespace Recombinator\Visitor;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Assign;
 use PhpParser\Node\Stmt\Expression;
-use PhpParser\NodeTraverser;
 
 /**
- * - удаление не php
  * - Бинарные операции (математика, логика, конкатенация)
  * - if (isset(var)) var2 = var;    =>    var2 = var ?? var2;
  */
 class BinaryAndIssetVisitor extends BaseVisitor
 {
-    protected $scopeVarsReplace = [];
-
     public function enterNode(Node $node)
     {
-        if ($node instanceof Node\Stmt\InlineHTML) {
-            $node->setAttribute('remove', true);
-            return NodeTraverser::DONT_TRAVERSE_CHILDREN;
-        }
-
         /**
          *  Бинарные операции (математика, логика, конкатенация)
          */
@@ -44,7 +35,8 @@ class BinaryAndIssetVisitor extends BaseVisitor
                 } else if ($node instanceof Node\Expr\BinaryOp\Div) {
                     $calc = $node->left->value / $node->right->value;
                 } else if ($node instanceof Node\Expr\BinaryOp\Concat) {
-                    return new Node\Scalar\String_( $node->left->value . $node->right->value );
+                    $newNode = new Node\Scalar\String_( $node->left->value . $node->right->value );
+                    return $newNode;
                 } else {
                     throw new \Exception('New BinaryOp! : ' . get_class($node));
                 }
@@ -65,7 +57,7 @@ class BinaryAndIssetVisitor extends BaseVisitor
                 if ($expr instanceof Assign) {
                     $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
                     $newAssign = new Assign($expr->var, $newExp);
-                    return new Expression($newAssign);
+                    $node->setAttribute('replace', new Expression($newAssign));
                 }
             }
         }
