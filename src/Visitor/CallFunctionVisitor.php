@@ -5,6 +5,7 @@ namespace Recombinator\Visitor;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
+use Recombinator\ScopeStore;
 
 /**
  * Замена вызова функции телом функции
@@ -13,10 +14,9 @@ class CallFunctionVisitor extends BaseVisitor
 {
     protected $scopeStore;
 
-    public function __construct($scopeStore)
+    public function __construct(ScopeStore $scopeStore)
     {
         $this->scopeStore = $scopeStore;
-        $this->scopeStore->currentScope = $this->scopeName;
     }
 
     public function enterNode(Node $node)

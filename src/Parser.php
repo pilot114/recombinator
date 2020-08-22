@@ -4,7 +4,6 @@ namespace Recombinator;
 
 use PhpParser\Lexer;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
-use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use PhpParser\Error;
@@ -12,10 +11,10 @@ use Recombinator\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Visitor\CallFunctionVisitor;
 use Recombinator\Visitor\ConcatAssertVisitor;
 use Recombinator\Visitor\ConstClassVisitor;
-use Recombinator\Visitor\ConstructVisitor;
 use Recombinator\Visitor\EvalStandartFunction;
 use Recombinator\Visitor\FunctionScopeVisitor;
 use Recombinator\Visitor\IncludeVisitor;
+use Recombinator\Visitor\RemoveVisitor;
 use Recombinator\Visitor\ScopeVisitor;
 use Recombinator\Visitor\VarToScalarVisitor;
 
@@ -30,13 +29,20 @@ class Parser
     protected $visitors = [];
     protected $cacheDir;
     protected $isDry = false;
+    protected $entryPoint;
+    protected $path;
 
     public function __construct($path, $cachePath)
     {
-        $entryPointName = 'index.php';
+        $this->path = $path;
         $this->cacheDir = realpath($cachePath);
-        $cacheFiles = glob($this->cacheDir . '/*');
+        $this->buildScopes();
+    }
 
+    protected function buildScopes()
+    {
+        $entryPointName = 'index.php';
+        $cacheFiles = glob($this->cacheDir . '/*');
         if (count($cacheFiles) > 0) {
             foreach ($cacheFiles as $cacheFile) {
                 $basename = basename($cacheFile);
@@ -47,7 +53,7 @@ class Parser
             }
         } else {
             $this->isDry = true;
-            $this->entryPoint = realpath($path);
+            $this->entryPoint = realpath($this->path);
             $this->scopes = [ $entryPointName => file_get_contents($this->entryPoint) ];
         }
     }
@@ -61,19 +67,18 @@ class Parser
 
         if ($this->isDry) {
             $this->visitors = [
-                new ParentConnectingVisitor(), // getAttribute('parent')
                 new IncludeVisitor($this->entryPoint),
                 new ScopeVisitor($this->entryPoint, $this->cacheDir),
             ];
         } else {
             $this->visitors = [
-                new NodeConnectingVisitor(), // getAttribute('parent') / getAttribute('previous') / getAttribute('next')
                 new BinaryAndIssetVisitor(),
-//                new ConcatAssertVisitor(),
-//                new EvalStandartFunction(),
+                new RemoveVisitor(),
+                new ConcatAssertVisitor(),
+                new EvalStandartFunction(),
                 new VarToScalarVisitor($ss),
-//                new FunctionScopeVisitor($ss, $this->cacheDir),
-//                new CallFunctionVisitor($ss),
+                new FunctionScopeVisitor($ss, $this->cacheDir),
+                new CallFunctionVisitor($ss),
 //                new ConstClassVisitor($ss),
             ];
         }
@@ -86,10 +91,20 @@ class Parser
         $printer = new StandardPrinter();
 
         $superOptimize = true;
-        foreach ($this->scopes as $scopeName => $scope) {
-            $this->ast[$scopeName] = $this->buildAST($scopeName, $scope);
-            foreach ($this->visitors as $visitor) {
+        foreach ($this->visitors as $visitor) {
+            $this->buildScopes();
+            foreach ($this->scopes as $scopeName => $scope) {
+                $this->ast[$scopeName] = $this->buildAST($scopeName, $scope);
+
+                // связи узлов обновляем каждый раз
+                $this->ast[$scopeName] = (new Fluent($this->ast[$scopeName]))
+                    ->withVisitors([new NodeConnectingVisitor()])
+                    ->modify();
+
                 $visitor->scopeName = $scopeName;
+                if (isset($visitor->scopeStore)) {
+                    $visitor->scopeStore->currentScope = $scopeName;
+                }
                 $textBefore = $printer->prettyPrint($this->ast[$scopeName]);
                 $this->ast[$scopeName] = (new Fluent($this->ast[$scopeName]))
                     ->withVisitors([$visitor])
@@ -98,15 +113,18 @@ class Parser
                 $visitor->diff = $differ->diff($textBefore, $textAfter);
 
                 // выводим только по тем визиторам, у которых есть diff
-                if (count(explode("\n", $visitor->diff)) > 3) {
-                    echo sprintf("*** %s ***\n", get_class($visitor));
+                if ($differ->hasDiff) {
+                    echo sprintf("> EDIT %s\n", get_class($visitor));
                     echo $visitor->diff;
                     $superOptimize = false;
                 }
+
+                // после каждого прогона обновляем кеш
+                $this->updateCache();
             }
         }
         if ($superOptimize) {
-//            $this->printEndBanner();
+            $this->printEndBanner();
         }
     }
 

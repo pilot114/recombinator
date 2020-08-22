@@ -3,6 +3,7 @@
 namespace Recombinator\Visitor;
 
 use PhpParser\Node;
+use Recombinator\ScopeStore;
 
 /**
  * Убираем константы классов
@@ -13,10 +14,9 @@ class ConstClassVisitor extends BaseVisitor
 {
     protected $scopeStore;
 
-    public function __construct($scopeStore)
+    public function __construct(ScopeStore $scopeStore)
     {
         $this->scopeStore = $scopeStore;
-        $this->scopeStore->currentScope = $this->scopeName;
     }
 
     public function enterNode(Node $node)

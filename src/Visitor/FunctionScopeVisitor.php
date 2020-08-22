@@ -3,6 +3,7 @@
 namespace Recombinator\Visitor;
 
 use PhpParser\Node;
+use Recombinator\ScopeStore;
 
 /**
  * Замена тела функции на однострочное выражение.
@@ -16,10 +17,9 @@ class FunctionScopeVisitor extends BaseVisitor
     protected $scopeStore;
     protected $cacheDir;
 
-    public function __construct($scopeStore, $cacheDir)
+    public function __construct(ScopeStore $scopeStore, $cacheDir)
     {
         $this->scopeStore = $scopeStore;
-        $this->scopeStore->currentScope = $this->scopeName;
 
         $this->cacheDir = $cacheDir;
     }
