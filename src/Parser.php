@@ -79,7 +79,7 @@ class Parser
                 new VarToScalarVisitor($ss),
                 new FunctionScopeVisitor($ss, $this->cacheDir),
                 new CallFunctionVisitor($ss),
-//                new ConstClassVisitor($ss),
+                new ConstClassVisitor($ss),
             ];
         }
         $this->parseScopesWithVisitors();
@@ -124,7 +124,7 @@ class Parser
             }
         }
         if ($superOptimize) {
-            $this->printEndBanner();
+//            $this->printEndBanner();
         }
     }
 

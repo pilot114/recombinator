@@ -7,7 +7,7 @@ namespace Recombinator;
  */
 class ScopeStore
 {
-    public $functions = [];
+    public $global = [];
     public $scopes = [];
     public $currentScope;
 
@@ -29,7 +29,6 @@ class ScopeStore
         unset($this->scopes[$this->currentScope]['vars'][$name]);
     }
 
-
     public function setConstToScope($name, $value)
     {
         if (!isset($this->scopes[$this->currentScope])) {
@@ -42,5 +41,29 @@ class ScopeStore
     public function getConstFromScope($name)
     {
         return $this->scopes[$this->currentScope]['consts'][$name] ?? null;
+    }
+
+    public function setConstToGlobal($name, $value)
+    {
+        if (!isset($this->global['consts'])) {
+            $this->global['consts'] = [];
+        }
+        $this->global['consts'][$name] = $value;
+    }
+    public function getConstFromGlobal($name)
+    {
+        return $this->global['consts'][$name] ?? null;
+    }
+
+    public function setFunctionToGlobal($name, $value)
+    {
+        if (!isset($this->global['functions'])) {
+            $this->global['functions'] = [];
+        }
+        $this->global['functions'][$name] = $value;
+    }
+    public function getFunctionFromGlobal($name)
+    {
+        return $this->global['functions'][$name] ?? null;
     }
 }

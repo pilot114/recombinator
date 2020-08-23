@@ -55,7 +55,10 @@ class FunctionScopeVisitor extends BaseVisitor
                 }
                 $node->setAttribute('remove', true);
                 // кладем однострочник в стор, чтобы использовать в CallFunctionVisitor
-                $this->scopeStore->functions[$this->scopeName] = clone $return->expr;
+                $this->scopeStore->setFunctionToGlobal(
+                    $node->name->name,
+                    clone $return->expr
+                );
                 // и удаляем файл
                 $fileName = $this->cacheDir . '/' . $this->scopeName;
                 // в wsl2 почему-то не удаляется...
