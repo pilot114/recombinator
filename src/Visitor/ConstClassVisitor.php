@@ -22,11 +22,21 @@ class ConstClassVisitor extends BaseVisitor
     public function enterNode(Node $node)
     {
         if ($node instanceof Node\Stmt\ClassConst) {
-            $this->debug($node);
+            $name = $node->consts[0]->name->name;
+            $scalar = $node->consts[0]->value;
+            $this->scopeStore->setConstToScope($name, $scalar);
+            $this->scopeStore->setConstToGlobal($name, $scalar);
+            $node->setAttribute('remove', true);
         }
 
         if ($node instanceof Node\Expr\ClassConstFetch) {
-            $this->debug($node);
+            if ($node->class->parts[0] === 'self') {
+                $replace = $this->scopeStore->getConstFromScope($node->name->name);
+                $node->setAttribute('replace', $replace);
+            } else {
+                $replace = $this->scopeStore->getConstFromGlobal($node->name->name);
+                $node->setAttribute('replace', $replace);
+            }
         }
     }
 }

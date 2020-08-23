@@ -22,36 +22,33 @@ class CallFunctionVisitor extends BaseVisitor
     public function enterNode(Node $node)
     {
         if ($node instanceof Node\Expr\FuncCall) {
-            $keys = array_keys($this->scopeStore->functions);
-            foreach ($keys as $key) {
-                // находим в сторе тело функции
-                $parts = $node->name->parts;
-                if (strpos($key, 'Function_' . array_shift($parts) . '_') === 0) {
+            $expr = $this->scopeStore->getFunctionFromGlobal($node->name->parts[0]);
 
-                    // заменяем в копии тела параметры на аргументы
-                    $expr = clone $this->scopeStore->functions[$key];
-                    $traverser = new NodeTraverser();
-                    $traverser->addVisitor(new class($node) extends BaseVisitor {
-                        protected $node;
-                        public function __construct($node)
-                        {
-                            $this->node = $node;
-                        }
-                        public function enterNode(Node $var)
-                        {
-                            if ($var instanceof Node\Expr\Variable) {
-                                $i = $var->getAttribute('arg_index');
-                                if (isset($this->node->args[$i])) {
-                                    return $this->node->args[$i]->value;
-                                } else {
-                                    return $var->getAttribute('arg_default');
-                                }
+            if ($expr) {
+                // заменяем в копии тела параметры на аргументы
+                $traverser = new NodeTraverser();
+                $traverser->addVisitor(new class($node) extends BaseVisitor {
+                    protected $node;
+
+                    public function __construct($node)
+                    {
+                        $this->node = $node;
+                    }
+
+                    public function enterNode(Node $var)
+                    {
+                        if ($var instanceof Node\Expr\Variable) {
+                            $i = $var->getAttribute('arg_index');
+                            if (isset($this->node->args[$i])) {
+                                return $this->node->args[$i]->value;
+                            } else {
+                                return $var->getAttribute('arg_default');
                             }
                         }
-                    });
-                    $expr = $traverser->traverse([$expr]);
-                    return $expr[0];
-                }
+                    }
+                });
+                $expr = $traverser->traverse([clone $expr]);
+                return $expr[0];
             }
         }
     }
