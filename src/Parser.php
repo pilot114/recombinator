@@ -11,11 +11,13 @@ use Recombinator\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Visitor\CallFunctionVisitor;
 use Recombinator\Visitor\ConcatAssertVisitor;
 use Recombinator\Visitor\ConstClassVisitor;
+use Recombinator\Visitor\ConstructorVisitor;
 use Recombinator\Visitor\EvalStandartFunction;
 use Recombinator\Visitor\FunctionScopeVisitor;
 use Recombinator\Visitor\IncludeVisitor;
 use Recombinator\Visitor\RemoveVisitor;
 use Recombinator\Visitor\ScopeVisitor;
+use Recombinator\Visitor\TernarReturnVisitor;
 use Recombinator\Visitor\VarToScalarVisitor;
 
 // TODO: https://github.com/rectorphp/rector
@@ -80,6 +82,8 @@ class Parser
                 new FunctionScopeVisitor($ss, $this->cacheDir),
                 new CallFunctionVisitor($ss),
                 new ConstClassVisitor($ss),
+                new TernarReturnVisitor(),
+                new ConstructorVisitor($ss),
             ];
         }
         $this->parseScopesWithVisitors();
@@ -120,7 +124,7 @@ class Parser
                 }
 
                 // после каждого прогона обновляем кеш
-                $this->updateCache();
+//                $this->updateCache();
             }
         }
         if ($superOptimize) {
