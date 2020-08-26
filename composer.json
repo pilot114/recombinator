@@ -4,9 +4,11 @@
     "description": "php recombinator",
     "prefer-stable": true,
     "require": {
-        "sebastian/diff": "3.0",
         "nikic/php-parser": "^4.8",
         "ext-sockets": "*"
+    },
+    "require-dev": {
+        "sebastian/diff": "3.0"
     },
     "authors": [
         {
