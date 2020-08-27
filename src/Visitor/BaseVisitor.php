@@ -56,6 +56,14 @@ class BaseVisitor extends NodeVisitorAbstract
     }
 
     /**
+     * Создание уникального идентификатора на основе сигнатур узла
+     */
+    protected function buildUidByNode(Node $stmt)
+    {
+        return crc32($stmt->getStartFilePos() . $stmt->getEndFilePos());
+    }
+
+    /**
      * упрощенный способ найти узлы определенного типа.
      * найденные узлы не содержат ссылок на родителей!
      *

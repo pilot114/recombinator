@@ -11,7 +11,7 @@ use Recombinator\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Visitor\CallFunctionVisitor;
 use Recombinator\Visitor\ConcatAssertVisitor;
 use Recombinator\Visitor\ConstClassVisitor;
-use Recombinator\Visitor\ConstructorVisitor;
+use Recombinator\Visitor\ConstructorAndMethodsVisitor;
 use Recombinator\Visitor\EvalStandartFunction;
 use Recombinator\Visitor\FunctionScopeVisitor;
 use Recombinator\Visitor\IncludeVisitor;
@@ -63,7 +63,7 @@ class Parser
         } else {
             $this->isDry = true;
             $this->entryPoint = realpath($this->path);
-            $this->scopes = [ $entryPointName => file_get_contents($this->entryPoint) ];
+            $this->scopes = [$entryPointName => file_get_contents($this->entryPoint)];
         }
     }
 
@@ -83,7 +83,7 @@ class Parser
             new CallFunctionVisitor($ss),
             new ConstClassVisitor($ss),
             new TernarReturnVisitor(),
-//                new ConstructorVisitor($ss),
+            new ConstructorAndMethodsVisitor($ss),
         ];
         $this->parseScopesWithVisitors();
     }
@@ -123,7 +123,7 @@ class Parser
 
             // после каждого прогона обновляем кеш
             if ($updateCache) {
-                $this->updateCache();
+//                $this->updateCache();
             }
         }
     }
@@ -188,7 +188,7 @@ class Parser
             $numOutput = '';
             foreach ($lines as $i => $line) {
                 // поправка на нулевой индекс и на <?php строку
-                $numOutput .= $i+2 . ') ' . $line . "\n";
+                $numOutput .= $i + 2 . ') ' . $line . "\n";
             }
             $output = $numOutput;
         }

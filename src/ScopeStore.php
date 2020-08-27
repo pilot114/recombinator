@@ -66,4 +66,16 @@ class ScopeStore
     {
         return $this->global['functions'][$name] ?? null;
     }
+
+    public function setClassToGlobal($name, $value)
+    {
+        if (!isset($this->global['classes'])) {
+            $this->global['classes'] = [];
+        }
+        $this->global['classes'][$name] = $value;
+    }
+    public function getClassFromGlobal($name)
+    {
+        return $this->global['classes'][$name] ?? null;
+    }
 }
