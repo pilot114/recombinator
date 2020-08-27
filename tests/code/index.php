@@ -2,11 +2,6 @@
 
 require ('Auth.php');
 
-function test($x, $y)
-{
-    return $x + $y;
-}
-
 echo 1 . 2 . 3 . 4 . 5 . true . false;
 
 echo 1 / (2 + 3);

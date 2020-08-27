@@ -21,16 +21,23 @@ use Recombinator\Visitor\TernarReturnVisitor;
 use Recombinator\Visitor\VarToScalarVisitor;
 
 // TODO: https://github.com/rectorphp/rector
-// TODO: IncludeVisitor надо прогонять пока есть что подключать
 // TODO: возможность указать входные параметры для выполнения
 
 class Parser
 {
+    /**
+     * Массив исходников
+     */
     protected $scopes = [];
+    /**
+     * Массив распарсенных исходников
+     */
     protected $ast = [];
     protected $visitors = [];
     protected $cacheDir;
     protected $isDry = false;
+    protected $superOptimize = true;
+    protected $hasEdit = true;
     protected $entryPoint;
     protected $path;
 
@@ -63,71 +70,92 @@ class Parser
     /**
      * Запускает парсинг
      */
-    public function parseScopes()
+    public function run()
     {
         $ss = new ScopeStore();
-
-        if ($this->isDry) {
-            $this->visitors = [
-                new IncludeVisitor($this->entryPoint),
-                new ScopeVisitor($this->entryPoint, $this->cacheDir),
-            ];
-        } else {
-            $this->visitors = [
-                new BinaryAndIssetVisitor(),
-                new RemoveVisitor(),
-                new ConcatAssertVisitor(),
-                new EvalStandartFunction(),
-                new VarToScalarVisitor($ss),
-                new FunctionScopeVisitor($ss, $this->cacheDir),
-                new CallFunctionVisitor($ss),
-                new ConstClassVisitor($ss),
-                new TernarReturnVisitor(),
-                new ConstructorVisitor($ss),
-            ];
-        }
+        $this->visitors = [
+            new BinaryAndIssetVisitor(),
+            new RemoveVisitor(),
+            new ConcatAssertVisitor(),
+            new EvalStandartFunction(),
+            new VarToScalarVisitor($ss),
+            new FunctionScopeVisitor($ss, $this->cacheDir),
+            new CallFunctionVisitor($ss),
+            new ConstClassVisitor($ss),
+            new TernarReturnVisitor(),
+//                new ConstructorVisitor($ss),
+        ];
         $this->parseScopesWithVisitors();
     }
 
-    protected function parseScopesWithVisitors()
+    protected function parseScopes($visitor, $updateCache = true)
     {
         $differ = new \Recombinator\ColorDiffer();
         $printer = new StandardPrinter();
 
-        $superOptimize = true;
-        foreach ($this->visitors as $visitor) {
-            $this->buildScopes();
-            foreach ($this->scopes as $scopeName => $scope) {
-                $this->ast[$scopeName] = $this->buildAST($scopeName, $scope);
+        $this->hasEdit = false;
+        foreach ($this->scopes as $scopeName => $scope) {
+            $this->ast[$scopeName] = $this->buildAST($scopeName, $scope);
 
-                // связи узлов обновляем каждый раз
-                $this->ast[$scopeName] = (new Fluent($this->ast[$scopeName]))
-                    ->withVisitors([new NodeConnectingVisitor()])
-                    ->modify();
+            // связи узлов обновляем каждый раз
+            $this->ast[$scopeName] = (new Fluent($this->ast[$scopeName]))
+                ->withVisitors([new NodeConnectingVisitor()])
+                ->modify();
 
-                $visitor->scopeName = $scopeName;
-                if (isset($visitor->scopeStore)) {
-                    $visitor->scopeStore->currentScope = $scopeName;
-                }
-                $textBefore = $printer->prettyPrint($this->ast[$scopeName]);
-                $this->ast[$scopeName] = (new Fluent($this->ast[$scopeName]))
-                    ->withVisitors([$visitor])
-                    ->modify();
-                $textAfter = $printer->prettyPrint($this->ast[$scopeName]);
-                $visitor->diff = $differ->diff($textBefore, $textAfter);
+            $visitor->scopeName = $scopeName;
+            if (isset($visitor->scopeStore)) {
+                $visitor->scopeStore->currentScope = $scopeName;
+            }
+            $textBefore = $printer->prettyPrint($this->ast[$scopeName]);
+            $this->ast[$scopeName] = (new Fluent($this->ast[$scopeName]))
+                ->withVisitors([$visitor])
+                ->modify();
+            $textAfter = $printer->prettyPrint($this->ast[$scopeName]);
+            $visitor->diff = $differ->diff($textBefore, $textAfter);
 
-                // выводим только по тем визиторам, у которых есть diff
-                if ($differ->hasDiff) {
-                    echo sprintf("> EDIT %s\n", get_class($visitor));
-                    echo $visitor->diff;
-                    $superOptimize = false;
-                }
+            // выводим только по тем визиторам, у которых есть diff
+            if ($differ->hasDiff) {
+                $this->hasEdit = true;
+                echo sprintf("> EDIT %s\n", get_class($visitor));
+                echo $visitor->diff;
+                $this->superOptimize = false;
+            }
 
-                // после каждого прогона обновляем кеш
-//                $this->updateCache();
+            // после каждого прогона обновляем кеш
+            if ($updateCache) {
+                $this->updateCache();
             }
         }
-        if ($superOptimize) {
+    }
+
+    protected function saveAstToScope()
+    {
+        $printer = new StandardPrinter();
+        foreach ($this->ast as $scopeName => $ast) {
+            $text = $printer->prettyPrint($ast);
+            $this->scopes[$scopeName] = "<?php\n" . $text;
+        }
+    }
+
+    protected function parseScopesWithVisitors()
+    {
+        // при первом запуске рекурсивно прогоняем IncludeVisitor и затем ScopeVisitor
+        if ($this->isDry) {
+            $updateCache = false;
+            while ($this->hasEdit) {
+                $this->parseScopes(new IncludeVisitor($this->entryPoint), $updateCache);
+                $this->saveAstToScope();
+            }
+            $this->parseScopes(new ScopeVisitor($this->entryPoint, $this->cacheDir));
+            $this->saveAstToScope();
+        } else {
+            foreach ($this->visitors as $visitor) {
+                $this->buildScopes();
+                $this->parseScopes($visitor);
+            }
+        }
+
+        if ($this->superOptimize) {
 //            $this->printEndBanner();
         }
     }

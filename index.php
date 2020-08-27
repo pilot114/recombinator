@@ -10,5 +10,5 @@ if (!is_dir($cachePath)) {
     mkdir($cachePath);
 }
 $rec = new Parser($path, $cachePath);
-$rec->parseScopes();
+$rec->run();
 

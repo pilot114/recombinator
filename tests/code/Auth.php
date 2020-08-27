@@ -1,5 +1,7 @@
 <?php
 
+include 'functions.php';
+
 /**
  * dump Auth
  * $auth = new Auth();
