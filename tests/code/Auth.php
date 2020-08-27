@@ -11,6 +11,7 @@ include 'functions.php';
 class Auth
 {
     const HASH = 'test_test';
+    public $test = 'empty';
 
     public function login($username, $password)
     {
