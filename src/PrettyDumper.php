@@ -20,6 +20,11 @@ class PrettyDumper extends NodeDumper
 
     protected function dumpRecursive($node, $isChild = false) {
         if ($node instanceof Node) {
+            // TODO: можно выводить кастомные аттрибуты
+//            $attrs = $node->getAttributes();
+//            unset($attrs['next'], $attrs['previous'], $attrs['parent']);
+//            var_dump($attrs);
+
             $r = $node->getType();
             $r = $this->yellow($r);
 
