@@ -28,7 +28,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $optimizeMethods = [];
             foreach ($methods as $method) {
                 if (count($method->stmts) === 1) {
-                    $optimizeMethods[$method->name->name] = $method->stmts[0];
+                    $optimizeMethods[$method->name->name] = $this->markupFunctionBody($method);
                 } else {
                     $optimize = false;
                 }
@@ -42,40 +42,60 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
                 $this->scopeStore->setClassToGlobal($node->name->name, [
                     'props' => $optimizeProperties,
                     'methods' => $optimizeMethods,
+                    'instances' => [], // привязка инстансов к классу
                 ]);
             }
         }
 
         // подмена использования класса на его слепок из стора
         if ($node instanceof Node\Expr\New_) {
+            $assign = $node->getAttribute('parent');
+            if (!$assign instanceof Node\Expr\Assign) {
+                return;
+            }
+
+            $uid = $this->buildUidByNode($node);
             $className = $node->class->parts[0];
-            ['props' => $props, 'methods' => $methods] = $this->scopeStore->getClassFromGlobal($className);
+            $class = $this->scopeStore->getClassFromGlobal($className);
+
+            $instanseValue = [
+                'name' => $assign->var->name,
+                'properties' => [],
+            ];
             $stmts = [];
-            foreach ($props as $prop) {
-                $varName = sprintf('%s_%s_%s', $className, $prop->name->name, $this->buildUidByNode($node));
+            foreach ($class['props'] as $prop) {
+                $varName = sprintf('%s_%s_%s', $assign->var->name, $prop->name->name, $uid);
                 $var = new Node\Expr\Variable($varName);
                 $stmt = new Node\Expr\Assign($var, $prop->default);
                 $stmts[] = new Node\Stmt\Expression($stmt);
+
+                $instanseValue['properties'][$prop->name->name] = $varName;
             }
-            $node->getAttribute('parent')->getAttribute('parent')->setAttribute('replace', $stmts);
-            // с методами вроде ничего не делаем
-//            foreach ($methods as $method) {
-//                $this->debug($method);
-//            }
+            $class['instances'][] = $instanseValue;
+            $this->scopeStore->setClassToGlobal($className, $class);
+
+//            $node->getAttribute('parent')->getAttribute('parent')->setAttribute('replace', $stmts);
         }
 
         if ($node instanceof Node\Expr\MethodCall) {
-            $this->debug($node);
-            var_dump($node->name->name);
+            $instanceName = $node->var->name;
+            $methodName = $node->name->name;
+            [$className, $instance] = $this->scopeStore->findClassNameAndInstance($instanceName);
 
-//            $expr = $this->scopeStore->getFunctionFromGlobal($node->name->parts[0]);
-//            if ($expr) {
-//                // заменяем в копии тела параметры на аргументы
-//                $traverser = new NodeTraverser();
-//                $traverser->addVisitor(new ParametersToArgsVisitor($node));
-//                $expr = $traverser->traverse([clone $expr]);
-//                return $expr[0];
-//            }
+            $class = $this->scopeStore->getClassFromGlobal($className);
+            foreach ($class['methods'] as $iMethodName => $method) {
+                if ($iMethodName === $methodName) {
+                    $this->replaceCallToBody($node, $method);
+                }
+            }
         }
+    }
+
+    protected function replaceCallToBody($call, $method)
+    {
+        // TODO
+        $this->debug($call);
+        $this->debug($method);
+        die();
     }
 }

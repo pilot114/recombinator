@@ -38,21 +38,9 @@ class FunctionScopeVisitor extends BaseVisitor
         if ($node instanceof Node\Stmt\Function_) {
             // тело оптимизировано, можно заменять
             if (count($node->stmts) === 1 && $node->stmts[0] instanceof Node\Stmt\Return_) {
+                $node = $this->markupFunctionBody($node);
                 $return = $node->stmts[0];
-                $params = [];
-                foreach ($node->params as $i => $param) {
-                    $params[$param->var->name] = [
-                        'index' => $i,
-                        'default' => $param->default->value ?? null,
-                    ];
-                }
-                $vars = $this->findNode(Node\Expr\Variable::class, $return->expr);
-                foreach ($vars as $var) {
-                    if (isset($params[$var->name])) {
-                        $var->setAttribute('arg_index', $params[$var->name]['index']);
-                        $var->setAttribute('arg_default', $params[$var->name]['default']);
-                    }
-                }
+
                 $node->setAttribute('remove', true);
                 // кладем однострочник в стор, чтобы использовать в CallFunctionVisitor
                 $this->scopeStore->setFunctionToGlobal(

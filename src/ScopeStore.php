@@ -78,4 +78,15 @@ class ScopeStore
     {
         return $this->global['classes'][$name] ?? null;
     }
+
+    public function findClassNameAndInstance($instanceName)
+    {
+        foreach ($this->global['classes'] as $className => $class) {
+            foreach ($class['instances'] as $instance) {
+                if ($instance['name'] === $instanceName) {
+                    return [$className, $instance];
+                }
+            }
+        }
+    }
 }
