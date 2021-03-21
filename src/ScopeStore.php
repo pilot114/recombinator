@@ -3,7 +3,20 @@
 namespace Recombinator;
 
 /**
- * Класс для обмена данными между разными скопами в рамках одного Visitor
+ * Класс для обмена данными между разными скопами.
+ * Желательно в рамках одного Visitor - чтобы не усложнять логику
+ *
+ * TODO: нужно выделить скопы в соотевствии с php скопами
+ * global
+ *   function1
+ *   function2
+ *   namespace
+ *     classA (static)
+ *     objectA (instance)
+ *       methodAA
+ *       methodAB
+ *
+ *  + anonFunctions
  */
 class ScopeStore
 {
