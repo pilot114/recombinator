@@ -83,7 +83,7 @@ class Parser
             new CallFunctionVisitor($ss),
             new ConstClassVisitor($ss),
             new TernarReturnVisitor(),
-            new ConstructorAndMethodsVisitor($ss),
+//            new ConstructorAndMethodsVisitor($ss),
         ];
         $this->parseScopesWithVisitors();
     }
@@ -123,7 +123,7 @@ class Parser
 
             // после каждого прогона обновляем кеш
             if ($updateCache) {
-//                $this->updateCache();
+                $this->updateCache();
             }
         }
     }
@@ -156,7 +156,7 @@ class Parser
         }
 
         if ($this->superOptimize) {
-//            $this->printEndBanner();
+            $this->printEndBanner();
         }
     }
 

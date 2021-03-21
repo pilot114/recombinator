@@ -85,17 +85,25 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $class = $this->scopeStore->getClassFromGlobal($className);
             foreach ($class['methods'] as $iMethodName => $method) {
                 if ($iMethodName === $methodName) {
-                    $this->replaceCallToBody($node, $method);
+                    return $this->replaceCallToBody($node, $method);
                 }
             }
         }
     }
 
-    protected function replaceCallToBody($call, $method)
+    protected function replaceCallToBody(Node\Expr\MethodCall $call, Node\Stmt\ClassMethod $method)
     {
-        // TODO
-        $this->debug($call);
-        $this->debug($method);
-        die();
+        if (count($method->stmts) === 1 && $method->stmts[0] instanceof Node\Stmt\Return_) {
+            foreach ($call->args as $i => $arg) {
+                // TODO
+                /**
+                 * проблема - нужно пройти по $method->stmts[0] и заменить параметры на аргументы
+                 * т.е. сделать прогон одного Visitor внутри другого
+                 */
+                $this->debug($call);
+                $this->debug($method);
+                die();
+            }
+        }
     }
 }
