@@ -4,6 +4,9 @@ namespace Recombinator;
 
 use SebastianBergmann\Diff\Differ;
 
+/**
+ * Раскрашивает текст, в данном случае - дифф в зелёный и красный
+ */
 class ColorDiffer
 {
     public $hasDiff;
