@@ -3,6 +3,7 @@
     "type": "library",
     "description": "php recombinator",
     "prefer-stable": true,
+
     "require": {
         "nikic/php-parser": "^4.8",
         "ext-sockets": "*"
@@ -19,6 +20,11 @@
     "autoload": {
         "psr-4": {
             "Recombinator\\": "src/"
+        }
+    },
+    "config": {
+        "platform": {
+            "php": "7.3"
         }
     }
 }
