@@ -1,3 +1,124 @@
+ # PhpParser
+
+    Builder (обертка от Node, чтобы её сбилдить)
+        Property (свойство в Class_ / Trait_)
+        Param (параметры в FunctionLike)
+        TraitUse
+        TraitUseAdaptation
+        Use_
+        Declaration (набор Statements)
+            Namespace_
+            Class_
+            Trait_
+            Interface_
+            FunctionLike
+                Function_
+                Method
+
+    Node (любой элемент AST)
+        Arg
+        Param
+        AttributeGroup
+        Attribute
+        Const_
+        Name
+            FullyQualified, Relative
+        FunctionLike
+        UnionType
+        NullableType
+        MatchArm
+        Identifier
+            VarLikeIdentifier
+        Stmt
+            TraitUseAdaptation
+                Alias, Precedence
+            Break_, Continue_
+            Case_
+            Catch_
+            Class_
+            ClassConst
+            ClassLike
+                Class_
+                Interface_
+                Trait_
+            ClassMethod
+            Const_
+            Declare_, DeclareDeclare
+            Property, PropertyProperty
+            Use_, UseUse
+            Do_, While_, For_, Foreach_
+            If_, Else_, Elseif_
+            Echo_
+            Expression
+            Finally_
+            Function_
+            Global_
+            Goto_
+            GroupLike
+            HalfCompiler
+            InlineHTML
+            Label
+            Namespace_
+            Nop
+            Return_
+            Static_
+            StaticVar
+            Switch_
+            Throw, TryCatch
+            Unset_
+        Expr
+            AssignOp
+                Concat
+                Coalesce
+                BitwiseAnd, BitwiseOr, BitwiseXor
+                ShiftLeft, ShiftRight
+                Plus, Minus, Div, Mul, Mod, Pow
+            BinaryOp
+                Concat
+                Coalesce
+                BitwiseAnd, BitwiseOr, BitwiseXor
+                LogicalAnd, LogicalOr, LogicalXor 
+                BooleanAnd, BooleanOr
+                ShiftLeft, ShiftRight
+                Plus, Minus, Div, Mul, Mod, Pow
+                Equal, NotEqual, Greater, GreaterOrEqual, Smaller, SmallerOrEqual, Identical, NotIdentical
+                Spaceship
+            Cast
+                Array_, Bool_, Double, Int_, Object_, String_, Unset_
+            Scalar
+                String_
+                LNumber
+                DNumber
+                EncapsedStringPart
+                Encapsed
+                MagicConst
+                    Class_, Dir, File, Function_, Line, Method, Namespace_, Trait_
+            Array_, ArrayDimFetch, ArrayItem
+            ArrowFunction
+            Assign, AssignOp, AssignRef
+            BinaryOp, BinaryNot, BooleanNot
+            ClassConstFetch, ConstFetch, PropertyFetch, StaticPropertyFetch, NullsafePropertyFetch
+            FuncCall, MethodCall, StaticCall, NullsafeMethodCall
+            Clone
+            Closure, ClosureUse
+            Empty_
+            ErrorSuppress
+            Eval_
+            Exit_
+            Include_
+            Instanceof_
+            Isset_
+            Match_
+            New_
+            PostDec, PostInc, PreDec, PreInc
+            Print_
+            ShellExec
+            Ternary
+            Throw_
+            UnaryMinus, UnaryPlus
+            Variable
+            Yield, YieldFrom
+
 # EBNF
 
 К недостаткам EBNF, как, впрочем, и BNF, можно отнести тот факт, что они описывают грамматическую структуру формального
