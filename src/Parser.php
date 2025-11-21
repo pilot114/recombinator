@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator;
 
 use PhpParser\Lexer;
@@ -7,6 +9,7 @@ use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use PhpParser\Error;
+use PhpParser\NodeVisitor;
 use Recombinator\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Visitor\CallFunctionVisitor;
 use Recombinator\Visitor\ConcatAssertVisitor;
@@ -25,52 +28,62 @@ use Recombinator\Visitor\VarToScalarVisitor;
 
 class Parser
 {
-    /**
-     * Массив исходников
-     */
-    protected $scopes = [];
-    /**
-     * Массив распарсенных исходников
-     */
-    protected $ast = [];
-    protected $visitors = [];
-    protected $cacheDir;
-    protected $isDry = false;
-    protected $superOptimize = true;
-    protected $hasEdit = true;
-    protected $entryPoint;
-    protected $path;
+    /** @var array<string, string> Массив исходников */
+    protected array $scopes = [];
 
-    public function __construct($path, $cachePath)
+    /** @var array<string, array<int, \PhpParser\Node>> Массив распарсенных исходников */
+    protected array $ast = [];
+
+    /** @var array<int, NodeVisitor> */
+    protected array $visitors = [];
+
+    protected string $cacheDir;
+    protected bool $isDry = false;
+    protected bool $superOptimize = true;
+    protected bool $hasEdit = true;
+    protected string $entryPoint;
+    protected string $path;
+
+    public function __construct(string $path, string $cachePath)
     {
         $this->path = $path;
-        $this->cacheDir = realpath($cachePath);
+        $this->cacheDir = realpath($cachePath) ?: $cachePath;
         $this->buildScopes();
     }
 
-    protected function buildScopes()
+    protected function buildScopes(): void
     {
         $entryPointName = 'index.php';
         $cacheFiles = glob($this->cacheDir . '/*');
-        if (count($cacheFiles) > 0) {
+        if ($cacheFiles && count($cacheFiles) > 0) {
             foreach ($cacheFiles as $cacheFile) {
                 $basename = basename($cacheFile);
                 if ($basename === $entryPointName) {
                     $this->entryPoint = $cacheFile;
                 }
-                $this->scopes[$basename] = file_get_contents($cacheFile);
+                $content = file_get_contents($cacheFile);
+                if ($content !== false) {
+                    $this->scopes[$basename] = $content;
+                }
             }
         } else {
             $this->isDry = true;
-            $this->entryPoint = realpath($this->path);
-            $this->scopes = [$entryPointName => file_get_contents($this->entryPoint)];
+            $realPath = realpath($this->path);
+            if ($realPath === false) {
+                throw new \RuntimeException("Path not found: {$this->path}");
+            }
+            $this->entryPoint = $realPath;
+            $content = file_get_contents($this->entryPoint);
+            if ($content !== false) {
+                $this->scopes = [$entryPointName => $content];
+            }
         }
     }
 
     /**
      * Запускает парсинг
      */
-    public function run()
+    public function run(): void
     {
         $ss = new ScopeStore();
         $this->visitors = [
@@ -88,9 +101,9 @@ class Parser
         $this->parseScopesWithVisitors();
     }
 
-    protected function parseScopes($visitor, $updateCache = true)
+    protected function parseScopes(NodeVisitor $visitor, bool $updateCache = true): void
     {
-        $differ = new \Recombinator\ColorDiffer();
+        $differ = new ColorDiffer();
         $printer = new StandardPrinter();
 
         $this->hasEdit = false;
@@ -102,8 +115,10 @@ class Parser
                 ->withVisitors([new NodeConnectingVisitor()])
                 ->modify();
 
-            $visitor->scopeName = $scopeName;
-            if (isset($visitor->scopeStore)) {
+            if (property_exists($visitor, 'scopeName')) {
+                $visitor->scopeName = $scopeName;
+            }
+            if (property_exists($visitor, 'scopeStore') && isset($visitor->scopeStore)) {
                 $visitor->scopeStore->currentScope = $scopeName;
             }
             $textBefore = $printer->prettyPrint($this->ast[$scopeName]);
@@ -111,13 +126,18 @@ class Parser
                 ->withVisitors([$visitor])
                 ->modify();
             $textAfter = $printer->prettyPrint($this->ast[$scopeName]);
-            $visitor->diff = $differ->diff($textBefore, $textAfter);
+
+            if (property_exists($visitor, 'diff')) {
+                $visitor->diff = $differ->diff($textBefore, $textAfter);
+            }
 
             // выводим только по тем визиторам, у которых есть diff
             if ($differ->hasDiff) {
                 $this->hasEdit = true;
                 echo sprintf("> EDIT %s\n", get_class($visitor));
-                echo $visitor->diff;
+                if (property_exists($visitor, 'diff')) {
+                    echo $visitor->diff;
+                }
                 $this->superOptimize = false;
             }
 
@@ -128,7 +148,7 @@ class Parser
         }
     }
 
-    protected function saveAstToScope()
+    protected function saveAstToScope(): void
     {
         $printer = new StandardPrinter();
         foreach ($this->ast as $scopeName => $ast) {
@@ -137,7 +157,7 @@ class Parser
         }
     }
 
-    protected function parseScopesWithVisitors()
+    protected function parseScopesWithVisitors(): void
     {
         // при первом запуске рекурсивно прогоняем IncludeVisitor и затем ScopeVisitor
         if ($this->isDry) {
@@ -160,7 +180,7 @@ class Parser
         }
     }
 
-    public function prettyPrintScopes($lined = false)
+    public function prettyPrintScopes(bool $lined = false): string
     {
         $output = '';
         foreach ($this->ast as $name => $item) {
@@ -174,9 +194,8 @@ class Parser
 
     /**
      * Выводит результирующий код
-     * @return string
      */
-    public function prettyPrint($name, $lined = false)
+    public function prettyPrint(string $name, bool $lined = false): ?string
     {
         $output = (new StandardPrinter)->prettyPrint($this->ast[$name]);
         if (!strlen($output)) {
@@ -197,14 +216,13 @@ class Parser
 
     /**
      * Выводит AST дерево, используя кастомный дампер
-     * @return string
      */
-    public function dumpAST($name)
+    public function dumpAST(string $name): string
     {
         return (new PrettyDumper())->dump($this->ast[$name]) . "\n";
     }
 
-    public function updateCache()
+    public function updateCache(): void
     {
         foreach ($this->ast as $name => $ast) {
             file_put_contents(
@@ -214,7 +232,10 @@ class Parser
         }
     }
 
-    protected function buildAST($name, $code)
+    /**
+     * @return array<int, \PhpParser\Node>
+     */
+    protected function buildAST(string $name, string $code): array
     {
         // настраиваем лексер, чтобы узлы содержали информацию о своем положении
         $lexer = new Lexer([
@@ -226,7 +247,10 @@ class Parser
         ]);
         $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7, $lexer);
         try {
-            $this->ast[$name] = $parser->parse($code);
+            $ast = $parser->parse($code);
+            if ($ast !== null) {
+                $this->ast[$name] = $ast;
+            }
         } catch (Error $e) {
             if ($e->hasColumnInfo()) {
                 echo $e->getMessageWithColumnInfo();
@@ -234,10 +258,10 @@ class Parser
                 echo $e->getMessage();
             }
         }
-        return $this->ast[$name];
+        return $this->ast[$name] ?? [];
     }
 
-    protected function printEndBanner()
+    protected function printEndBanner(): void
     {
         $text = "
 ███████╗██╗   ██╗██████╗ ███████╗██████╗      ██████╗ ██████╗ ████████╗██╗███╗   ███╗██╗███████╗███████╗    ██╗
