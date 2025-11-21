@@ -5,11 +5,12 @@
     "prefer-stable": true,
 
     "require": {
-        "nikic/php-parser": "^4.8",
+        "php": "^8.4",
+        "nikic/php-parser": "^5.3",
         "ext-sockets": "*"
     },
     "require-dev": {
-        "sebastian/diff": "3.0"
+        "sebastian/diff": "^6.0"
     },
     "authors": [
         {
@@ -24,7 +25,7 @@
     },
     "config": {
         "platform": {
-            "php": "7.3"
+            "php": "8.4"
         }
     }
 }
