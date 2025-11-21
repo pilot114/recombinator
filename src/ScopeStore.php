@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator;
 
 /**
@@ -20,11 +22,15 @@ namespace Recombinator;
  */
 class ScopeStore
 {
-    public $global = [];
-    public $scopes = [];
-    public $currentScope;
+    /** @var array<string, mixed> */
+    public array $global = [];
 
-    public function setVarToScope($name, $value)
+    /** @var array<string, mixed> */
+    public array $scopes = [];
+
+    public ?string $currentScope = null;
+
+    public function setVarToScope(string $name, mixed $value): void
     {
         if (!isset($this->scopes[$this->currentScope])) {
             $this->scopes[$this->currentScope] = [
@@ -33,16 +39,18 @@ class ScopeStore
         }
         $this->scopes[$this->currentScope]['vars'][$name] = $value;
     }
-    public function getVarFromScope($name)
+
+    public function getVarFromScope(string $name): mixed
     {
         return $this->scopes[$this->currentScope]['vars'][$name] ?? null;
     }
-    public function removeVarFromScope($name)
+
+    public function removeVarFromScope(string $name): void
     {
         unset($this->scopes[$this->currentScope]['vars'][$name]);
     }
 
-    public function setConstToScope($name, $value)
+    public function setConstToScope(string $name, mixed $value): void
     {
         if (!isset($this->scopes[$this->currentScope])) {
             $this->scopes[$this->currentScope] = [
@@ -51,55 +59,71 @@ class ScopeStore
         }
         $this->scopes[$this->currentScope]['consts'][$name] = $value;
     }
-    public function getConstFromScope($name)
+
+    public function getConstFromScope(string $name): mixed
     {
         return $this->scopes[$this->currentScope]['consts'][$name] ?? null;
     }
 
-    public function setConstToGlobal($name, $value)
+    public function setConstToGlobal(string $name, mixed $value): void
     {
         if (!isset($this->global['consts'])) {
             $this->global['consts'] = [];
         }
         $this->global['consts'][$name] = $value;
     }
-    public function getConstFromGlobal($name)
+
+    public function getConstFromGlobal(string $name): mixed
     {
         return $this->global['consts'][$name] ?? null;
     }
 
-    public function setFunctionToGlobal($name, $value)
+    public function setFunctionToGlobal(string $name, mixed $value): void
     {
         if (!isset($this->global['functions'])) {
             $this->global['functions'] = [];
         }
         $this->global['functions'][$name] = $value;
     }
-    public function getFunctionFromGlobal($name)
+
+    public function getFunctionFromGlobal(string $name): mixed
     {
         return $this->global['functions'][$name] ?? null;
     }
 
-    public function setClassToGlobal($name, $value)
+    public function setClassToGlobal(string $name, mixed $value): void
     {
         if (!isset($this->global['classes'])) {
             $this->global['classes'] = [];
         }
         $this->global['classes'][$name] = $value;
     }
-    public function getClassFromGlobal($name)
+
+    public function getClassFromGlobal(string $name): mixed
     {
         return $this->global['classes'][$name] ?? null;
     }
 
-    public function findClassNameAndInstance($instanceName)
+    /**
+     * @return array{string, array<string, mixed>>|null
+     */
+    public function findClassNameAndInstance(string $instanceName): ?array
     {
+        if (!isset($this->global['classes'])) {
+            return null;
+        }
+
         foreach ($this->global['classes'] as $className => $class) {
+            if (!isset($class['instances'])) {
+                continue;
+            }
             foreach ($class['instances'] as $instance) {
                 if ($instance['name'] === $instanceName) {
                     return [$className, $instance];
                 }
             }
         }
+
+        return null;
     }
 }

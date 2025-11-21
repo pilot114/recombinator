@@ -1,30 +1,45 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator;
 
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor;
 
 /**
  * Класс для упрощения прохода по AST дереву
  */
 class Fluent
 {
-    protected $ast = [];
-    protected $visitors = [];
+    /** @var array<int, \PhpParser\Node> */
+    protected array $ast = [];
 
+    /** @var array<int, NodeVisitor> */
+    protected array $visitors = [];
+
+    /**
+     * @param array<int, \PhpParser\Node> $ast
+     */
     public function __construct(array $ast)
     {
         $this->ast = $ast;
-        return $this;
     }
 
-    public function withVisitors(array $visitors)
+    /**
+     * @param array<int, NodeVisitor> $visitors
+     * @return $this
+     */
+    public function withVisitors(array $visitors): self
     {
         $this->visitors = array_merge($this->visitors, $visitors);
         return $this;
     }
 
-    public function modify()
+    /**
+     * @return array<int, \PhpParser\Node>
+     */
+    public function modify(): array
     {
         $traverser = new NodeTraverser();
         foreach ($this->visitors as $visitor) {

@@ -10,7 +10,8 @@
         "ext-sockets": "*"
     },
     "require-dev": {
-        "sebastian/diff": "^6.0"
+        "sebastian/diff": "^6.0",
+        "pestphp/pest": "^3.8"
     },
     "authors": [
         {

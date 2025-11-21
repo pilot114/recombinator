@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator;
 
 use SebastianBergmann\Diff\Differ;
@@ -9,10 +11,15 @@ use SebastianBergmann\Diff\Differ;
  */
 class ColorDiffer
 {
-    public $hasDiff;
-    private $foreground_colors = [];
-    private $background_colors = [];
-    private $differ;
+    public bool $hasDiff = false;
+
+    /** @var array<string, string> */
+    private array $foreground_colors = [];
+
+    /** @var array<string, string> */
+    private array $background_colors = [];
+
+    private Differ $differ;
 
     public function __construct()
     {
@@ -42,17 +49,17 @@ class ColorDiffer
         $this->background_colors['cyan'] = '46';
         $this->background_colors['light_gray'] = '47';
 
-        $this->differ = new Differ;
+        $this->differ = new Differ(new \SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder());
     }
 
-    public function getColoredString($string, $foreground_color = null, $background_color = null)
+    public function getColoredString(string $string, ?string $foreground_color = null, ?string $background_color = null): string
     {
         $colored_string = "";
 
-        if (isset($this->foreground_colors[$foreground_color])) {
+        if ($foreground_color !== null && isset($this->foreground_colors[$foreground_color])) {
             $colored_string .= "\033[" . $this->foreground_colors[$foreground_color] . "m";
         }
-        if (isset($this->background_colors[$background_color])) {
+        if ($background_color !== null && isset($this->background_colors[$background_color])) {
             $colored_string .= "\033[" . $this->background_colors[$background_color] . "m";
         }
 
@@ -61,17 +68,23 @@ class ColorDiffer
         return $colored_string;
     }
 
-    public function getForegroundColors()
+    /**
+     * @return array<int, string>
+     */
+    public function getForegroundColors(): array
     {
         return array_keys($this->foreground_colors);
     }
 
-    public function getBackgroundColors()
+    /**
+     * @return array<int, string>
+     */
+    public function getBackgroundColors(): array
     {
         return array_keys($this->background_colors);
     }
 
-    public function diff($a, $b, $withNotModified = false)
+    public function diff(string $a, string $b, bool $withNotModified = false): string
     {
         $out = $this->differ->diff($a, $b);
         $noDiffResult = "--- Original+++ New";
@@ -80,9 +93,9 @@ class ColorDiffer
         $colorOut = "";
         foreach (explode("\n", $out) as $line) {
             if (!$line) continue;
-            if ($line[0] && $line[0] === '-') {
+            if (isset($line[0]) && $line[0] === '-') {
                 $colorOut .= $this->getColoredString($line, "red") . "\n";
-            } else if ($line[0] && $line[0] === '+') {
+            } elseif (isset($line[0]) && $line[0] === '+') {
                 $colorOut .= $this->getColoredString($line, "green") . "\n";
             } else {
                 if ($withNotModified) {
