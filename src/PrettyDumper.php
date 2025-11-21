@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator;
 
 use PhpParser\Comment;
@@ -12,13 +14,21 @@ use PhpParser\NodeDumper;
 
 class PrettyDumper extends NodeDumper
 {
-    protected $dumpPositions;
+    protected bool $dumpPositions = false;
 
-    public function dump($node, string $code = null) : string {
+    /**
+     * @param Node|array<int, Node> $node
+     */
+    public function dump($node, string $code = null): string
+    {
         return $this->dumpRecursive($node);
     }
 
-    protected function dumpRecursive($node, $isChild = false) {
+    /**
+     * @param Node|array<int, Node>|Comment|mixed $node
+     */
+    protected function dumpRecursive($node, bool $isChild = false): string
+    {
         if ($node instanceof Node) {
             // TODO: можно выводить кастомные аттрибуты
 //            $attrs = $node->getAttributes();
@@ -91,16 +101,23 @@ class PrettyDumper extends NodeDumper
         return $r;
     }
 
-    protected function red($text) {
+    protected function red(string $text): string
+    {
         return "\e[31m".$text."\033[0m";
     }
-    protected function yellow($text) {
+
+    protected function yellow(string $text): string
+    {
         return "\e[33m".$text."\033[0m";
     }
-    protected function blue($text) {
+
+    protected function blue(string $text): string
+    {
         return "\e[36m".$text."\033[0m";
     }
-    protected function green($text) {
+
+    protected function green(string $text): string
+    {
         return "\e[32m".$text."\033[0m";
     }
 }
