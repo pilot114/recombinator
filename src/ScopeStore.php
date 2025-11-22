@@ -23,12 +23,12 @@ namespace Recombinator;
 class ScopeStore
 {
     /** @var array<string, mixed> */
-    public array $global = [];
+    private array $global = [];
 
     /** @var array<string, mixed> */
-    public array $scopes = [];
+    private array $scopes = [];
 
-    public ?string $currentScope = null;
+    private ?string $currentScope = null;
 
     public function setVarToScope(string $name, mixed $value): void
     {
@@ -125,5 +125,42 @@ class ScopeStore
         }
 
         return null;
+    }
+
+    public function setCurrentScope(?string $scopeName): void
+    {
+        $this->currentScope = $scopeName;
+    }
+
+    public function getCurrentScope(): ?string
+    {
+        return $this->currentScope;
+    }
+
+    /**
+     * Get all global constants
+     * @return array<string, mixed>
+     */
+    public function getAllGlobalConsts(): array
+    {
+        return $this->global['consts'] ?? [];
+    }
+
+    /**
+     * Get all scopes
+     * @return array<string, mixed>
+     */
+    public function getAllScopes(): array
+    {
+        return $this->scopes;
+    }
+
+    /**
+     * Get all global data
+     * @return array<string, mixed>
+     */
+    public function getGlobal(): array
+    {
+        return $this->global;
     }
 }
