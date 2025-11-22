@@ -15,7 +15,7 @@ use Recombinator\Visitor\CallFunctionVisitor;
 use Recombinator\Visitor\ConcatAssertVisitor;
 use Recombinator\Visitor\ConstClassVisitor;
 use Recombinator\Visitor\ConstructorAndMethodsVisitor;
-use Recombinator\Visitor\EvalStandartFunction;
+use Recombinator\Visitor\EvalStandardFunction;
 use Recombinator\Visitor\FunctionScopeVisitor;
 use Recombinator\Visitor\IncludeVisitor;
 use Recombinator\Visitor\RemoveVisitor;
@@ -90,7 +90,7 @@ class Parser
             new BinaryAndIssetVisitor(),
             new RemoveVisitor(),
             new ConcatAssertVisitor(),
-            new EvalStandartFunction(),
+            new EvalStandardFunction(),
             new VarToScalarVisitor($ss),
             new FunctionScopeVisitor($ss, $this->cacheDir),
             new CallFunctionVisitor($ss),
@@ -119,7 +119,7 @@ class Parser
                 $visitor->scopeName = $scopeName;
             }
             if (property_exists($visitor, 'scopeStore') && isset($visitor->scopeStore)) {
-                $visitor->scopeStore->currentScope = $scopeName;
+                $visitor->scopeStore->setCurrentScope($scopeName);
             }
             $textBefore = $printer->prettyPrint($this->ast[$scopeName]);
             $this->ast[$scopeName] = (new Fluent($this->ast[$scopeName]))

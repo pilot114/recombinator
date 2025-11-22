@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator;
 
 use PhpParser\Node;
+use Recombinator\ComplexityComparison;
 
 /**
  * Контроллер для управления сложностью кода и выдачи предупреждений
