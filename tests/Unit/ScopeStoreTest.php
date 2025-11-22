@@ -6,7 +6,7 @@ use Recombinator\ScopeStore;
 
 beforeEach(function () {
     $this->store = new ScopeStore();
-    $this->store->currentScope = 'test_scope';
+    $this->store->setCurrentScope('test_scope');
 });
 
 it('can set and get variable from scope', function () {
