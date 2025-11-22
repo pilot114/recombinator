@@ -274,10 +274,9 @@ class PreExecutionVisitor extends BaseVisitor
         $context = [];
 
         // Добавляем глобальные константы
-        if (isset($this->scopeStore->global['consts'])) {
-            foreach ($this->scopeStore->global['consts'] as $name => $value) {
-                $context[$name] = $value;
-            }
+        $globalConsts = $this->scopeStore->getAllGlobalConsts();
+        foreach ($globalConsts as $name => $value) {
+            $context[$name] = $value;
         }
 
         return $context;

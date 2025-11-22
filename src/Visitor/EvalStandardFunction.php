@@ -12,7 +12,7 @@ use PhpParser\Node\Name;
  * Выжный момент - некоторые функции дают детерминированный результат даже
  * на переменных (например, is_array)
  */
-class EvalStandartFunction extends BaseVisitor
+class EvalStandardFunction extends BaseVisitor
 {
     /**
      * Гарантированно проходят со статичными аргументами
