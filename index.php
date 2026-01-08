@@ -1,8 +1,8 @@
 <?php
 
-require './vendor/autoload.php';
+use Recombinator\Core\Parser;
 
-use Recombinator\Parser;
+require './vendor/autoload.php';
 
 $path = './tests/code/index.php';
 $cachePath = './tests/cache';
