@@ -6,6 +6,7 @@ namespace Recombinator\Support;
 
 use PhpParser\Node;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
+use Recombinator\Core\ExecutionCache;
 use Throwable;
 
 /**
@@ -28,12 +29,12 @@ class Sandbox
     /**
      * Максимальное время выполнения в секундах
      */
-    private const MAX_EXECUTION_TIME = 1;
+    private const int MAX_EXECUTION_TIME = 1;
 
     /**
      * Список запрещенных функций (blacklist)
      */
-    private const FORBIDDEN_FUNCTIONS = [
+    private const array FORBIDDEN_FUNCTIONS = [
         // Выполнение кода
         'eval', 'exec', 'system', 'passthru', 'shell_exec', 'popen', 'proc_open',
         'pcntl_exec', 'assert', 'create_function', 'include', 'include_once',
@@ -71,7 +72,7 @@ class Sandbox
      * Список разрешенных чистых функций (whitelist)
      * Эти функции детерминированы и не имеют побочных эффектов
      */
-    private const ALLOWED_PURE_FUNCTIONS = [
+    private const array ALLOWED_PURE_FUNCTIONS = [
         // Математические
         'abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atan2', 'atanh',
         'ceil', 'cos', 'cosh', 'deg2rad', 'exp', 'floor', 'fmod', 'hypot',

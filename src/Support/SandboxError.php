@@ -9,11 +9,11 @@ use Throwable;
 /**
  * Класс для представления ошибок, возникших при выполнении в sandbox
  */
-class SandboxError
+readonly class SandboxError
 {
     public function __construct(
-        private string $message,
-        private int $code = 0,
+        private string     $message,
+        private int        $code = 0,
         private ?Throwable $previous = null
     ) {
     }
