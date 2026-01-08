@@ -155,8 +155,10 @@ it('preserves correct order of operations', function () {
     $result = $this->printer->prettyPrint($ast);
 
     // Should be 2 + 12 = 14, not 5 * 4 = 20
-    expect($result)->toContain('2 + 12')
-        ->or->toContain('$result = 14');
+    // Accept either intermediate step or final result
+    $hasIntermediateStep = strpos($result, '2 + 12') !== false;
+    $hasFinalResult = strpos($result, '$result = 14') !== false;
+    expect($hasIntermediateStep || $hasFinalResult)->toBeTrue();
 });
 
 it('does not replace non-scalar constants', function () {

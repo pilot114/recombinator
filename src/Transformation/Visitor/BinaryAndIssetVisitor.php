@@ -15,7 +15,29 @@ class BinaryAndIssetVisitor extends BaseVisitor
     public function enterNode(Node $node)
     {
         /**
+         * if (isset(var)) {
+         *     var2 = var;
+         * }
+         * =>
+         * var2 = var ?? var2;
+         */
+        if ($node instanceof Node\Stmt\If_) {
+            if ($node->cond instanceof Node\Expr\Isset_ && count($node->stmts) === 1) {
+                $expr = $node->stmts[0]->expr;
+                if ($expr instanceof Assign) {
+                    $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
+                    $newAssign = new Assign($expr->var, $newExp);
+                    $node->setAttribute('replace', new Expression($newAssign));
+                }
+            }
+        }
+    }
+
+    public function leaveNode(Node $node)
+    {
+        /**
          *  Бинарные операции (математика, логика, конкатенация)
+         *  Process on leave (bottom-up) so nested operations are calculated first
          */
         if ($node instanceof Node\Expr\BinaryOp) {
             if ($node->right instanceof Node\Expr\ConstFetch) {
@@ -44,23 +66,8 @@ class BinaryAndIssetVisitor extends BaseVisitor
             }
         }
 
-        /**
-         * if (isset(var)) {
-         *     var2 = var;
-         * }
-         * =>
-         * var2 = var ?? var2;
-         */
-        if ($node instanceof Node\Stmt\If_) {
-            if ($node->cond instanceof Node\Expr\Isset_ && count($node->stmts) === 1) {
-                $expr = $node->stmts[0]->expr;
-                if ($expr instanceof Assign) {
-                    $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
-                    $newAssign = new Assign($expr->var, $newExp);
-                    $node->setAttribute('replace', new Expression($newAssign));
-                }
-            }
-        }
+        // Call parent's leaveNode to handle 'remove' and 'replace' attributes
+        return parent::leaveNode($node);
     }
 
     protected function booleanBinaryTyping($expression, $bool)
