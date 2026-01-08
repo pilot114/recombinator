@@ -22,15 +22,25 @@ class CallFunctionVisitor extends BaseVisitor
     public function enterNode(Node $node)
     {
         if ($node instanceof Node\Expr\FuncCall) {
-            // Check if name is a Node\Name and has parts
-            if ($node->name instanceof Node\Name && !empty($node->name->parts)) {
-                $expr = $this->scopeStore->getFunctionFromGlobal($node->name->parts[0]);
+            // Check if name is a Node\Name
+            if ($node->name instanceof Node\Name) {
+                // In php-parser 5.x, use toString() or $name property
+                $funcName = $node->name->toString();
+                $expr = $this->scopeStore->getFunctionFromGlobal($funcName);
+
                 if ($expr) {
                     // заменяем в копии тела параметры на аргументы
-                    $traverser = new NodeTraverser();
-                    $traverser->addVisitor(new ParametersToArgsVisitor($node));
-                    $expr = $traverser->traverse([clone $expr]);
-                    return $expr[0];
+                    $clonedExpr = clone $expr;
+
+                    // If there are arguments, replace parameters with arguments
+                    if (!empty($node->args)) {
+                        $traverser = new NodeTraverser();
+                        $traverser->addVisitor(new ParametersToArgsVisitor($node));
+                        $result = $traverser->traverse([$clonedExpr]);
+                        return $result[0];
+                    }
+
+                    return $clonedExpr;
                 }
             }
         }

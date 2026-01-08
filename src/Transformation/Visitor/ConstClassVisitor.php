@@ -30,7 +30,10 @@ class ConstClassVisitor extends BaseVisitor
         }
 
         if ($node instanceof Node\Expr\ClassConstFetch) {
-            if ($node->class->parts[0] === 'self') {
+            // In php-parser 5.x, use toString() method
+            $className = $node->class instanceof Node\Name ? $node->class->toString() : null;
+
+            if ($className === 'self') {
                 $replace = $this->scopeStore->getConstFromScope($node->name->name);
                 $node->setAttribute('replace', $replace);
             } else {
