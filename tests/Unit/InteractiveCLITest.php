@@ -5,6 +5,8 @@ declare(strict_types=1);
 use PhpParser\ParserFactory;
 use Recombinator\Interactive\InteractiveCLI;
 use Recombinator\Interactive\InteractiveEditAnalyzer;
+use Recombinator\Interactive\EditSession;
+use Recombinator\Interactive\InteractiveEditResult;
 
 beforeEach(function () {
     $parser = (new ParserFactory())->createForHostVersion();
@@ -31,13 +33,13 @@ beforeEach(function () {
 
 describe('CLI Initialization', function () {
     it('initializes with AST and result', function () {
-        expect($this->cli->getSession())->toBeInstanceOf(\Recombinator\EditSession::class);
+        expect($this->cli->getSession())->toBeInstanceOf(EditSession::class);
     });
 
     it('has access to session', function () {
         $session = $this->cli->getSession();
 
-        expect($session->getAnalysisResult())->toBeInstanceOf(\Recombinator\InteractiveEditResult::class);
+        expect($session->getAnalysisResult())->toBeInstanceOf(InteractiveEditResult::class);
     });
 });
 

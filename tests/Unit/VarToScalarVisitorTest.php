@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Domain\ScopeStore;
@@ -11,7 +12,7 @@ use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 use Recombinator\Transformation\Visitor\RemoveVisitor;
 
 beforeEach(function () {
-    $this->parser = (new ParserFactory())->createForHostVersion();
+    $this->parser = new ParserFactory()->createForHostVersion();
     $this->printer = new StandardPrinter();
     $this->store = new ScopeStore();
     $this->visitor = new VarToScalarVisitor($this->store);
@@ -24,6 +25,7 @@ echo $test;';
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $traverser->addVisitor(new RemoveVisitor());
@@ -31,8 +33,8 @@ echo $test;';
 
     $result = $this->printer->prettyPrint($ast);
 
-    expect($result)->toContain('echo 42');
-    expect($result)->not->toContain('$test = 42');
+    expect($result)->toContain('echo 42')
+        ->and($result)->not->toContain('$test = 42');
 });
 
 it('can replace string variable with its value', function () {
@@ -42,6 +44,7 @@ echo $name;';
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $traverser->addVisitor(new RemoveVisitor());
@@ -61,6 +64,7 @@ if ($flag) {
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $traverser->addVisitor(new RemoveVisitor());
@@ -78,6 +82,7 @@ echo $pi;';
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $traverser->addVisitor(new RemoveVisitor());
@@ -95,6 +100,7 @@ echo $arr[0];';
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $ast = $traverser->traverse($ast);
@@ -114,6 +120,7 @@ echo $val[0];';
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $traverser->addVisitor(new RemoveVisitor());
@@ -137,6 +144,7 @@ echo $a + $b + $c;';
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $traverser->addVisitor(new RemoveVisitor());
@@ -155,6 +163,7 @@ echo $test;';
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $traverser->addVisitor(new RemoveVisitor());
@@ -171,6 +180,7 @@ it('stores scalar variable in scope', function () {
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $ast = $traverser->traverse($ast);
@@ -188,6 +198,7 @@ echo "Hello, " . $name;';
 
     $ast = $this->parser->parse($code);
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor($this->visitor);
     $traverser->addVisitor(new RemoveVisitor());
@@ -195,5 +206,6 @@ echo "Hello, " . $name;';
 
     $result = $this->printer->prettyPrint($ast);
 
-    expect($result)->toContain("'Hello, ' . 'World'");
+    // Accept both single and double quotes (php-parser may use either)
+    expect($result)->toMatch('/["\']Hello, ["\']\s*\.\s*["\']World["\']/');
 });

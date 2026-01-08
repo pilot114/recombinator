@@ -35,7 +35,12 @@ class VarToScalarVisitor extends BaseVisitor
          */
         if ($node instanceof Node\Expr\Assign) {
             $varName = $node->var->name;
-            if ($node->expr instanceof Node\Scalar) {
+            // Support both Scalar values and ConstFetch (true, false, null)
+            $isScalar = $node->expr instanceof Node\Scalar;
+            $isConstFetch = $node->expr instanceof Node\Expr\ConstFetch &&
+                            in_array(strtolower($node->expr->name->toString()), ['true', 'false', 'null']);
+
+            if ($isScalar || $isConstFetch) {
                 // заносим в кеш
                 $varExprScalar = clone $node->expr;
                 $varExprScalar->setAttributes([]);
@@ -68,19 +73,16 @@ class VarToScalarVisitor extends BaseVisitor
         if (isset($node->expr) && $node->expr instanceof Node\Expr\Assign) {
             $assign = $node->expr;
             $varName = $assign->var->name;
-            if (!$assign->expr instanceof Node\Scalar) {
+            // Also check for ConstFetch like in the storing logic
+            $isScalar = $assign->expr instanceof Node\Scalar;
+            $isConstFetch = $assign->expr instanceof Node\Expr\ConstFetch &&
+                            in_array(strtolower($assign->expr->name->toString()), ['true', 'false', 'null']);
+
+            if (!$isScalar && !$isConstFetch) {
                 if ($this->scopeStore->getVarFromScope($varName)) {
-                    // Если внутри присвоения читается эта переменная - сначала пробуем её подменить
-                    $innerVars = $this->findNode(Node\Expr\Variable::class, $assign);
-                    foreach ($innerVars as $innerVar) {
-                        if ($innerVar->name !== $varName) continue;
-
-                        $isRead = $this->isVarRead($innerVar, $innerVar->name);
-                        if ($isRead && $this->scopeStore->getVarFromScope($innerVar->name)) {
-                            $innerVar->setAttribute('replace', $this->scopeStore->getVarFromScope($innerVar->name));
-                        }
-                    }
-
+                    // Don't try to replace inner variables - just clear from scope
+                    // The inner variable replacement logic was causing the left-hand side
+                    // variable to be incorrectly replaced with its value
                     $this->scopeStore->removeVarFromScope($varName);
                 }
             }

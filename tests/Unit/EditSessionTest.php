@@ -7,6 +7,8 @@ use PhpParser\ParserFactory;
 use Recombinator\Interactive\EditSession;
 use Recombinator\Interactive\InteractiveEditAnalyzer;
 use Recombinator\Interactive\Change;
+use Recombinator\Interactive\InteractiveEditResult;
+use Recombinator\Interactive\ChangeHistory;
 
 beforeEach(function () {
     $parser = (new ParserFactory())->createForHostVersion();
@@ -22,8 +24,8 @@ beforeEach(function () {
 describe('Session Initialization', function () {
     it('initializes with AST and analysis result', function () {
         expect($this->session->getCurrentAst())->toBeArray()
-            ->and($this->session->getAnalysisResult())->toBeInstanceOf(\Recombinator\InteractiveEditResult::class)
-            ->and($this->session->getHistory())->toBeInstanceOf(\Recombinator\ChangeHistory::class);
+            ->and($this->session->getAnalysisResult())->toBeInstanceOf(InteractiveEditResult::class)
+            ->and($this->session->getHistory())->toBeInstanceOf(ChangeHistory::class);
     });
 
     it('loads default preferences', function () {

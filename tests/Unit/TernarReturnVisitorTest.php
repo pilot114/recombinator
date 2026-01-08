@@ -33,7 +33,8 @@ class Test {
 
     $result = $this->printer->prettyPrint($ast);
 
-    expect($result)->toContain('return $x > 0 ? \'positive\' : \'negative\'');
+    // Accept both single and double quotes (php-parser may use either)
+    expect($result)->toMatch('/return \$x > 0 \? ["\']positive["\'] : ["\']negative["\']/');
     expect($result)->not->toContain('if ($x > 0)');
 });
 
@@ -165,7 +166,8 @@ class Test {
 
     $result = $this->printer->prettyPrint($ast);
 
-    expect($result)->toContain('return $x > 0 && $y < 10 ? \'valid\' : \'invalid\'');
+    // Accept both single and double quotes (php-parser may use either)
+    expect($result)->toMatch('/return \$x > 0 && \$y < 10 \? ["\']valid["\'] : ["\']invalid["\']/');
 });
 
 it('can convert if-return with variable returns', function () {

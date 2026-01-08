@@ -3,18 +3,19 @@
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
-use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor;
 
 /**
  * Просто удаление
  */
 class RemoveVisitor extends BaseVisitor
 {
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): ?int
     {
         if ($node instanceof Node\Stmt\InlineHTML) {
             $node->setAttribute('remove', true);
-            return NodeTraverser::DONT_TRAVERSE_CHILDREN;
+            return NodeVisitor::DONT_TRAVERSE_CHILDREN;
         }
+        return null;
     }
 }
