@@ -7,6 +7,7 @@ use PhpParser\ParserFactory;
 use Recombinator\Transformation\SideEffectSeparator;
 use Recombinator\Domain\SideEffectType;
 use Recombinator\Transformation\Visitor\SideEffectMarkerVisitor;
+use Recombinator\Analysis\EffectDependencyGraph;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();
@@ -333,7 +334,7 @@ describe('Dependency graph integration', function () {
         $result = $this->separator->separate($ast);
 
         $graph = $result->getDependencyGraph();
-        expect($graph)->toBeInstanceOf(Recombinator\EffectDependencyGraph::class);
+        expect($graph)->toBeInstanceOf(EffectDependencyGraph::class);
         expect($graph->getNodes())->not()->toBeEmpty();
     });
 

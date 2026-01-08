@@ -107,7 +107,7 @@ class EditCandidate
     public function format(): string
     {
         $line = $this->getLine();
-        $location = $line !== null ? "Line {$line}" : "Unknown location";
+        $location = ($line !== null && $line !== -1) ? "Line {$line}" : "Unknown location";
 
         $output = sprintf(
             "[%s] %s: %s\n",

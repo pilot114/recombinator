@@ -4,7 +4,6 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
 use PhpParser\Node\Stmt\Function_;
-use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 
 /**
@@ -12,16 +11,13 @@ use PhpParser\PrettyPrinter\Standard as StandardPrinter;
  */
 class ScopeVisitor extends BaseVisitor
 {
-    protected $entryPoint;
-    protected $cacheDir;
-
-    public function __construct($entryPoint = null, $cacheDir = null)
-    {
-        $this->entryPoint = $entryPoint;
-        $this->cacheDir = $cacheDir;
+    public function __construct(
+        protected $entryPoint = null,
+        protected $cacheDir = null
+    ) {
     }
 
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): void
     {
         if ($node instanceof Function_) {
             $name = $node->name->name;

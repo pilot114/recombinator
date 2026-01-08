@@ -59,7 +59,8 @@ class Auth {
 
     $result = $this->printer->prettyPrint($ast);
 
-    expect($result)->toContain("'test_hash'");
+    // Accept both single and double quotes (php-parser may use either)
+    expect($result)->toMatch('/["\']test_hash["\']/');
     expect($result)->not->toContain('const HASH');
 });
 
@@ -80,7 +81,9 @@ $key = Config::API_KEY;';
 
     $result = $this->printer->prettyPrint($ast);
 
-    expect($result)->toContain("\$key = 'secret_key'");
+    // Accept both single and double quotes (php-parser may use either)
+    expect($result)->toMatch('/\$key = ["\']secret_key["\']/');
+
 });
 
 it('can handle multiple constants in one class', function () {

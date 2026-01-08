@@ -32,37 +32,42 @@ class ScopeStore
 
     public function setVarToScope(string $name, mixed $value): void
     {
-        if (!isset($this->scopes[$this->currentScope])) {
-            $this->scopes[$this->currentScope] = [
+        $scope = $this->currentScope ?? '';
+        if (!isset($this->scopes[$scope])) {
+            $this->scopes[$scope] = [
                 'vars' => []
             ];
         }
-        $this->scopes[$this->currentScope]['vars'][$name] = $value;
+        $this->scopes[$scope]['vars'][$name] = $value;
     }
 
     public function getVarFromScope(string $name): mixed
     {
-        return $this->scopes[$this->currentScope]['vars'][$name] ?? null;
+        $scope = $this->currentScope ?? '';
+        return $this->scopes[$scope]['vars'][$name] ?? null;
     }
 
     public function removeVarFromScope(string $name): void
     {
-        unset($this->scopes[$this->currentScope]['vars'][$name]);
+        $scope = $this->currentScope ?? '';
+        unset($this->scopes[$scope]['vars'][$name]);
     }
 
     public function setConstToScope(string $name, mixed $value): void
     {
-        if (!isset($this->scopes[$this->currentScope])) {
-            $this->scopes[$this->currentScope] = [
+        $scope = $this->currentScope ?? '';
+        if (!isset($this->scopes[$scope])) {
+            $this->scopes[$scope] = [
                 'consts' => []
             ];
         }
-        $this->scopes[$this->currentScope]['consts'][$name] = $value;
+        $this->scopes[$scope]['consts'][$name] = $value;
     }
 
     public function getConstFromScope(string $name): mixed
     {
-        return $this->scopes[$this->currentScope]['consts'][$name] ?? null;
+        $scope = $this->currentScope ?? '';
+        return $this->scopes[$scope]['consts'][$name] ?? null;
     }
 
     public function setConstToGlobal(string $name, mixed $value): void
