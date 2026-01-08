@@ -7,6 +7,8 @@ namespace Recombinator\Transformation;
 use PhpParser\Node;
 use PhpParser\BuilderFactory;
 use PhpParser\Comment\Doc;
+use Recombinator\Domain\FunctionCandidate;
+use Recombinator\Domain\SideEffectType;
 
 /**
  * Извлечение блоков кода в функции
@@ -186,35 +188,5 @@ class FunctionExtractor
         $lines[] = ' */';
 
         return implode("\n", $lines);
-    }
-}
-
-/**
- * Результат извлечения функции
- */
-class ExtractionResult
-{
-    public function __construct(
-        public readonly Node\Stmt\Function_ $function,
-        public readonly Node\Stmt\Expression|Node\Stmt\Return_|Node\Expr\FuncCall $call,
-        public readonly string $functionName,
-        public readonly array $parameters,
-        public readonly ?string $returnVariable,
-    ) {}
-
-    /**
-     * Возвращает количество параметров функции
-     */
-    public function getParameterCount(): int
-    {
-        return count($this->parameters);
-    }
-
-    /**
-     * Проверяет, возвращает ли функция значение
-     */
-    public function hasReturn(): bool
-    {
-        return $this->returnVariable !== null;
     }
 }

@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Recombinator\Domain;
 
 use PhpParser\Node;
+use Recombinator\Analysis\CognitiveComplexityCalculator;
+use Recombinator\Analysis\CyclomaticComplexityCalculator;
+use Recombinator\Analysis\NestingDepthVisitor;
 
 /**
  * Класс для хранения и сравнения метрик сложности кода

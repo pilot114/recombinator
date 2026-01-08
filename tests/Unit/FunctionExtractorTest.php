@@ -5,9 +5,9 @@ declare(strict_types=1);
 use PhpParser\Node;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
-use Recombinator\FunctionCandidate;
-use Recombinator\FunctionExtractor;
-use Recombinator\SideEffectType;
+use Recombinator\Domain\FunctionCandidate;
+use Recombinator\Transformation\FunctionExtractor;
+use Recombinator\Domain\SideEffectType;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

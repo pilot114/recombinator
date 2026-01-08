@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Recombinator\ScopeStore;
+use Recombinator\Domain\ScopeStore;
 
 beforeEach(function () {
     $this->store = new ScopeStore();

@@ -6,13 +6,13 @@ use PhpParser\Node;
 use PhpParser\ParserFactory;
 use PhpParser\NodeTraverser;
 use PhpParser\PrettyPrinter\Standard;
-use Recombinator\AbstractionRecovery;
-use Recombinator\Visitor\SideEffectMarkerVisitor;
-use Recombinator\SideEffectSeparator;
-use Recombinator\FunctionExtractor;
-use Recombinator\VariableDeclarationOptimizer;
-use Recombinator\NestedConditionSimplifier;
-use Recombinator\CognitiveComplexityCalculator;
+use Recombinator\Transformation\AbstractionRecovery;
+use Recombinator\Transformation\Visitor\SideEffectMarkerVisitor;
+use Recombinator\Transformation\SideEffectSeparator;
+use Recombinator\Transformation\FunctionExtractor;
+use Recombinator\Transformation\VariableDeclarationOptimizer;
+use Recombinator\Transformation\NestedConditionSimplifier;
+use Recombinator\Analysis\CognitiveComplexityCalculator;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

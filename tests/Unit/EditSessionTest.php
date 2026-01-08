@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use PhpParser\Node\Expr\Variable;
 use PhpParser\ParserFactory;
-use Recombinator\EditSession;
-use Recombinator\InteractiveEditAnalyzer;
-use Recombinator\Change;
+use Recombinator\Interactive\EditSession;
+use Recombinator\Interactive\InteractiveEditAnalyzer;
+use Recombinator\Interactive\Change;
 
 beforeEach(function () {
     $parser = (new ParserFactory())->createForHostVersion();

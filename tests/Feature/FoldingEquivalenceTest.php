@@ -6,9 +6,9 @@ use PhpParser\Node;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
 use PhpParser\NodeTraverser;
-use Recombinator\Visitor\SideEffectMarkerVisitor;
-use Recombinator\AbstractionRecovery;
-use Recombinator\FunctionExtractor;
+use Recombinator\Transformation\Visitor\SideEffectMarkerVisitor;
+use Recombinator\Transformation\AbstractionRecovery;
+use Recombinator\Transformation\FunctionExtractor;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

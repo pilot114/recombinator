@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Recombinator\ColorDiffer;
+use Recombinator\Support\ColorDiffer;
 
 beforeEach(function () {
     $this->differ = new ColorDiffer();

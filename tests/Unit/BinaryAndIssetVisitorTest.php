@@ -5,8 +5,8 @@ declare(strict_types=1);
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
-use Recombinator\Visitor\BinaryAndIssetVisitor;
-use Recombinator\Visitor\RemoveVisitor;
+use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
+use Recombinator\Transformation\Visitor\RemoveVisitor;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

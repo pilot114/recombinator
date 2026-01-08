@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Analysis;
 
 use PhpParser\Node;
+use Recombinator\Domain\SideEffectType;
 
 /**
  * Поиск чистых блоков кода

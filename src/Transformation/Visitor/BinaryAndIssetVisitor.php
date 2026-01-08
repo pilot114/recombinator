@@ -82,5 +82,7 @@ class BinaryAndIssetVisitor extends BaseVisitor
                 return new Node\Scalar\LNumber(0);
             }
         }
+        // Return original value if no transformation is needed
+        return $bool;
     }
 }

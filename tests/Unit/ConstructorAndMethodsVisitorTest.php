@@ -5,8 +5,8 @@ declare(strict_types=1);
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
-use Recombinator\ScopeStore;
-use Recombinator\Visitor\ConstructorAndMethodsVisitor;
+use Recombinator\Domain\ScopeStore;
+use Recombinator\Transformation\Visitor\ConstructorAndMethodsVisitor;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

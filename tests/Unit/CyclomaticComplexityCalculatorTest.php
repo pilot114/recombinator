@@ -2,7 +2,7 @@
 
 use PhpParser\Node;
 use PhpParser\ParserFactory;
-use Recombinator\CyclomaticComplexityCalculator;
+use Recombinator\Analysis\CyclomaticComplexityCalculator;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

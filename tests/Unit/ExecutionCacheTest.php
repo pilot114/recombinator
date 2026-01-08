@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Recombinator\ExecutionCache;
+use Recombinator\Core\ExecutionCache;
 
 beforeEach(function () {
     $this->cache = new ExecutionCache(10); // Малый размер для тестирования LRU

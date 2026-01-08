@@ -22,13 +22,16 @@ class CallFunctionVisitor extends BaseVisitor
     public function enterNode(Node $node)
     {
         if ($node instanceof Node\Expr\FuncCall) {
-            $expr = $this->scopeStore->getFunctionFromGlobal($node->name->parts[0]);
-            if ($expr) {
-                // заменяем в копии тела параметры на аргументы
-                $traverser = new NodeTraverser();
-                $traverser->addVisitor(new ParametersToArgsVisitor($node));
-                $expr = $traverser->traverse([clone $expr]);
-                return $expr[0];
+            // Check if name is a Node\Name and has parts
+            if ($node->name instanceof Node\Name && !empty($node->name->parts)) {
+                $expr = $this->scopeStore->getFunctionFromGlobal($node->name->parts[0]);
+                if ($expr) {
+                    // заменяем в копии тела параметры на аргументы
+                    $traverser = new NodeTraverser();
+                    $traverser->addVisitor(new ParametersToArgsVisitor($node));
+                    $expr = $traverser->traverse([clone $expr]);
+                    return $expr[0];
+                }
             }
         }
     }

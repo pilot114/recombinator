@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Recombinator\Domain;
 
+use Recombinator\Analysis\EffectDependencyGraph;
+
 /**
  * Результат разделения побочных эффектов
  */

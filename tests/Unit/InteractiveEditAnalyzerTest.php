@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use PhpParser\ParserFactory;
-use Recombinator\InteractiveEditAnalyzer;
-use Recombinator\EditCandidate;
-use Recombinator\StructureImprovement;
+use Recombinator\Interactive\InteractiveEditAnalyzer;
+use Recombinator\Interactive\EditCandidate;
+use Recombinator\Domain\StructureImprovement;
 
 beforeEach(function () {
     $this->analyzer = new InteractiveEditAnalyzer();

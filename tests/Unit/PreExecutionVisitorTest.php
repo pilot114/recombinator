@@ -5,7 +5,7 @@ declare(strict_types=1);
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
-use Recombinator\Visitor\PreExecutionVisitor;
+use Recombinator\Transformation\Visitor\PreExecutionVisitor;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory)->createForNewestSupportedVersion();

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use Recombinator\SideEffectType;
+use Recombinator\Domain\SideEffectType;
 
 it('has correct priority values', function () {
     expect(SideEffectType::PURE->getPriority())->toBe(0)

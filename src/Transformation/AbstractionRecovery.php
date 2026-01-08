@@ -6,6 +6,12 @@ namespace Recombinator\Transformation;
 
 use PhpParser\Node;
 use PhpParser\Node\Stmt;
+use Recombinator\Analysis\CognitiveComplexityCalculator;
+use Recombinator\Analysis\VariableAnalyzer;
+use Recombinator\Domain\FunctionCandidate;
+use Recombinator\Domain\PureComputation;
+use Recombinator\Domain\SideEffectType;
+use Recombinator\Domain\EffectGroup;
 
 /**
  * Восстановление абстракций (Phase 4.2)

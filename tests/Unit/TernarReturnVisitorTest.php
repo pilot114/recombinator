@@ -5,8 +5,8 @@ declare(strict_types=1);
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
-use Recombinator\Visitor\TernarReturnVisitor;
-use Recombinator\Visitor\ScopeVisitor;
+use Recombinator\Transformation\Visitor\TernarReturnVisitor;
+use Recombinator\Transformation\Visitor\ScopeVisitor;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

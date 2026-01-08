@@ -5,11 +5,11 @@ declare(strict_types=1);
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
-use Recombinator\AbstractionRecovery;
-use Recombinator\FunctionExtractor;
-use Recombinator\NestedConditionSimplifier;
-use Recombinator\VariableDeclarationOptimizer;
-use Recombinator\Visitor\SideEffectMarkerVisitor;
+use Recombinator\Transformation\AbstractionRecovery;
+use Recombinator\Transformation\FunctionExtractor;
+use Recombinator\Transformation\NestedConditionSimplifier;
+use Recombinator\Transformation\VariableDeclarationOptimizer;
+use Recombinator\Transformation\Visitor\SideEffectMarkerVisitor;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

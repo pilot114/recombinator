@@ -5,10 +5,10 @@ declare(strict_types=1);
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
-use Recombinator\ScopeStore;
-use Recombinator\Visitor\ScopeVisitor;
-use Recombinator\Visitor\VarToScalarVisitor;
-use Recombinator\Visitor\RemoveVisitor;
+use Recombinator\Domain\ScopeStore;
+use Recombinator\Transformation\Visitor\ScopeVisitor;
+use Recombinator\Transformation\Visitor\VarToScalarVisitor;
+use Recombinator\Transformation\Visitor\RemoveVisitor;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();
