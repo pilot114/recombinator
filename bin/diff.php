@@ -1,8 +1,10 @@
 <?php
 
-include '../vendor/autoload.php';
+use Recombinator\Support\ColorDiffer;
 
-$differ = new \Recombinator\ColorDiffer();
+include __DIR__ . '/../vendor/autoload.php';
+
+$differ = new ColorDiffer();
 
 echo $differ->diff(
     "Hello World!\ntest\ntest3",

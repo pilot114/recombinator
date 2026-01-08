@@ -6,8 +6,7 @@
 
     "require": {
         "php": "^8.4",
-        "nikic/php-parser": "^5.3",
-        "ext-sockets": "*"
+        "nikic/php-parser": "^5.6"
     },
     "require-dev": {
         "sebastian/diff": "^6.0",
