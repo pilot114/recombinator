@@ -15,7 +15,7 @@ class ScopeVisitor extends BaseVisitor
     protected $entryPoint;
     protected $cacheDir;
 
-    public function __construct($entryPoint, $cacheDir)
+    public function __construct($entryPoint = null, $cacheDir = null)
     {
         $this->entryPoint = $entryPoint;
         $this->cacheDir = $cacheDir;
@@ -25,16 +25,20 @@ class ScopeVisitor extends BaseVisitor
     {
         if ($node instanceof Function_) {
             $name = $node->name->name;
-            $filename = sprintf("Function_%s_%s.php", $name, uniqid());
-            $code = "<?php\n\n" . (new StandardPrinter)->prettyPrint([$node]);
-            file_put_contents($this->cacheDir . '/' . $filename, $code);
+            if ($this->cacheDir !== null) {
+                $filename = sprintf("Function_%s_%s.php", $name, uniqid());
+                $code = "<?php\n\n" . (new StandardPrinter)->prettyPrint([$node]);
+                file_put_contents($this->cacheDir . '/' . $filename, $code);
+            }
             $node->setAttribute('remove', true);
         }
         if ($node instanceof Node\Stmt\Class_) {
             $name = $node->name->name;
-            $filename = sprintf("Class_%s_%s.php", $name, uniqid());
-            $code = "<?php\n\n" . (new StandardPrinter)->prettyPrint([$node]);
-            file_put_contents($this->cacheDir . '/' . $filename, $code);
+            if ($this->cacheDir !== null) {
+                $filename = sprintf("Class_%s_%s.php", $name, uniqid());
+                $code = "<?php\n\n" . (new StandardPrinter)->prettyPrint([$node]);
+                file_put_contents($this->cacheDir . '/' . $filename, $code);
+            }
             $node->setAttribute('remove', true);
         }
     }

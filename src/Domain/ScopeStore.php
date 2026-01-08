@@ -104,6 +104,22 @@ class ScopeStore
         return $this->global['classes'][$name] ?? null;
     }
 
+    public function setInstanceToScope(string $instanceName, string $className, array $instanceData): void
+    {
+        if (!isset($this->global['classes'])) {
+            $this->global['classes'] = [];
+        }
+        if (!isset($this->global['classes'][$className])) {
+            $this->global['classes'][$className] = [];
+        }
+        if (!isset($this->global['classes'][$className]['instances'])) {
+            $this->global['classes'][$className]['instances'] = [];
+        }
+
+        $instanceData['name'] = $instanceName;
+        $this->global['classes'][$className]['instances'][] = $instanceData;
+    }
+
     /**
      * @return array{string, array<string, mixed>>|null
      */

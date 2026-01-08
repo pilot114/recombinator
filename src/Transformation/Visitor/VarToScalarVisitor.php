@@ -41,7 +41,10 @@ class VarToScalarVisitor extends BaseVisitor
                 $varExprScalar->setAttributes([]);
                 $this->scopeStore->setVarToScope($varName, $varExprScalar);
 
-                $node->getAttribute('parent')->setAttribute('remove', true);
+                $parent = $node->getAttribute('parent');
+                if ($parent !== null) {
+                    $parent->setAttribute('remove', true);
+                }
             }
         }
 
