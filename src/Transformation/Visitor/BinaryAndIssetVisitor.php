@@ -65,7 +65,8 @@ class BinaryAndIssetVisitor extends BaseVisitor
 
     protected function booleanBinaryTyping($expression, $bool)
     {
-        $name = strtolower($bool->name->parts[0]);
+        // In php-parser 5.x, use toString() method
+        $name = strtolower($bool->name->toString());
         if ($expression instanceof Node\Expr\BinaryOp\Concat) {
             if ($name === 'true') {
                 return new Node\Scalar\String_('1');

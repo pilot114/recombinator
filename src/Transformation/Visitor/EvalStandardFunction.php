@@ -30,16 +30,21 @@ class EvalStandardFunction extends BaseVisitor
     public function enterNode(Node $node)
     {
         if ($node instanceof Node\Expr\FuncCall) {
-            $nameParts = $node->name->parts;
-            // вызов обычной функции, предположительно встроенной
-            if (count($nameParts) === 1) {
-                if (in_array($nameParts[0], $this->functionListNeedStatic) && $this->staticArgs($node)) {
-                    // eval
-                }
-                if (in_array($nameParts[0], array_keys($this->specialFunction))) {
-                    $handlerName = $this->specialFunction[$nameParts[0]];
-                    if (method_exists($this, $handlerName)) {
-                        return $this->{$handlerName}($node);
+            // In php-parser 5.x, use toString() method
+            if ($node->name instanceof Node\Name) {
+                $funcName = $node->name->toString();
+
+                // Check if function name contains namespace separator
+                // (simple function names don't have backslash)
+                if (strpos($funcName, '\\') === false) {
+                    if (in_array($funcName, $this->functionListNeedStatic) && $this->staticArgs($node)) {
+                        // eval
+                    }
+                    if (in_array($funcName, array_keys($this->specialFunction))) {
+                        $handlerName = $this->specialFunction[$funcName];
+                        if (method_exists($this, $handlerName)) {
+                            return $this->{$handlerName}($node);
+                        }
                     }
                 }
             }
