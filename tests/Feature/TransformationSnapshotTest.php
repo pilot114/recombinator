@@ -139,9 +139,11 @@ it('pre-computes mathematical expressions', function () {
     // Save snapshot
     saveSnapshot($fixtureName, $result);
 
-    // Variables are inlined with their scalar values
-    expect($result)->toContain('3.14159');
-    expect($result)->toContain('10');
+    // Variables are inlined and mathematical expressions are pre-computed
+    // Check for computed results rather than intermediate values
+    expect($result)->toContain('20'); // diameter = radius * 2 = 10 * 2
+    expect($result)->toContain('62.8318'); // circumference = 2 * pi * radius
+    expect($result)->toContain('314.159'); // area = pi * radius * radius
     // Original variable definitions should be removed
     expect($result)->not->toContain('$pi = 3.14159');
     expect($result)->not->toContain('$radius = 10');
@@ -187,11 +189,15 @@ it('simplifies string concatenations', function () {
     // Save snapshot
     saveSnapshot($fixtureName, $result);
 
-    // Verify scalar values are inlined (note: single quotes in output)
-    expect($result)->toContain("'John'");
-    expect($result)->toContain("'Doe'");
-    // Original variable definitions with double quotes should be removed
-    expect($result)->not->toContain('$firstName = "John"');
+    // Verify strings are concatenated (accept both single and double quotes)
+    expect($result)->toMatch('/["\']John Doe["\']/'); // firstName . " " . lastName
+    expect($result)->toMatch('/["\']Hello, World!["\']/'); // Concatenated greeting
+    expect($result)->toMatch('/["\']-----["\']/'); // Concatenated separator
+    expect($result)->toMatch('/["\']https:\/\/example\.com["\']/'); // Concatenated URL
+    expect($result)->toMatch('/["\']user_12345_data["\']/'); // Concatenated key
+    // Original variable definitions should be removed (regardless of quote style used)
+    expect($result)->not->toContain('$firstName =');
+    expect($result)->not->toContain('$lastName =');
 });
 
 // Test: mixed complexity with multiple patterns

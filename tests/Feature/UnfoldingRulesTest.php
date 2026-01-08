@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Domain\ScopeStore;
@@ -49,8 +50,9 @@ class Auth {
 
     // If-return should be converted to ternary
     expect($result)->toContain('?');
-    expect($result)->toContain("'success'");
-    expect($result)->toContain("'fail'");
+    // Accept both single and double quotes
+    expect($result)->toMatch('/["\']success["\']/');
+    expect($result)->toMatch('/["\']fail["\']/');
 });
 
 it('can optimize binary operations and isset pattern', function () {
@@ -89,6 +91,7 @@ echo $area;';
     $ast = $this->parser->parse($code);
 
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor(new VarToScalarVisitor($this->store));
     $traverser->addVisitor(new RemoveVisitor());
@@ -116,6 +119,7 @@ echo "API v" . $version;';
     $ast = $this->parser->parse($code);
 
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor(new ConstClassVisitor($this->store));
     $traverser->addVisitor(new BinaryAndIssetVisitor());
@@ -128,8 +132,9 @@ echo "API v" . $version;';
     // Constants replaced and added
     expect($result)->toContain('$version = 3');
 
-    // String concatenation with scalar
-    expect($result)->toContain("'API v'");
+    // String concatenation with scalar (accept both quote styles)
+    expect($result)->toMatch('/["\']API v["\']/');
+
 });
 
 it('can optimize complex isset patterns', function () {
@@ -154,9 +159,9 @@ if (isset($_GET["password"])) {
 
     $result = $this->printer->prettyPrint($ast);
 
-    // Both isset patterns should be converted
-    expect($result)->toContain('$username = $_GET[\'username\'] ?? $username');
-    expect($result)->toContain('$password = $_GET[\'password\'] ?? $password');
+    // Both isset patterns should be converted (accept both quote styles)
+    expect($result)->toMatch('/\$username = \$_GET\[["\']username["\']\] \?\? \$username/');
+    expect($result)->toMatch('/\$password = \$_GET\[["\']password["\']\] \?\? \$password/');
 });
 
 it('can optimize mathematical expressions', function () {
@@ -172,6 +177,7 @@ $division = $b / $a;';
     $ast = $this->parser->parse($code);
 
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor(new VarToScalarVisitor($this->store));
     $traverser->addVisitor(new BinaryAndIssetVisitor());
@@ -195,6 +201,7 @@ $message = $hello . " " . $world . "!";';
     $ast = $this->parser->parse($code);
 
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor(new VarToScalarVisitor($this->store));
     $traverser->addVisitor(new BinaryAndIssetVisitor());
@@ -217,6 +224,7 @@ echo $x;';
     $ast = $this->parser->parse($code);
 
     $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
     $traverser->addVisitor(new ScopeVisitor());
     $traverser->addVisitor(new VarToScalarVisitor($this->store));
     $ast = $traverser->traverse($ast);

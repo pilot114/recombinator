@@ -206,6 +206,5 @@ echo "Hello, " . $name;';
 
     $result = $this->printer->prettyPrint($ast);
 
-    // Accept both single and double quotes (php-parser may use either)
-    expect($result)->toMatch('/["\']Hello, ["\']\s*\.\s*["\']World["\']/');
+    expect($result)->toContain('Hello, " . \'World');
 });

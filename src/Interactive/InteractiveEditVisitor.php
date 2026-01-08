@@ -4,6 +4,7 @@ namespace Recombinator\Interactive;
 
 use PhpParser\Node;
 use PhpParser\Node\Expr;
+use PhpParser\Node\Stmt;
 use PhpParser\NodeVisitorAbstract;
 use Recombinator\Analysis\CognitiveComplexityCalculator;
 use Recombinator\Domain\NamingSuggester;
@@ -255,6 +256,17 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
                     "Break down into smaller parts",
                     "Introduce intermediate variables",
                     "Extract to separate function"
+                ]
+            );
+        } elseif ($complexity > $this->complexityThreshold) {
+            $this->addEditCandidate(
+                $node,
+                EditCandidate::ISSUE_COMPLEX_EXPRESSION,
+                "Complex expression (complexity: {$complexity})",
+                EditCandidate::PRIORITY_HIGH,
+                [
+                    "Consider breaking down into smaller parts",
+                    "Introduce intermediate variables"
                 ]
             );
         }
