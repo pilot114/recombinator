@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Interactive;
 
 use PhpParser\Node;
+use Recombinator\Support\ColorDiffer;
 
 /**
  * Интерактивный CLI для редактирования кода (Phase 5.2)

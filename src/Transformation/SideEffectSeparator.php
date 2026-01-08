@@ -5,6 +5,13 @@ declare(strict_types=1);
 namespace Recombinator\Transformation;
 
 use PhpParser\Node;
+use Recombinator\Analysis\EffectDependencyGraph;
+use Recombinator\Analysis\PureBlockFinder;
+use Recombinator\Domain\SeparationResult;
+use Recombinator\Domain\SideEffectType;
+use Recombinator\Domain\EffectGroup;
+use Recombinator\Domain\EffectBoundary;
+use Recombinator\Domain\PureComputation;
 
 /**
  * Разделение побочных эффектов (Phase 3.3)

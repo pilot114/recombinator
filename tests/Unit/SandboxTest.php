@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use PhpParser\Node;
 use PhpParser\ParserFactory;
-use Recombinator\ExecutionCache;
-use Recombinator\Sandbox;
+use Recombinator\Core\ExecutionCache;
+use Recombinator\Support\Sandbox;
 
 beforeEach(function () {
     $this->cache = new ExecutionCache();

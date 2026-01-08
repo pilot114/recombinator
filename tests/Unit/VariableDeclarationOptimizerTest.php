@@ -5,9 +5,9 @@ declare(strict_types=1);
 use PhpParser\Node;
 use PhpParser\ParserFactory;
 use PhpParser\NodeTraverser;
-use Recombinator\Visitor\SideEffectMarkerVisitor;
-use Recombinator\VariableDeclarationOptimizer;
-use Recombinator\RelatedVariableGroup;
+use Recombinator\Transformation\Visitor\SideEffectMarkerVisitor;
+use Recombinator\Transformation\VariableDeclarationOptimizer;
+use Recombinator\Transformation\RelatedVariableGroup;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

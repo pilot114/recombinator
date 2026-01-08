@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use PhpParser\Node\Scalar\LNumber;
 use PhpParser\Node\Expr\Variable;
-use Recombinator\EditCandidate;
+use Recombinator\Interactive\EditCandidate;
 
 it('creates edit candidate with all properties', function () {
     $node = new LNumber(42);

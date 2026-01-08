@@ -6,7 +6,7 @@ use PhpParser\Node\Stmt\Echo_;
 use PhpParser\Node\Scalar\String_;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor;
-use Recombinator\Fluent;
+use Recombinator\Core\Fluent;
 
 it('can create fluent instance with ast', function () {
     $ast = [new Echo_([new String_('test')])];

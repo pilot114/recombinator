@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use PhpParser\ParserFactory;
-use Recombinator\SideEffectClassifier;
-use Recombinator\SideEffectType;
+use Recombinator\Analysis\SideEffectClassifier;
+use Recombinator\Domain\SideEffectType;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

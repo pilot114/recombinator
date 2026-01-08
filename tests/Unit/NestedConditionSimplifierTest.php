@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard;
-use Recombinator\NestedConditionSimplifier;
+use Recombinator\Transformation\NestedConditionSimplifier;
 
 beforeEach(function () {
     $this->simplifier = new NestedConditionSimplifier();

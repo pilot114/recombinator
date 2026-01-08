@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use PhpParser\Node;
 use PhpParser\ParserFactory;
-use Recombinator\FunctionCandidate;
-use Recombinator\SideEffectType;
+use Recombinator\Domain\FunctionCandidate;
+use Recombinator\Domain\SideEffectType;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

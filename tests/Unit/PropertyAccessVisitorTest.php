@@ -6,9 +6,9 @@ use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use PhpParser\Node;
-use Recombinator\ScopeStore;
-use Recombinator\Visitor\PropertyAccessVisitor;
-use Recombinator\Visitor\ScopeVisitor;
+use Recombinator\Domain\ScopeStore;
+use Recombinator\Transformation\Visitor\PropertyAccessVisitor;
+use Recombinator\Transformation\Visitor\ScopeVisitor;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

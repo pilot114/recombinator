@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use PhpParser\ParserFactory;
-use Recombinator\InteractiveCLI;
-use Recombinator\InteractiveEditAnalyzer;
+use Recombinator\Interactive\InteractiveCLI;
+use Recombinator\Interactive\InteractiveEditAnalyzer;
 
 beforeEach(function () {
     $parser = (new ParserFactory())->createForHostVersion();

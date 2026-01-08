@@ -1,8 +1,8 @@
 <?php
 
 use PhpParser\ParserFactory;
-use Recombinator\ComplexityController;
-use Recombinator\ComplexityWarning;
+use Recombinator\Analysis\ComplexityController;
+use Recombinator\Analysis\ComplexityWarning;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

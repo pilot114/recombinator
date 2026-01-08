@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace Recombinator\Core;
 
 use PhpParser\Lexer;
+use PhpParser\Node;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use PhpParser\Error;
 use PhpParser\NodeVisitor;
+use Recombinator\Domain\ScopeStore;
+use Recombinator\Support\ColorDiffer;
 use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\CallFunctionVisitor;
 use Recombinator\Transformation\Visitor\ConcatAssertVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
-use Recombinator\Transformation\Visitor\ConstructorAndMethodsVisitor;
 use Recombinator\Transformation\Visitor\EvalStandardFunction;
 use Recombinator\Transformation\Visitor\FunctionScopeVisitor;
 use Recombinator\Transformation\Visitor\IncludeVisitor;
@@ -31,7 +33,7 @@ class Parser
     /** @var array<string, string> Массив исходников */
     protected array $scopes = [];
 
-    /** @var array<string, array<int, \PhpParser\Node>> Массив распарсенных исходников */
+    /** @var array<string, array<int, Node>> Массив распарсенных исходников */
     protected array $ast = [];
 
     /** @var array<int, NodeVisitor> */
@@ -270,7 +272,7 @@ class Parser
 ╚════██║██║   ██║██╔═══╝ ██╔══╝  ██╔══██╗    ██║   ██║██╔═══╝    ██║   ██║██║╚██╔╝██║██║ ███╔╝  ██╔══╝      ╚═╝
 ███████║╚██████╔╝██║     ███████╗██║  ██║    ╚██████╔╝██║        ██║   ██║██║ ╚═╝ ██║██║███████╗███████╗    ██╗
 ╚══════╝ ╚═════╝ ╚═╝     ╚══════╝╚═╝  ╚═╝     ╚═════╝ ╚═╝        ╚═╝   ╚═╝╚═╝     ╚═╝╚═╝╚══════╝╚══════╝    ╚═╝";
-        $differ = new \Recombinator\ColorDiffer();
+        $differ = new ColorDiffer();
         $colors = ['red', 'green', 'blue', 'yellow'];
         foreach (explode("\n", $text) as $line) {
             echo $differ->getColoredString($line, $colors[rand(0, 3)]) . "\n";

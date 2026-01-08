@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
-use Recombinator\SideEffectSeparator;
-use Recombinator\SideEffectType;
-use Recombinator\Visitor\SideEffectMarkerVisitor;
+use Recombinator\Transformation\SideEffectSeparator;
+use Recombinator\Domain\SideEffectType;
+use Recombinator\Transformation\Visitor\SideEffectMarkerVisitor;
 
 beforeEach(function () {
     $this->parser = (new ParserFactory())->createForHostVersion();

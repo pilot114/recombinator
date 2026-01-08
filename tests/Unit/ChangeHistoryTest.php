@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use PhpParser\Node\Expr\Variable;
-use Recombinator\Change;
-use Recombinator\ChangeHistory;
+use Recombinator\Interactive\Change;
+use Recombinator\Interactive\ChangeHistory;
 
 beforeEach(function () {
     $this->history = new ChangeHistory();

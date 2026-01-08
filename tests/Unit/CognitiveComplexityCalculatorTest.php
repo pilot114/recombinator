@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use PhpParser\Node;
 use PhpParser\ParserFactory;
-use Recombinator\CognitiveComplexityCalculator;
+use Recombinator\Analysis\CognitiveComplexityCalculator;
 
 beforeEach(function () {
     $this->calculator = new CognitiveComplexityCalculator();

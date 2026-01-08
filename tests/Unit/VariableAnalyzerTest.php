@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use PhpParser\ParserFactory;
-use Recombinator\VariableAnalyzer;
+use Recombinator\Analysis\VariableAnalyzer;
 
 beforeEach(function () {
     $this->analyzer = new VariableAnalyzer();

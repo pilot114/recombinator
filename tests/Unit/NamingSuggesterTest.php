@@ -5,8 +5,8 @@ declare(strict_types=1);
 use PhpParser\Node;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Scalar;
-use Recombinator\NamingSuggester;
-use Recombinator\SideEffectType;
+use Recombinator\Domain\NamingSuggester;
+use Recombinator\Domain\SideEffectType;
 
 beforeEach(function () {
     $this->suggester = new NamingSuggester();
