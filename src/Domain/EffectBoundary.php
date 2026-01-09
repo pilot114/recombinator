@@ -14,7 +14,8 @@ class EffectBoundary
         public readonly SideEffectType $toEffect,
         public readonly int $position,
         public readonly int $prevPosition,
-    ) {}
+    ) {
+    }
 
     /**
      * Возвращает расстояние между границами

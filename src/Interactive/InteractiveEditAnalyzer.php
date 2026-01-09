@@ -35,43 +35,28 @@ use Recombinator\Domain\NamingSuggester;
  */
 class InteractiveEditAnalyzer
 {
-    private NamingSuggester $namingSuggester;
-    private CognitiveComplexityCalculator $complexityCalculator;
-
-    /**
-     * Порог когнитивной сложности для выражения
-     */
-    private int $complexityThreshold;
-
-    /**
-     * Максимальная допустимая глубина вложенности
-     */
-    private int $maxNestingDepth;
-
-    /**
-     * Минимальная оценка качества имени (0-10)
-     */
-    private int $minNameQuality;
-
     public function __construct(
-        ?NamingSuggester $namingSuggester = null,
-        ?CognitiveComplexityCalculator $complexityCalculator = null,
-        int $complexityThreshold = 5,
-        int $maxNestingDepth = 3,
-        int $minNameQuality = 5
+        private readonly ?NamingSuggester $namingSuggester = new NamingSuggester(),
+        private readonly ?CognitiveComplexityCalculator $complexityCalculator = new CognitiveComplexityCalculator(),
+        /**
+         * Порог когнитивной сложности для выражения
+         */
+        private readonly int $complexityThreshold = 5,
+        /**
+         * Максимальная допустимая глубина вложенности
+         */
+        private readonly int $maxNestingDepth = 3,
+        /**
+         * Минимальная оценка качества имени (0-10)
+         */
+        private readonly int $minNameQuality = 5
     ) {
-        $this->namingSuggester = $namingSuggester ?? new NamingSuggester();
-        $this->complexityCalculator = $complexityCalculator ?? new CognitiveComplexityCalculator();
-        $this->complexityThreshold = $complexityThreshold;
-        $this->maxNestingDepth = $maxNestingDepth;
-        $this->minNameQuality = $minNameQuality;
     }
 
     /**
      * Анализирует AST и находит кандидатов на интерактивную правку
      *
      * @param Node[] $ast
-     * @return InteractiveEditResult
      */
     public function analyze(array $ast): InteractiveEditResult
     {

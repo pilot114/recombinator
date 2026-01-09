@@ -12,18 +12,18 @@ $x1 = 0;
 $y1 = 0;
 $x2 = 10;
 $y2 = 10;
-$dx = $x2 - $x1;
-$dy = $y2 - $y1;
+$dx = $x2;
+$dy = $y2;
 $distance = sqrt($dx * $dx + $dy * $dy);
 
 // Quadratic formula block - candidate for extraction
 $a = 1;
 $b = -5;
 $c = 6;
-$discriminant = $b * $b - 4 * $a * $c;
+$discriminant = $b * $b - 4 * $c;
 $sqrtDiscriminant = sqrt($discriminant);
-$x1_root = (-$b + $sqrtDiscriminant) / (2 * $a);
-$x2_root = (-$b - $sqrtDiscriminant) / (2 * $a);
+$x1_root = (-$b + $sqrtDiscriminant) / (2);
+$x2_root = (-$b - $sqrtDiscriminant) / (2);
 
 // Statistics block - candidate for extraction
 $values = [10, 20, 30, 40, 50];

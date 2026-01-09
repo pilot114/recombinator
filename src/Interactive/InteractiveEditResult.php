@@ -15,14 +15,14 @@ namespace Recombinator\Interactive;
 class InteractiveEditResult
 {
     /**
-     * @param EditCandidate[] $editCandidates
+     * @param EditCandidate[]        $editCandidates
      * @param StructureImprovement[] $structureImprovements
-     * @param array<string, int> $issueStats
+     * @param array<string, int>     $issueStats
      */
     public function __construct(
-        private array $editCandidates,
-        private array $structureImprovements,
-        private array $issueStats
+        private readonly array $editCandidates,
+        private readonly array $structureImprovements,
+        private readonly array $issueStats
     ) {
     }
 
@@ -42,7 +42,7 @@ class InteractiveEditResult
     public function getEditCandidatesByPriority(): array
     {
         $candidates = $this->editCandidates;
-        usort($candidates, fn($a, $b) => $b->getPriority() <=> $a->getPriority());
+        usort($candidates, fn($a, $b): int => $b->getPriority() <=> $a->getPriority());
         return $candidates;
     }
 
@@ -55,7 +55,7 @@ class InteractiveEditResult
     {
         return array_filter(
             $this->editCandidates,
-            fn($c) => $c->getIssueType() === $type
+            fn(\Recombinator\Interactive\EditCandidate $c): bool => $c->getIssueType() === $type
         );
     }
 
@@ -68,7 +68,7 @@ class InteractiveEditResult
     {
         return array_filter(
             $this->editCandidates,
-            fn($c) => $c->isCritical()
+            fn(\Recombinator\Interactive\EditCandidate $c): bool => $c->isCritical()
         );
     }
 
@@ -88,7 +88,7 @@ class InteractiveEditResult
     public function getStructureImprovementsByPriority(): array
     {
         $improvements = $this->structureImprovements;
-        usort($improvements, fn($a, $b) => $b->getPriority() <=> $a->getPriority());
+        usort($improvements, fn($a, $b): int => $b->getPriority() <=> $a->getPriority());
         return $improvements;
     }
 
@@ -101,7 +101,7 @@ class InteractiveEditResult
     {
         return array_filter(
             $this->structureImprovements,
-            fn($i) => $i->getType() === $type
+            fn(\Recombinator\Domain\StructureImprovement $i): bool => $i->getType() === $type
         );
     }
 
@@ -134,7 +134,7 @@ class InteractiveEditResult
      */
     public function hasCriticalIssues(): bool
     {
-        return !empty($this->getCriticalCandidates());
+        return $this->getCriticalCandidates() !== [];
     }
 
     /**
@@ -149,17 +149,18 @@ class InteractiveEditResult
         $report .= sprintf("  Critical issues: %d\n", count($this->getCriticalCandidates()));
         $report .= sprintf("  Structure improvements: %d\n\n", $this->getTotalImprovements());
 
-        if (!empty($this->issueStats)) {
+        if ($this->issueStats !== []) {
             $report .= "Issue Statistics:\n";
             foreach ($this->issueStats as $type => $count) {
                 $report .= sprintf("  %s: %d\n", $type, $count);
             }
+
             $report .= "\n";
         }
 
         // Критичные проблемы
         $critical = $this->getCriticalCandidates();
-        if (!empty($critical)) {
+        if ($critical !== []) {
             $report .= "=== Critical Issues ===\n";
             foreach ($critical as $candidate) {
                 $report .= $candidate->format() . "\n";
@@ -168,7 +169,7 @@ class InteractiveEditResult
 
         // Высокоприоритетные улучшения
         $topImprovements = array_slice($this->getStructureImprovementsByPriority(), 0, 5);
-        if (!empty($topImprovements)) {
+        if ($topImprovements !== []) {
             $report .= "=== Top Structure Improvements ===\n";
             foreach ($topImprovements as $improvement) {
                 $report .= $improvement->format() . "\n";

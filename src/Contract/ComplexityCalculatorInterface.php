@@ -15,15 +15,11 @@ interface ComplexityCalculatorInterface
      * Calculate complexity for given nodes
      *
      * @param array<Node> $nodes
-     * @return int
      */
     public function calculate(array $nodes): int;
 
     /**
      * Get complexity level (low, moderate, high, very high) for given value
-     *
-     * @param int $value
-     * @return string
      */
     public function getComplexityLevel(int $value): string;
 }

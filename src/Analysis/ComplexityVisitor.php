@@ -10,7 +10,12 @@ use PhpParser\NodeVisitorAbstract;
  */
 class ComplexityVisitor extends NodeVisitorAbstract
 {
-    private int $complexity = 0;
+    public int $complexity = 0 {
+        get {
+            return $this->complexity;
+        }
+    }
+
     private int $nestingLevel = 0;
 
     public function enterNode(Node $node): void
@@ -27,15 +32,17 @@ class ComplexityVisitor extends NodeVisitorAbstract
         }
 
         // Вызовы функций: +2 балла
-        if ($node instanceof Node\Expr\FuncCall ||
-            $node instanceof Node\Expr\MethodCall ||
-            $node instanceof Node\Expr\StaticCall) {
+        if ($node instanceof Node\Expr\FuncCall 
+            || $node instanceof Node\Expr\MethodCall 
+            || $node instanceof Node\Expr\StaticCall
+        ) {
             $this->complexity += 2;
         }
 
         // Доступ к массиву/свойству: +1 балл
-        if ($node instanceof Node\Expr\ArrayDimFetch ||
-            $node instanceof Node\Expr\PropertyFetch) {
+        if ($node instanceof Node\Expr\ArrayDimFetch 
+            || $node instanceof Node\Expr\PropertyFetch
+        ) {
             $this->complexity++;
         }
 
@@ -45,10 +52,11 @@ class ComplexityVisitor extends NodeVisitorAbstract
         }
 
         // Логические операторы (&&, ||): +1 балл
-        if ($node instanceof Node\Expr\BinaryOp\BooleanAnd ||
-            $node instanceof Node\Expr\BinaryOp\BooleanOr ||
-            $node instanceof Node\Expr\BinaryOp\LogicalAnd ||
-            $node instanceof Node\Expr\BinaryOp\LogicalOr) {
+        if ($node instanceof Node\Expr\BinaryOp\BooleanAnd 
+            || $node instanceof Node\Expr\BinaryOp\BooleanOr 
+            || $node instanceof Node\Expr\BinaryOp\LogicalAnd 
+            || $node instanceof Node\Expr\BinaryOp\LogicalOr
+        ) {
             $this->complexity++;
         }
     }
@@ -59,11 +67,6 @@ class ComplexityVisitor extends NodeVisitorAbstract
         if ($this->isNestingNode($node)) {
             $this->nestingLevel--;
         }
-    }
-
-    public function getComplexity(): int
-    {
-        return $this->complexity;
     }
 
     /**

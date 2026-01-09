@@ -6,11 +6,9 @@
  */
 
 $fullName = 'John Doe';
-$greeting = 'Hello, World!';
-$separator = '-----';
 $url = 'https://example.com';
 $key = 'user_12345_data';
 $message = 'This is a very long message.';
 echo $fullName;
-echo $greeting;
+echo 'Hello, World!';
 echo $url;

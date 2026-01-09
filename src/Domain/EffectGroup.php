@@ -22,15 +22,20 @@ class EffectGroup
     public int $reorderableCount = 0;
 
     /**
-     * @param SideEffectType $effect Тип эффекта
-     * @param Node[] $nodes Узлы этого типа
-     * @param int $priority Приоритет (из SideEffectType::getPriority())
+     * @param SideEffectType $effect   Тип
+     *                                 эффекта
+     * @param Node[]         $nodes    Узлы
+     *                                 этого
+     *                                 типа
+     * @param int            $priority Приоритет (из
+     *                                 SideEffectType::getPriority())
      */
     public function __construct(
         public readonly SideEffectType $effect,
         public readonly array $nodes,
         public readonly int $priority,
-    ) {}
+    ) {
+    }
 
     /**
      * Возвращает количество узлов в группе

@@ -28,7 +28,7 @@ class CognitiveComplexityCalculator
     /**
      * Вычисляет когнитивную сложность узла или массива узлов
      *
-     * @param Node|Node[] $nodes
+     * @param  Node|Node[] $nodes
      * @return int Сложность в баллах
      */
     public function calculate(Node|array $nodes): int
@@ -45,7 +45,7 @@ class CognitiveComplexityCalculator
             $traverser->traverse([$node]);
         }
 
-        return $visitor->getComplexity();
+        return $visitor->complexity;
     }
 
     /**

@@ -16,6 +16,7 @@ class RemoveVisitor extends BaseVisitor
             $node->setAttribute('remove', true);
             return NodeVisitor::DONT_TRAVERSE_CHILDREN;
         }
+
         return null;
     }
 }

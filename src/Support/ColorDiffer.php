@@ -14,13 +14,21 @@ class ColorDiffer
 {
     public bool $hasDiff = false;
 
-    /** @var array<string, string> */
+    /**
+     * 
+     *
+     * @var array<string, string> 
+     */
     private array $foregroundColors = [];
 
-    /** @var array<string, string> */
+    /**
+     * 
+     *
+     * @var array<string, string> 
+     */
     private array $backgroundColors = [];
 
-    private Differ $differ;
+    private readonly Differ $differ;
 
     public function __construct()
     {
@@ -60,13 +68,12 @@ class ColorDiffer
         if ($foreground_color !== null && isset($this->foregroundColors[$foreground_color])) {
             $colored_string .= "\033[" . $this->foregroundColors[$foreground_color] . "m";
         }
+
         if ($background_color !== null && isset($this->backgroundColors[$background_color])) {
             $colored_string .= "\033[" . $this->backgroundColors[$background_color] . "m";
         }
 
-        $colored_string .= $string . "\033[0m";
-
-        return $colored_string;
+        return $colored_string . ($string . "\033[0m");
     }
 
     /**
@@ -93,17 +100,23 @@ class ColorDiffer
 
         $colorOut = "";
         foreach (explode("\n", $out) as $line) {
-            if (!$line) continue;
+            if ($line === '') {
+                continue;
+            }
+
+            if ($line === '0') {
+                continue;
+            }
+
             if (isset($line[0]) && $line[0] === '-') {
                 $colorOut .= $this->getColoredString($line, "red") . "\n";
             } elseif (isset($line[0]) && $line[0] === '+') {
                 $colorOut .= $this->getColoredString($line, "green") . "\n";
-            } else {
-                if ($withNotModified) {
-                    $colorOut .= $line . "\n";
-                }
+            } elseif ($withNotModified) {
+                $colorOut .= $line . "\n";
             }
         }
+
         return $colorOut;
     }
 }

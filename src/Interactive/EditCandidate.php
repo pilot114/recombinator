@@ -17,26 +17,42 @@ class EditCandidate
     /**
      * Типы проблем
      */
-    public const ISSUE_POOR_NAMING = 'poor_naming';           // Плохое именование
-    public const ISSUE_COMPLEX_EXPRESSION = 'complex_expr';   // Сложное выражение
-    public const ISSUE_MAGIC_NUMBER = 'magic_number';         // Магическое число
-    public const ISSUE_LONG_LINE = 'long_line';               // Длинная строка
-    public const ISSUE_DEEP_NESTING = 'deep_nesting';         // Глубокая вложенность
+    public const ISSUE_POOR_NAMING = 'poor_naming';
+
+               // Плохое именование
+    public const ISSUE_COMPLEX_EXPRESSION = 'complex_expr';
+
+       // Сложное выражение
+    public const ISSUE_MAGIC_NUMBER = 'magic_number';
+
+             // Магическое число
+    public const ISSUE_LONG_LINE = 'long_line';
+
+                   // Длинная строка
+    public const ISSUE_DEEP_NESTING = 'deep_nesting';
+
+             // Глубокая вложенность
     public const ISSUE_DUPLICATE_CODE = 'duplicate_code';     // Дублирование кода
 
     /**
      * Приоритеты исправления
      */
-    public const PRIORITY_CRITICAL = 3; // Критично (влияет на понимание кода)
-    public const PRIORITY_HIGH = 2;     // Высокий (значительно улучшит код)
-    public const PRIORITY_MEDIUM = 1;   // Средний (желательно исправить)
+    public const PRIORITY_CRITICAL = 3;
+
+     // Критично (влияет на понимание кода)
+    public const PRIORITY_HIGH = 2;
+
+         // Высокий (значительно улучшит код)
+    public const PRIORITY_MEDIUM = 1;
+
+       // Средний (желательно исправить)
     public const PRIORITY_LOW = 0;      // Низкий (опционально)
 
     public function __construct(
-        private Node $node,
-        private string $issueType,
-        private string $description,
-        private int $priority,
+        private readonly Node $node,
+        private readonly string $issueType,
+        private readonly string $description,
+        private readonly int $priority,
         private array $suggestions = []
     ) {
     }
@@ -107,7 +123,7 @@ class EditCandidate
     public function format(): string
     {
         $line = $this->getLine();
-        $location = ($line !== null && $line !== -1) ? "Line {$line}" : "Unknown location";
+        $location = ($line !== null && $line !== -1) ? 'Line ' . $line : "Unknown location";
 
         $output = sprintf(
             "[%s] %s: %s\n",
@@ -116,7 +132,7 @@ class EditCandidate
             $this->description
         );
 
-        if (!empty($this->suggestions)) {
+        if ($this->suggestions !== []) {
             $output .= "Suggestions:\n";
             foreach ($this->suggestions as $i => $suggestion) {
                 $output .= sprintf("  %d) %s\n", $i + 1, $suggestion);

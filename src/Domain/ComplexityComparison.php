@@ -10,8 +10,8 @@ namespace Recombinator\Domain;
 class ComplexityComparison
 {
     public function __construct(
-        private ComplexityMetrics $before,
-        private ComplexityMetrics $after
+        private readonly ComplexityMetrics $before,
+        private readonly ComplexityMetrics $after
     ) {
     }
 
@@ -62,7 +62,11 @@ class ComplexityComparison
      */
     public function isImproved(): bool
     {
-        return $this->getCognitiveDelta() < 0 || $this->getCyclomaticDelta() < 0;
+        if ($this->getCognitiveDelta() < 0) {
+            return true;
+        }
+
+        return $this->getCyclomaticDelta() < 0;
     }
 
     /**
@@ -70,7 +74,11 @@ class ComplexityComparison
      */
     public function isWorse(): bool
     {
-        return $this->getCognitiveDelta() > 0 || $this->getCyclomaticDelta() > 0;
+        if ($this->getCognitiveDelta() > 0) {
+            return true;
+        }
+
+        return $this->getCyclomaticDelta() > 0;
     }
 
     /**

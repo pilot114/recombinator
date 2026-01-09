@@ -12,29 +12,31 @@ class VariableVisitor extends NodeVisitorAbstract
 {
     /**
      * Используемые переменные
+     *
      * @var array<string>
      */
     private array $used = [];
 
     /**
      * Определенные переменные
+     *
      * @var array<string>
      */
     private array $defined = [];
 
     /**
      * Контекст вложенности (функции, замыкания)
-     * @var int
      */
     private int $depth = 0;
 
     public function enterNode(Node $node): void
     {
         // Пропускаем вложенные функции и замыкания
-        if ($node instanceof Node\Stmt\Function_ ||
-            $node instanceof Node\Stmt\ClassMethod ||
-            $node instanceof Node\Expr\Closure ||
-            $node instanceof Node\Expr\ArrowFunction) {
+        if ($node instanceof Node\Stmt\Function_ 
+            || $node instanceof Node\Stmt\ClassMethod 
+            || $node instanceof Node\Expr\Closure 
+            || $node instanceof Node\Expr\ArrowFunction
+        ) {
             $this->depth++;
             return;
         }
@@ -50,19 +52,18 @@ class VariableVisitor extends NodeVisitorAbstract
             if ($var instanceof Node\Expr\Variable && is_string($var->name)) {
                 $this->defined[] = '$' . $var->name;
             }
+
             // Также проверяем правую часть на использование переменных
             $this->collectUsedVariables($node->expr);
         }
 
         // Использование переменной
-        if ($node instanceof Node\Expr\Variable && is_string($node->name)) {
-            // Не добавляем $this, суперглобалы и специальные переменные
-            if (!$this->isSpecialVariable($node->name)) {
-                $varName = '$' . $node->name;
-                // Добавляем в used, если не в левой части присваивания
-                if (!$this->isLeftSideOfAssignment($node)) {
-                    $this->used[] = $varName;
-                }
+        // Не добавляем $this, суперглобалы и специальные переменные
+        if ($node instanceof Node\Expr\Variable && is_string($node->name) && !$this->isSpecialVariable($node->name)) {
+            $varName = '$' . $node->name;
+            // Добавляем в used, если не в левой части присваивания
+            if (!$this->isLeftSideOfAssignment()) {
+                $this->used[] = $varName;
             }
         }
     }
@@ -70,10 +71,11 @@ class VariableVisitor extends NodeVisitorAbstract
     public function leaveNode(Node $node): void
     {
         // Выходим из вложенной функции
-        if ($node instanceof Node\Stmt\Function_ ||
-            $node instanceof Node\Stmt\ClassMethod ||
-            $node instanceof Node\Expr\Closure ||
-            $node instanceof Node\Expr\ArrowFunction) {
+        if ($node instanceof Node\Stmt\Function_ 
+            || $node instanceof Node\Stmt\ClassMethod 
+            || $node instanceof Node\Expr\Closure 
+            || $node instanceof Node\Expr\ArrowFunction
+        ) {
             $this->depth--;
         }
     }
@@ -93,7 +95,8 @@ class VariableVisitor extends NodeVisitorAbstract
      */
     private function isSpecialVariable(string $name): bool
     {
-        return in_array($name, [
+        return in_array(
+            $name, [
             'this',
             'GLOBALS',
             '_SERVER',
@@ -104,13 +107,14 @@ class VariableVisitor extends NodeVisitorAbstract
             '_SESSION',
             '_REQUEST',
             '_ENV',
-        ], true);
+            ], true
+        );
     }
 
     /**
      * Проверяет, находится ли переменная в левой части присваивания
      */
-    private function isLeftSideOfAssignment(Node\Expr\Variable $var): bool
+    private function isLeftSideOfAssignment(): bool
     {
         // Это упрощенная проверка
         // В реальности нужно проверять родительский узел
@@ -126,6 +130,7 @@ class VariableVisitor extends NodeVisitorAbstract
             if (!$this->isSpecialVariable($node->name)) {
                 $this->used[] = '$' . $node->name;
             }
+
             return;
         }
 

@@ -12,32 +12,37 @@ use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 use Recombinator\Transformation\Visitor\RemoveVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 
-beforeEach(function () {
-    $this->parser = (new ParserFactory())->createForHostVersion();
-    $this->printer = new StandardPrinter();
-    $this->store = new ScopeStore();
-});
+beforeEach(
+    function (): void {
+        $this->parser = new ParserFactory()->createForHostVersion();
+        $this->printer = new StandardPrinter();
+        $this->store = new ScopeStore();
+    }
+);
 
-it('does not break when variable is reassigned with different type', function () {
-    $code = '<?php
+it(
+    'does not break when variable is reassigned with different type', function (): void {
+        $code = '<?php
 $val = 10;
 echo $val;
 $val = [1, 2, 3];
 echo $val[0];';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new VarToScalarVisitor($this->store));
-    $traverser->addVisitor(new RemoveVisitor());
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new VarToScalarVisitor($this->store));
+        $traverser->addVisitor(new RemoveVisitor());
 
-    // Should not throw exception
-    expect(fn() => $traverser->traverse($ast))->not->toThrow(Exception::class);
-});
+        // Should not throw exception
+        expect(fn(): array => $traverser->traverse($ast))->not->toThrow(Exception::class);
+    }
+);
 
-it('preserves semantics when constant is used multiple times', function () {
-    $code = '<?php
+it(
+    'preserves semantics when constant is used multiple times', function (): void {
+        $code = '<?php
 class Test {
     const VALUE = 5;
 
@@ -46,123 +51,143 @@ class Test {
     }
 }';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new ConstClassVisitor($this->store));
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new ConstClassVisitor($this->store));
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Both constants should be replaced
-    expect($result)->toContain('return 10');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('handles division by zero gracefully', function () {
-    $code = '<?php $result = 10 / 0;';
+        // Both constants should be replaced
+        expect($result)->toContain('return 10');
+    }
+);
 
-    $ast = $this->parser->parse($code);
+it(
+    'handles division by zero gracefully', function (): void {
+        $code = '<?php $result = 10 / 0;';
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
+        $ast = $this->parser->parse($code);
 
-    // Should not crash, but might not optimize
-    expect(fn() => $traverser->traverse($ast))->not->toThrow(Exception::class);
-});
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
 
-it('preserves boolean semantics in concatenation', function () {
-    $code = '<?php
+        // Should not crash, but might not optimize
+        expect(fn(): array => $traverser->traverse($ast))->not->toThrow(Exception::class);
+    }
+);
+
+it(
+    'preserves boolean semantics in concatenation', function (): void {
+        $code = '<?php
 $result = "Value: " . true;
 $result2 = "Value: " . false;';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // true should become '1', false should become ''
-    expect($result)->toContain("'Value: 1'");
-    expect($result)->toContain("'Value: '");
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('preserves boolean semantics in math operations', function () {
-    $code = '<?php
+        // true should become '1', false should become ''
+        expect($result)->toContain("'Value: 1'");
+        expect($result)->toContain("'Value: '");
+    }
+);
+
+it(
+    'preserves boolean semantics in math operations', function (): void {
+        $code = '<?php
 $result = 10 + true;
 $result2 = 10 + false;';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // true should become 1, false should become 0
-    expect($result)->toContain('$result = 11');
-    expect($result)->toContain('$result2 = 10');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('does not optimize variable used in assignment left side', function () {
-    $code = '<?php
+        // true should become 1, false should become 0
+        expect($result)->toContain('$result = 11');
+        expect($result)->toContain('$result2 = 10');
+    }
+);
+
+it(
+    'does not optimize variable used in assignment left side', function (): void {
+        $code = '<?php
 $x = 10;
 $x = $x + 5;
 echo $x;';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new VarToScalarVisitor($this->store));
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new VarToScalarVisitor($this->store));
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Should properly handle the reassignment
-    expect($result)->not->toContain('10 = 10 + 5');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('handles nested binary operations correctly', function () {
-    $code = '<?php $result = (1 + 2) * (3 + 4);';
+        // Should properly handle the reassignment
+        expect($result)->not->toContain('10 = 10 + 5');
+    }
+);
 
-    $ast = $this->parser->parse($code);
+it(
+    'handles nested binary operations correctly', function (): void {
+        $code = '<?php $result = (1 + 2) * (3 + 4);';
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
 
-    $result = $this->printer->prettyPrint($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
 
-    // Should calculate both levels
-    expect($result)->toContain('$result = 21');
-});
+        $ast = $traverser->traverse($ast);
 
-it('preserves correct order of operations', function () {
-    $code = '<?php $result = 2 + 3 * 4;';
+        $result = $this->printer->prettyPrint($ast);
 
-    $ast = $this->parser->parse($code);
+        // Should calculate both levels
+        expect($result)->toContain('$result = 21');
+    }
+);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $ast = $traverser->traverse($ast);
+it(
+    'preserves correct order of operations', function (): void {
+        $code = '<?php $result = 2 + 3 * 4;';
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $this->parser->parse($code);
 
-    // Should be 2 + 12 = 14, not 5 * 4 = 20
-    // Accept either intermediate step or final result
-    $hasIntermediateStep = strpos($result, '2 + 12') !== false;
-    $hasFinalResult = strpos($result, '$result = 14') !== false;
-    expect($hasIntermediateStep || $hasFinalResult)->toBeTrue();
-});
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
 
-it('does not replace non-scalar constants', function () {
-    $code = '<?php
+        $ast = $traverser->traverse($ast);
+
+        $result = $this->printer->prettyPrint($ast);
+
+        // Should be 2 + 12 = 14, not 5 * 4 = 20
+        // Accept either intermediate step or final result
+        $hasIntermediateStep = str_contains((string) $result, '2 + 12');
+        $hasFinalResult = str_contains((string) $result, '$result = 14');
+        expect($hasIntermediateStep || $hasFinalResult)->toBeTrue();
+    }
+);
+
+it(
+    'does not replace non-scalar constants', function (): void {
+        $code = '<?php
 class Test {
     const ARRAY_CONST = [1, 2, 3];
 
@@ -171,66 +196,77 @@ class Test {
     }
 }';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new ConstClassVisitor($this->store));
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new ConstClassVisitor($this->store));
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Array constant might be replaced with array value
-    // The important thing is no crash occurs
-    expect($result)->toBeString();
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('handles empty string concatenation', function () {
-    $code = '<?php $result = "" . "hello" . "";';
+        // Array constant might be replaced with array value
+        // The important thing is no crash occurs
+        expect($result)->toBeString();
+    }
+);
 
-    $ast = $this->parser->parse($code);
+it(
+    'handles empty string concatenation', function (): void {
+        $code = '<?php $result = "" . "hello" . "";';
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
 
-    $result = $this->printer->prettyPrint($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
 
-    expect($result)->toContain('hello');
-});
+        $ast = $traverser->traverse($ast);
 
-it('preserves float precision in division', function () {
-    $code = '<?php $result = 1 / 3;';
+        $result = $this->printer->prettyPrint($ast);
 
-    $ast = $this->parser->parse($code);
+        expect($result)->toContain('hello');
+    }
+);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $ast = $traverser->traverse($ast);
+it(
+    'preserves float precision in division', function (): void {
+        $code = '<?php $result = 1 / 3;';
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $this->parser->parse($code);
 
-    // Should produce a float result
-    expect($result)->toContain('0.333');
-});
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
 
-it('handles isset with non-existent array key', function () {
-    $code = '<?php
+        $ast = $traverser->traverse($ast);
+
+        $result = $this->printer->prettyPrint($ast);
+
+        // Should produce a float result
+        expect($result)->toContain('0.333');
+    }
+);
+
+it(
+    'handles isset with non-existent array key', function (): void {
+        $code = '<?php
 $default = "default";
 if (isset($arr["key"])) {
     $default = $arr["key"];
 }';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Should convert to coalesce
-    expect($result)->toContain('??');
-});
+        $result = $this->printer->prettyPrint($ast);
+
+        // Should convert to coalesce
+        expect($result)->toContain('??');
+    }
+);

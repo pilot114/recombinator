@@ -11,200 +11,232 @@ use Recombinator\Transformation\Visitor\ScopeVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 use Recombinator\Transformation\Visitor\RemoveVisitor;
 
-beforeEach(function () {
-    $this->parser = new ParserFactory()->createForHostVersion();
-    $this->printer = new StandardPrinter();
-    $this->store = new ScopeStore();
-    $this->visitor = new VarToScalarVisitor($this->store);
-});
+beforeEach(
+    function (): void {
+        $this->parser = new ParserFactory()->createForHostVersion();
+        $this->printer = new StandardPrinter();
+        $this->store = new ScopeStore();
+        $this->visitor = new VarToScalarVisitor($this->store);
+    }
+);
 
-it('can replace scalar variable with its value', function () {
-    $code = '<?php
+it(
+    'can replace scalar variable with its value', function (): void {
+        $code = '<?php
 $test = 42;
 echo $test;';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('echo 42')
-        ->and($result)->not->toContain('$test = 42');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can replace string variable with its value', function () {
-    $code = '<?php
+        expect($result)->toContain('echo 42')
+            ->and($result)->not->toContain('$test = 42');
+    }
+);
+
+it(
+    'can replace string variable with its value', function (): void {
+        $code = '<?php
 $name = "John";
 echo $name;';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain("echo 'John'");
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can replace boolean variable with its value', function () {
-    $code = '<?php
+        expect($result)->toContain("echo 'John'");
+    }
+);
+
+it(
+    'can replace boolean variable with its value', function (): void {
+        $code = '<?php
 $flag = true;
 if ($flag) {
     echo "yes";
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('if (true)');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can replace float variable with its value', function () {
-    $code = '<?php
+        expect($result)->toContain('if (true)');
+    }
+);
+
+it(
+    'can replace float variable with its value', function (): void {
+        $code = '<?php
 $pi = 3.14;
 echo $pi;';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('echo 3.14');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('should not replace non-scalar variable', function () {
-    $code = '<?php
+        expect($result)->toContain('echo 3.14');
+    }
+);
+
+it(
+    'should not replace non-scalar variable', function (): void {
+        $code = '<?php
 $arr = [1, 2, 3];
 echo $arr[0];';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('$arr = [1, 2, 3]');
-    expect($result)->toContain('echo $arr[0]');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('should clear variable from cache when reassigned with non-scalar', function () {
-    $code = '<?php
+        expect($result)->toContain('$arr = [1, 2, 3]');
+        expect($result)->toContain('echo $arr[0]');
+    }
+);
+
+it(
+    'should clear variable from cache when reassigned with non-scalar', function (): void {
+        $code = '<?php
 $val = 10;
 echo $val;
 $val = [1, 2, 3];
 echo $val[0];';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // First echo should be replaced
-    expect($result)->toContain('echo 10');
-    // Second assignment and echo should remain
-    expect($result)->toContain('$val = [1, 2, 3]');
-    expect($result)->toContain('echo $val[0]');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can replace multiple variables', function () {
-    $code = '<?php
+        // First echo should be replaced
+        expect($result)->toContain('echo 10');
+        // Second assignment and echo should remain
+        expect($result)->toContain('$val = [1, 2, 3]');
+        expect($result)->toContain('echo $val[0]');
+    }
+);
+
+it(
+    'can replace multiple variables', function (): void {
+        $code = '<?php
 $a = 5;
 $b = 10;
 $c = 15;
 echo $a + $b + $c;';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('echo 5 + 10 + 15');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('should not replace variable in left side of assignment', function () {
-    $code = '<?php
+        expect($result)->toContain('echo 5 + 10 + 15');
+    }
+);
+
+it(
+    'should not replace variable in left side of assignment', function (): void {
+        $code = '<?php
 $test = 10;
 $test = 20;
 echo $test;';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Should use the last value
-    expect($result)->toContain('echo 20');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('stores scalar variable in scope', function () {
-    $code = '<?php $test = 100;';
+        // Should use the last value
+        expect($result)->toContain('echo 20');
+    }
+);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+it(
+    'stores scalar variable in scope', function (): void {
+        $code = '<?php $test = 100;';
 
-    $variable = $this->store->getVarFromScope('test');
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    expect($variable)->not->toBeNull()
-        ->and($variable->value)->toBe(100);
-});
+        $ast = $traverser->traverse($ast);
 
-it('can handle variable used in concatenation', function () {
-    $code = '<?php
+        $variable = $this->store->getVarFromScope('test');
+
+        expect($variable)->not->toBeNull()
+            ->and($variable->value)->toBe(100);
+    }
+);
+
+it(
+    'can handle variable used in concatenation', function (): void {
+        $code = '<?php
 $name = "World";
 echo "Hello, " . $name;';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('Hello, " . \'World');
-});
+        $result = $this->printer->prettyPrint($ast);
+
+        expect($result)->toContain('Hello, " . \'World');
+    }
+);

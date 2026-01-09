@@ -19,7 +19,7 @@ class NamingSuggester
     /**
      * Генерирует предложения для имени переменной на основе её значения
      *
-     * @param Node $valueNode Узел, представляющий значение переменной
+     * @param  Node $valueNode Узел, представляющий значение переменной
      * @return array<string> Список предложенных имён
      */
     public function suggestVariableName(Node $valueNode): array
@@ -36,7 +36,7 @@ class NamingSuggester
         } elseif ($valueNode instanceof Expr\ArrayDimFetch) {
             $suggestions = array_merge($suggestions, $this->suggestForArrayAccess($valueNode));
         } elseif ($valueNode instanceof Expr\Ternary) {
-            $suggestions = array_merge($suggestions, $this->suggestForTernary($valueNode));
+            $suggestions = array_merge($suggestions, $this->suggestForTernary());
         } elseif ($valueNode instanceof Expr\Array_) {
             $suggestions[] = 'items';
             $suggestions[] = 'data';
@@ -49,8 +49,10 @@ class NamingSuggester
     /**
      * Генерирует предложения для имени функции на основе её тела
      *
-     * @param Node[] $body Узлы тела функции
-     * @param SideEffectType $effectType Тип побочного эффекта
+     * @param  Node[]         $body       Узлы
+     *                                    тела
+     *                                    функции
+     * @param  SideEffectType $effectType Тип побочного эффекта
      * @return array<string> Список предложенных имён
      */
     public function suggestFunctionName(array $body, SideEffectType $effectType): array
@@ -101,11 +103,7 @@ class NamingSuggester
         }
 
         // Только числа или бессмысленные комбинации
-        if (preg_match('/^[a-z]\d+$/', $name)) {
-            return true;
-        }
-
-        return false;
+        return (bool) preg_match('/^[a-z]\d+$/', $name);
     }
 
     /**
@@ -258,7 +256,7 @@ class NamingSuggester
         return $suggestions;
     }
 
-    private function suggestForTernary(Expr\Ternary $node): array
+    private function suggestForTernary(): array
     {
         return ['result', 'value', 'chosen', 'selected'];
     }
@@ -285,13 +283,7 @@ class NamingSuggester
         ];
 
         $nameLower = strtolower($name);
-        foreach ($meaningfulWords as $word) {
-            if (str_contains($nameLower, $word)) {
-                return true;
-            }
-        }
-
-        return false;
+        return array_any($meaningfulWords, fn($word): bool => str_contains($nameLower, (string) $word));
     }
 
     private function toCamelCase(string $str): string

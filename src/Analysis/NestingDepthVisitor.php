@@ -12,6 +12,7 @@ use PhpParser\Node;
 class NestingDepthVisitor extends \PhpParser\NodeVisitorAbstract
 {
     private int $currentDepth = 0;
+
     private int $maxDepth = 0;
 
     public function enterNode(Node $node): void

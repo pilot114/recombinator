@@ -29,6 +29,7 @@ class ScopeVisitor extends BaseVisitor
                 $node->setAttribute('remove', true);
             }
         }
+
         if ($node instanceof Node\Stmt\Class_) {
             $name = $node->name->name;
             if ($this->cacheDir !== null) {

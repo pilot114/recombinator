@@ -39,40 +39,37 @@ use Recombinator\Domain\SeparationResult;
  */
 class VariableDeclarationOptimizer
 {
-    private SideEffectSeparator $separator;
-
-    public function __construct(?SideEffectSeparator $separator = null)
+    public function __construct(private readonly ?SideEffectSeparator $separator = new SideEffectSeparator())
     {
-        $this->separator = $separator ?? new SideEffectSeparator();
     }
 
     /**
      * Оптимизирует размещение переменных в AST
      *
-     * @param Node[] $ast AST, обработанный SideEffectMarkerVisitor
+     * @param  Node[] $ast AST, обработанный SideEffectMarkerVisitor
      * @return Node[] Оптимизированный AST
      */
     public function optimize(array $ast): array
     {
         // 1. Разделяем код по эффектам
-        $separation = $this->separator->separate($ast);
+        $this->separator->separate($ast);
 
         // 2. Находим группы связанных переменных
         $groups = $this->findRelatedVariableGroups($ast);
 
         // 3. Если групп нет, возвращаем как есть
-        if (empty($groups)) {
+        if ($groups === []) {
             return $ast;
         }
 
         // 4. Переупорядочиваем AST, группируя связанные переменные
-        return $this->reorderStatements($ast, $groups, $separation);
+        return $this->reorderStatements($ast);
     }
 
     /**
      * Находит группы связанных переменных
      *
-     * @param Node[] $ast
+     * @param  Node[] $ast
      * @return array<int, RelatedVariableGroup>
      */
     private function findRelatedVariableGroups(array $ast): array
@@ -92,7 +89,11 @@ class VariableDeclarationOptimizer
             }
 
             $var = $expr->var;
-            if (!$var instanceof Node\Expr\Variable || !is_string($var->name)) {
+            if (!$var instanceof Node\Expr\Variable) {
+                continue;
+            }
+
+            if (!is_string($var->name)) {
                 continue;
             }
 
@@ -138,14 +139,16 @@ class VariableDeclarationOptimizer
         $expr2 = $assign2['expr'];
 
         // Проверяем доступ к одному источнику (например, $_GET['x'] и $_GET['y'])
-        if ($expr1 instanceof Node\Expr\ArrayDimFetch &&
-            $expr2 instanceof Node\Expr\ArrayDimFetch) {
+        if ($expr1 instanceof Node\Expr\ArrayDimFetch 
+            && $expr2 instanceof Node\Expr\ArrayDimFetch
+        ) {
             return $this->isSameArray($expr1->var, $expr2->var);
         }
 
         // Проверяем доступ к свойствам одного объекта
-        if ($expr1 instanceof Node\Expr\PropertyFetch &&
-            $expr2 instanceof Node\Expr\PropertyFetch) {
+        if ($expr1 instanceof Node\Expr\PropertyFetch 
+            && $expr2 instanceof Node\Expr\PropertyFetch
+        ) {
             return $this->isSameVariable($expr1->var, $expr2->var);
         }
 
@@ -157,10 +160,11 @@ class VariableDeclarationOptimizer
      */
     private function isSameArray(Node $var1, Node $var2): bool
     {
-        if ($var1 instanceof Node\Expr\Variable &&
-            $var2 instanceof Node\Expr\Variable &&
-            is_string($var1->name) &&
-            is_string($var2->name)) {
+        if ($var1 instanceof Node\Expr\Variable 
+            && $var2 instanceof Node\Expr\Variable 
+            && is_string($var1->name) 
+            && is_string($var2->name)
+        ) {
             return $var1->name === $var2->name;
         }
 
@@ -178,7 +182,7 @@ class VariableDeclarationOptimizer
     /**
      * Удаляет дублирующиеся группы
      *
-     * @param RelatedVariableGroup[] $groups
+     * @param  RelatedVariableGroup[] $groups
      * @return RelatedVariableGroup[]
      */
     private function deduplicateGroups(array $groups): array
@@ -200,15 +204,11 @@ class VariableDeclarationOptimizer
     /**
      * Переупорядочивает statements, группируя связанные переменные
      *
-     * @param Node[] $ast
-     * @param RelatedVariableGroup[] $groups
-     * @param SeparationResult $separation
+     * @param  Node[] $ast
      * @return Node[]
      */
     private function reorderStatements(
-        array $ast,
-        array $groups,
-        SeparationResult $separation
+        array $ast
     ): array {
         // Пока просто возвращаем AST как есть
         // Полная реализация требует сложной логики переупорядочивания

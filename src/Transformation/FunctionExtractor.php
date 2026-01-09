@@ -33,7 +33,7 @@ use Recombinator\Domain\SideEffectType;
  */
 class FunctionExtractor
 {
-    private BuilderFactory $factory;
+    private readonly BuilderFactory $factory;
 
     public function __construct()
     {
@@ -43,8 +43,10 @@ class FunctionExtractor
     /**
      * Извлекает блок кода в функцию
      *
-     * @param FunctionCandidate $candidate Кандидат на извлечение
-     * @param string|null $functionName Имя функции (если null, будет сгенерировано)
+     * @param  FunctionCandidate $candidate    Кандидат на
+     *                                         извлечение
+     * @param  string|null       $functionName Имя функции (если null,
+     *                                         будет сгенерировано)
      * @return ExtractionResult Результат извлечения
      */
     public function extract(
@@ -52,7 +54,7 @@ class FunctionExtractor
         ?string $functionName = null
     ): ExtractionResult {
         // Генерируем имя функции
-        $functionName = $functionName ?? $candidate->suggestFunctionName();
+        $functionName ??= $candidate->suggestFunctionName();
 
         // Создаем функцию
         $function = $this->createFunction($candidate, $functionName);
@@ -80,7 +82,7 @@ class FunctionExtractor
 
         // Добавляем параметры
         foreach ($candidate->getFunctionParameters() as $param) {
-            $paramName = ltrim($param, '$');
+            $paramName = ltrim((string) $param, '$');
             $builder->addParam(
                 $this->factory->param($paramName)
             );
@@ -115,11 +117,11 @@ class FunctionExtractor
     private function createFunctionCall(
         FunctionCandidate $candidate,
         string $functionName
-    ): Node\Stmt\Expression|Node\Stmt\Return_|Node\Expr\FuncCall {
+    ): \PhpParser\Node\Stmt\Expression {
         // Создаем аргументы вызова
         $args = [];
         foreach ($candidate->getFunctionParameters() as $param) {
-            $paramName = ltrim($param, '$');
+            $paramName = ltrim((string) $param, '$');
             $args[] = new Node\Arg(
                 new Node\Expr\Variable($paramName)
             );
@@ -169,8 +171,8 @@ class FunctionExtractor
 
         // Параметры
         foreach ($candidate->getFunctionParameters() as $param) {
-            $paramName = ltrim($param, '$');
-            $lines[] = " * @param mixed \${$paramName}";
+            $paramName = ltrim((string) $param, '$');
+            $lines[] = ' * @param mixed $' . $paramName;
         }
 
         // Возвращаемое значение

@@ -10,17 +10,21 @@ use PhpParser\Node;
 class Change
 {
     public const TYPE_RENAME = 'rename';
+
     public const TYPE_EXTRACT = 'extract';
+
     public const TYPE_INTRODUCE_VAR = 'introduce_var';
+
     public const TYPE_SIMPLIFY = 'simplify';
+
     public const TYPE_CUSTOM = 'custom';
 
     public function __construct(
-        private string $type,
-        private string $description,
-        private Node $node,
-        private array $beforeState,
-        private array $afterState,
+        private readonly string $type,
+        private readonly string $description,
+        private readonly Node $node,
+        private readonly array $beforeState,
+        private readonly array $afterState,
         private int $timestamp = 0
     ) {
         $this->timestamp = $timestamp ?: time();

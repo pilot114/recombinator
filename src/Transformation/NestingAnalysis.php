@@ -11,7 +11,8 @@ class NestingAnalysis
         public readonly int $maxNesting,
         public readonly float $avgNesting,
         public readonly array $complexNodes,
-    ) {}
+    ) {
+    }
 
     /**
      * Проверяет, есть ли проблемы с вложенностью
@@ -36,16 +37,16 @@ class NestingAnalysis
     {
         $report = [];
         $report[] = "Nesting Analysis Report:";
-        $report[] = "  Max nesting level: {$this->maxNesting}";
-        $report[] = "  Average nesting: {$this->avgNesting}";
+        $report[] = '  Max nesting level: ' . $this->maxNesting;
+        $report[] = '  Average nesting: ' . $this->avgNesting;
         $report[] = "  Complex nodes (>3 levels): " . $this->getComplexNodeCount();
 
-        if (!empty($this->complexNodes)) {
+        if ($this->complexNodes !== []) {
             $report[] = "\nComplex nodes:";
             foreach ($this->complexNodes as $complex) {
                 $line = $complex['line'];
                 $level = $complex['level'];
-                $report[] = "  Line {$line}: nesting level {$level}";
+                $report[] = sprintf('  Line %s: nesting level %s', $line, $level);
             }
         }
 

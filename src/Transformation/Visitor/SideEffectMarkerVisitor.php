@@ -27,8 +27,6 @@ use Recombinator\Domain\SideEffectType;
  */
 class SideEffectMarkerVisitor extends BaseVisitor
 {
-    private SideEffectClassifier $classifier;
-
     /**
      * Статистика маркировки
      */
@@ -44,9 +42,8 @@ class SideEffectMarkerVisitor extends BaseVisitor
         'mixed' => 0,
     ];
 
-    public function __construct(?SideEffectClassifier $classifier = null)
+    public function __construct(private readonly ?SideEffectClassifier $classifier = new SideEffectClassifier())
     {
-        $this->classifier = $classifier ?? new SideEffectClassifier();
     }
 
     /**
@@ -123,6 +120,7 @@ class SideEffectMarkerVisitor extends BaseVisitor
             if ($type === 'total') {
                 continue;
             }
+
             $percentage[$type] = round(($count / $this->stats['total']) * 100, 2);
         }
 
@@ -150,8 +148,10 @@ class SideEffectMarkerVisitor extends BaseVisitor
     /**
      * Находит все узлы с заданным типом эффекта
      *
-     * @param Node[] $ast AST для поиска
-     * @param SideEffectType $effectType Тип эффекта для поиска
+     * @param  Node[]         $ast        AST
+     *                                    для
+     *                                    поиска
+     * @param  SideEffectType $effectType Тип эффекта для поиска
      * @return Node[] Узлы с указанным типом эффекта
      */
     public function findNodesByEffect(array $ast, SideEffectType $effectType): array
@@ -166,9 +166,14 @@ class SideEffectMarkerVisitor extends BaseVisitor
     /**
      * Рекурсивно обходит AST и собирает узлы с заданным типом эффекта
      *
-     * @param Node[]|Node $nodes Узлы для обхода
+     * @param Node[]|Node    $nodes      Узлы
+     *                                   для
+     *                                   обхода
      * @param SideEffectType $effectType Тип эффекта для поиска
-     * @param Node[] $result Результат (передается по ссылке)
+     * @param Node[]         $result     Результат
+     *                                   (передается
+     *                                   по
+     *                                   ссылке)
      */
     private function traverseAndCollect($nodes, SideEffectType $effectType, array &$result): void
     {

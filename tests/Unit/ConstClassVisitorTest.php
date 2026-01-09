@@ -10,15 +10,18 @@ use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\RemoveVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 
-beforeEach(function () {
-    $this->parser = (new ParserFactory())->createForHostVersion();
-    $this->printer = new StandardPrinter();
-    $this->store = new ScopeStore();
-    $this->visitor = new ConstClassVisitor($this->store);
-});
+beforeEach(
+    function (): void {
+        $this->parser = new ParserFactory()->createForHostVersion();
+        $this->printer = new StandardPrinter();
+        $this->store = new ScopeStore();
+        $this->visitor = new ConstClassVisitor($this->store);
+    }
+);
 
-it('can replace class constant with scalar value inside class', function () {
-    $code = '<?php
+it(
+    'can replace class constant with scalar value inside class', function (): void {
+        $code = '<?php
 class TestClass {
     const MY_CONST = 42;
 
@@ -27,21 +30,24 @@ class TestClass {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('return 42');
-    expect($result)->not->toContain('const MY_CONST');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can replace class constant with string value', function () {
-    $code = '<?php
+        expect($result)->toContain('return 42');
+        expect($result)->not->toContain('const MY_CONST');
+    }
+);
+
+it(
+    'can replace class constant with string value', function (): void {
+        $code = '<?php
 class Auth {
     const HASH = "test_hash";
 
@@ -50,44 +56,50 @@ class Auth {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Accept both single and double quotes (php-parser may use either)
-    expect($result)->toMatch('/["\']test_hash["\']/');
-    expect($result)->not->toContain('const HASH');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can replace class constant accessed from outside class', function () {
-    $code = '<?php
+        // Accept both single and double quotes (php-parser may use either)
+        expect($result)->toMatch('/["\']test_hash["\']/');
+        expect($result)->not->toContain('const HASH');
+    }
+);
+
+it(
+    'can replace class constant accessed from outside class', function (): void {
+        $code = '<?php
 class Config {
     const API_KEY = "secret_key";
 }
 
 $key = Config::API_KEY;';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Accept both single and double quotes (php-parser may use either)
-    expect($result)->toMatch('/\$key = ["\']secret_key["\']/');
+        $result = $this->printer->prettyPrint($ast);
 
-});
+        // Accept both single and double quotes (php-parser may use either)
+        expect($result)->toMatch('/\$key = ["\']secret_key["\']/');
 
-it('can handle multiple constants in one class', function () {
-    $code = '<?php
+    }
+);
+
+it(
+    'can handle multiple constants in one class', function (): void {
+        $code = '<?php
 class Constants {
     const FOO = 1;
     const BAR = 2;
@@ -98,41 +110,47 @@ class Constants {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('return 1 + 2 + 3');
-    expect($result)->not->toContain('const FOO');
-    expect($result)->not->toContain('const BAR');
-    expect($result)->not->toContain('const BAZ');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('stores constant in global scope', function () {
-    $code = '<?php
+        expect($result)->toContain('return 1 + 2 + 3');
+        expect($result)->not->toContain('const FOO');
+        expect($result)->not->toContain('const BAR');
+        expect($result)->not->toContain('const BAZ');
+    }
+);
+
+it(
+    'stores constant in global scope', function (): void {
+        $code = '<?php
 class TestClass {
     const MY_CONST = 100;
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $constant = $this->store->getConstFromGlobal('MY_CONST');
+        $ast = $traverser->traverse($ast);
 
-    expect($constant)->not->toBeNull()
-        ->and($constant->value)->toBe(100);
-});
+        $constant = $this->store->getConstFromGlobal('MY_CONST');
 
-it('can handle boolean constants', function () {
-    $code = '<?php
+        expect($constant)->not->toBeNull()
+            ->and($constant->value)->toBe(100);
+    }
+);
+
+it(
+    'can handle boolean constants', function (): void {
+        $code = '<?php
 class Flags {
     const DEBUG = true;
     const PRODUCTION = false;
@@ -142,20 +160,23 @@ class Flags {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('return true');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can handle float constants', function () {
-    $code = '<?php
+        expect($result)->toContain('return true');
+    }
+);
+
+it(
+    'can handle float constants', function (): void {
+        $code = '<?php
 class Math {
     const PI = 3.14159;
 
@@ -164,15 +185,17 @@ class Math {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('3.14159');
-    expect($result)->not->toContain('const PI');
-});
+        $result = $this->printer->prettyPrint($ast);
+
+        expect($result)->toContain('3.14159');
+        expect($result)->not->toContain('const PI');
+    }
+);

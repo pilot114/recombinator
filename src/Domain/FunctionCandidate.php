@@ -15,15 +15,36 @@ use PhpParser\Node;
 class FunctionCandidate
 {
     /**
-     * @param Node[] $nodes Узлы AST, составляющие блок
-     * @param SideEffectType $effectType Тип побочного эффекта блока
-     * @param int $size Размер блока (количество строк/узлов)
-     * @param int $complexity Когнитивная сложность блока
-     * @param array<string> $usedVariables Используемые переменные (параметры функции)
-     * @param array<string> $definedVariables Определенные переменные (внутренние)
-     * @param ?string $returnVariable Переменная-результат (если есть)
-     * @param int $startLine Начальная строка в исходном коде
-     * @param int $endLine Конечная строка в исходном коде
+     * @param Node[]         $nodes            Узлы
+     *                                         AST,
+     *                                         составляющие
+     *                                         блок
+     * @param SideEffectType $effectType       Тип побочного
+     *                                         эффекта блока
+     * @param int            $size             Размер
+     *                                         блока
+     *                                         (количество
+     *                                         строк/узлов)
+     * @param int            $complexity       Когнитивная
+     *                                         сложность
+     *                                         блока
+     * @param array<string>  $usedVariables    Используемые
+     *                                         переменные
+     *                                         (параметры
+     *                                         функции)
+     * @param array<string>  $definedVariables Определенные
+     *                                         переменные
+     *                                         (внутренние)
+     * @param ?string        $returnVariable   Переменная-результат
+     *                                         (если есть)
+     * @param int            $startLine        Начальная
+     *                                         строка в
+     *                                         исходном
+     *                                         коде
+     * @param int            $endLine          Конечная
+     *                                         строка в
+     *                                         исходном
+     *                                         коде
      */
     public function __construct(
         public readonly array $nodes,
@@ -64,7 +85,11 @@ class FunctionCandidate
      */
     public function isViable(): bool
     {
-        return $this->matchesPureBlockRule() || $this->matchesEffectBlockRule();
+        if ($this->matchesPureBlockRule()) {
+            return true;
+        }
+
+        return $this->matchesEffectBlockRule();
     }
 
     /**
@@ -122,9 +147,11 @@ class FunctionCandidate
      */
     public function getFunctionParameters(): array
     {
-        return array_values(array_diff(
-            $this->usedVariables,
-            $this->definedVariables
-        ));
+        return array_values(
+            array_diff(
+                $this->usedVariables,
+                $this->definedVariables
+            )
+        );
     }
 }

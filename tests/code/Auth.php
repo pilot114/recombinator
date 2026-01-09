@@ -1,6 +1,6 @@
 <?php
 
-include 'functions.php';
+require __DIR__ . '/functions.php';
 
 /**
  * dump Auth
@@ -11,13 +11,15 @@ include 'functions.php';
 class Auth
 {
     const HASH = 'test_test';
+
     public $test = 'empty';
 
-    public function login($username, $password)
+    public function login(string $username, string $password): string
     {
-        if ($username . '_' . $password == self::HASH) {
+        if ($username . '_' . $password === self::HASH) {
             return 'success';
         }
+
         return 'fail';
     }
 }

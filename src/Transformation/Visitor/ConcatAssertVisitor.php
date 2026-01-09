@@ -14,6 +14,7 @@ use PhpParser\Node;
 class ConcatAssertVisitor extends BaseVisitor
 {
     protected $echoStack = [];
+
     protected $singleAsserts = [];
 
     public function enterNode(Node $node)
@@ -24,12 +25,15 @@ class ConcatAssertVisitor extends BaseVisitor
                 $node->setAttribute('remove', true);
             } else {
                 $commonEcho = array_shift($this->echoStack);
-                foreach ($this->echoStack as $i => $echo) {
+                foreach ($this->echoStack as $echo) {
                     $commonEcho = new Node\Expr\BinaryOp\Concat($commonEcho, $echo);
                 }
+
                 $this->echoStack = [];
                 return new Node\Stmt\Echo_([$commonEcho]);
             }
         }
+
+        return null;
     }
 }

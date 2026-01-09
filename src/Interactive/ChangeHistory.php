@@ -11,7 +11,11 @@ namespace Recombinator\Interactive;
  */
 class ChangeHistory
 {
-    /** @var array<Change> */
+    /**
+     * 
+     *
+     * @var array<Change> 
+     */
     private array $changes = [];
 
     private int $currentPosition = -1;

@@ -10,214 +10,264 @@ use Recombinator\Interactive\Change;
 use Recombinator\Interactive\InteractiveEditResult;
 use Recombinator\Interactive\ChangeHistory;
 
-beforeEach(function () {
-    $parser = (new ParserFactory())->createForHostVersion();
-    $code = '<?php $x = 123; $tmp = "test";';
-    $ast = $parser->parse($code);
+beforeEach(
+    function (): void {
+        $parser = new ParserFactory()->createForHostVersion();
+        $code = '<?php $x = 123; $tmp = "test";';
+        $ast = $parser->parse($code);
 
-    $analyzer = new InteractiveEditAnalyzer();
-    $result = $analyzer->analyze($ast);
+        $analyzer = new InteractiveEditAnalyzer();
+        $result = $analyzer->analyze($ast);
 
-    $this->session = new EditSession($ast, $result);
-});
+        $this->session = new EditSession($ast, $result);
+    }
+);
 
-describe('Session Initialization', function () {
-    it('initializes with AST and analysis result', function () {
-        expect($this->session->getCurrentAst())->toBeArray()
-            ->and($this->session->getAnalysisResult())->toBeInstanceOf(InteractiveEditResult::class)
-            ->and($this->session->getHistory())->toBeInstanceOf(ChangeHistory::class);
-    });
-
-    it('loads default preferences', function () {
-        $prefs = $this->session->getAllPreferences();
-
-        expect($prefs)->toBeArray()
-            ->and($prefs)->toHaveKey('auto_apply_safe_changes')
-            ->and($prefs)->toHaveKey('show_suggestions')
-            ->and($prefs)->toHaveKey('prioritize_critical');
-    });
-
-    it('tracks session start time', function () {
-        $duration = $this->session->getSessionDuration();
-
-        expect($duration)->toBeGreaterThanOrEqual(0)
-            ->and($duration)->toBeLessThan(5); // Should be less than 5 seconds
-    });
-});
-
-describe('Applying Changes', function () {
-    it('applies a change', function () {
-        $node = new Variable('x');
-        $change = new Change(
-            Change::TYPE_RENAME,
-            'Renamed variable',
-            $node,
-            ['old' => 'x'],
-            ['new' => 'username']
+describe(
+    'Session Initialization', function (): void {
+        it(
+            'initializes with AST and analysis result', function (): void {
+                expect($this->session->getCurrentAst())->toBeArray()
+                ->and($this->session->getAnalysisResult())->toBeInstanceOf(InteractiveEditResult::class)
+                ->and($this->session->getHistory())->toBeInstanceOf(ChangeHistory::class);
+            }
         );
 
-        $result = $this->session->applyChange($change);
+        it(
+            'loads default preferences', function (): void {
+                $prefs = $this->session->getAllPreferences();
 
-        expect($result)->toBeTrue()
-            ->and($this->session->getTotalAppliedChanges())->toBe(1);
-    });
+                expect($prefs)->toBeArray()
+                    ->and($prefs)->toHaveKey('auto_apply_safe_changes')
+                    ->and($prefs)->toHaveKey('show_suggestions')
+                    ->and($prefs)->toHaveKey('prioritize_critical');
+            }
+        );
 
-    it('updates statistics when applying changes', function () {
-        $node = new Variable('x');
+        it(
+            'tracks session start time', function (): void {
+                $duration = $this->session->getSessionDuration();
 
-        $change1 = new Change(Change::TYPE_RENAME, 'Change 1', $node, [], []);
-        $change2 = new Change(Change::TYPE_RENAME, 'Change 2', $node, [], []);
-        $change3 = new Change(Change::TYPE_EXTRACT, 'Change 3', $node, [], []);
+                expect($duration)->toBeGreaterThanOrEqual(0)
+                    ->and($duration)->toBeLessThan(5); // Should be less than 5 seconds
+            }
+        );
+    }
+);
 
-        $this->session->applyChange($change1);
-        $this->session->applyChange($change2);
-        $this->session->applyChange($change3);
+describe(
+    'Applying Changes', function (): void {
+        it(
+            'applies a change', function (): void {
+                $node = new Variable('x');
+                $change = new Change(
+                    Change::TYPE_RENAME,
+                    'Renamed variable',
+                    $node,
+                    ['old' => 'x'],
+                    ['new' => 'username']
+                );
 
-        $stats = $this->session->getAppliedChangesStats();
+                $result = $this->session->applyChange($change);
 
-        expect($stats[Change::TYPE_RENAME])->toBe(2)
-            ->and($stats[Change::TYPE_EXTRACT])->toBe(1)
-            ->and($this->session->getTotalAppliedChanges())->toBe(3);
-    });
-});
+                expect($result)->toBeTrue()
+                    ->and($this->session->getTotalAppliedChanges())->toBe(1);
+            }
+        );
 
-describe('Undo/Redo', function () {
-    beforeEach(function () {
-        $node = new Variable('x');
-        for ($i = 1; $i <= 3; $i++) {
-            $change = new Change(
-                Change::TYPE_RENAME,
-                "Change {$i}",
-                $node,
-                [],
-                []
-            );
-            $this->session->applyChange($change);
-        }
-    });
+        it(
+            'updates statistics when applying changes', function (): void {
+                $node = new Variable('x');
 
-    it('can undo changes', function () {
-        expect($this->session->getTotalAppliedChanges())->toBe(3);
+                $change1 = new Change(Change::TYPE_RENAME, 'Change 1', $node, [], []);
+                $change2 = new Change(Change::TYPE_RENAME, 'Change 2', $node, [], []);
+                $change3 = new Change(Change::TYPE_EXTRACT, 'Change 3', $node, [], []);
 
-        $result = $this->session->undo();
+                $this->session->applyChange($change1);
+                $this->session->applyChange($change2);
+                $this->session->applyChange($change3);
 
-        expect($result)->toBeTrue()
-            ->and($this->session->getTotalAppliedChanges())->toBe(2);
-    });
+                $stats = $this->session->getAppliedChangesStats();
 
-    it('can redo changes', function () {
-        $this->session->undo();
+                expect($stats[Change::TYPE_RENAME])->toBe(2)
+                    ->and($stats[Change::TYPE_EXTRACT])->toBe(1)
+                    ->and($this->session->getTotalAppliedChanges())->toBe(3);
+            }
+        );
+    }
+);
 
-        expect($this->session->getTotalAppliedChanges())->toBe(2);
+describe(
+    'Undo/Redo', function (): void {
+        beforeEach(
+            function (): void {
+                $node = new Variable('x');
+                for ($i = 1; $i <= 3; $i++) {
+                    $change = new Change(
+                        Change::TYPE_RENAME,
+                        'Change ' . $i,
+                        $node,
+                        [],
+                        []
+                    );
+                    $this->session->applyChange($change);
+                }
+            }
+        );
 
-        $result = $this->session->redo();
+        it(
+            'can undo changes', function (): void {
+                expect($this->session->getTotalAppliedChanges())->toBe(3);
 
-        expect($result)->toBeTrue()
-            ->and($this->session->getTotalAppliedChanges())->toBe(3);
-    });
+                $result = $this->session->undo();
 
-    it('returns false when nothing to undo', function () {
-        $this->session->undo();
-        $this->session->undo();
-        $this->session->undo();
+                expect($result)->toBeTrue()
+                    ->and($this->session->getTotalAppliedChanges())->toBe(2);
+            }
+        );
 
-        $result = $this->session->undo();
+        it(
+            'can redo changes', function (): void {
+                $this->session->undo();
 
-        expect($result)->toBeFalse();
-    });
+                expect($this->session->getTotalAppliedChanges())->toBe(2);
 
-    it('returns false when nothing to redo', function () {
-        $result = $this->session->redo();
+                $result = $this->session->redo();
 
-        expect($result)->toBeFalse();
-    });
-});
+                expect($result)->toBeTrue()
+                    ->and($this->session->getTotalAppliedChanges())->toBe(3);
+            }
+        );
 
-describe('Preferences Management', function () {
-    it('can set and get preferences', function () {
-        $this->session->setPreference('test_key', 'test_value');
+        it(
+            'returns false when nothing to undo', function (): void {
+                $this->session->undo();
+                $this->session->undo();
+                $this->session->undo();
 
-        expect($this->session->getPreference('test_key'))->toBe('test_value');
-    });
+                $result = $this->session->undo();
 
-    it('returns default value for missing preference', function () {
-        $value = $this->session->getPreference('non_existent', 'default');
+                expect($result)->toBeFalse();
+            }
+        );
 
-        expect($value)->toBe('default');
-    });
+        it(
+            'returns false when nothing to redo', function (): void {
+                $result = $this->session->redo();
 
-    it('returns all preferences', function () {
-        $this->session->setPreference('custom', 'value');
+                expect($result)->toBeFalse();
+            }
+        );
+    }
+);
 
-        $all = $this->session->getAllPreferences();
+describe(
+    'Preferences Management', function (): void {
+        it(
+            'can set and get preferences', function (): void {
+                $this->session->setPreference('test_key', 'test_value');
 
-        expect($all)->toBeArray()
-            ->and($all)->toHaveKey('custom')
-            ->and($all['custom'])->toBe('value');
-    });
+                expect($this->session->getPreference('test_key'))->toBe('test_value');
+            }
+        );
 
-    it('can save preferences to file', function () {
-        $tempFile = tempnam(sys_get_temp_dir(), 'prefs_');
+        it(
+            'returns default value for missing preference', function (): void {
+                $value = $this->session->getPreference('non_existent', 'default');
 
-        $this->session->setPreference('test', 'value');
-        $result = $this->session->savePreferences($tempFile);
+                expect($value)->toBe('default');
+            }
+        );
 
-        expect($result)->toBeTrue()
-            ->and(file_exists($tempFile))->toBeTrue();
+        it(
+            'returns all preferences', function (): void {
+                $this->session->setPreference('custom', 'value');
 
-        // Cleanup
-        unlink($tempFile);
-    });
+                $all = $this->session->getAllPreferences();
 
-    it('can load preferences from file', function () {
-        $tempFile = tempnam(sys_get_temp_dir(), 'prefs_');
-        file_put_contents($tempFile, json_encode(['loaded_key' => 'loaded_value']));
+                expect($all)->toBeArray()
+                    ->and($all)->toHaveKey('custom')
+                    ->and($all['custom'])->toBe('value');
+            }
+        );
 
-        $result = $this->session->loadPreferences($tempFile);
+        it(
+            'can save preferences to file', function (): void {
+                $tempFile = tempnam(sys_get_temp_dir(), 'prefs_');
 
-        expect($result)->toBeTrue()
-            ->and($this->session->getPreference('loaded_key'))->toBe('loaded_value');
+                $this->session->setPreference('test', 'value');
+                $result = $this->session->savePreferences($tempFile);
 
-        // Cleanup
-        unlink($tempFile);
-    });
+                expect($result)->toBeTrue()
+                    ->and(file_exists($tempFile))->toBeTrue();
 
-    it('returns false when loading non-existent file', function () {
-        $result = $this->session->loadPreferences('/non/existent/file.json');
+                // Cleanup
+                unlink($tempFile);
+            }
+        );
 
-        expect($result)->toBeFalse();
-    });
-});
+        it(
+            'can load preferences from file', function (): void {
+                $tempFile = tempnam(sys_get_temp_dir(), 'prefs_');
+                file_put_contents($tempFile, json_encode(['loaded_key' => 'loaded_value']));
 
-describe('Session Statistics', function () {
-    it('tracks session duration', function () {
-        sleep(1);
+                $result = $this->session->loadPreferences($tempFile);
 
-        $duration = $this->session->getSessionDuration();
+                expect($result)->toBeTrue()
+                    ->and($this->session->getPreference('loaded_key'))->toBe('loaded_value');
 
-        expect($duration)->toBeGreaterThanOrEqual(1);
-    });
+                // Cleanup
+                unlink($tempFile);
+            }
+        );
 
-    it('generates session summary', function () {
-        $node = new Variable('x');
-        $change = new Change(Change::TYPE_RENAME, 'Test', $node, [], []);
-        $this->session->applyChange($change);
+        it(
+            'returns false when loading non-existent file', function (): void {
+                $result = $this->session->loadPreferences('/non/existent/file.json');
 
-        $summary = $this->session->getSessionSummary();
+                expect($result)->toBeFalse();
+            }
+        );
+    }
+);
 
-        expect($summary)->toBeString()
-            ->and($summary)->toContain('Session Duration')
-            ->and($summary)->toContain('Applied Changes');
-    });
+describe(
+    'Session Statistics', function (): void {
+        it(
+            'tracks session duration', function (): void {
+                sleep(1);
 
-    it('includes change statistics in summary', function () {
-        $node = new Variable('x');
-        $change = new Change(Change::TYPE_RENAME, 'Test', $node, [], []);
-        $this->session->applyChange($change);
+                $duration = $this->session->getSessionDuration();
 
-        $summary = $this->session->getSessionSummary();
+                expect($duration)->toBeGreaterThanOrEqual(1);
+            }
+        );
 
-        expect($summary)->toContain('Changes by type')
-            ->and($summary)->toContain(Change::TYPE_RENAME);
-    });
-});
+        it(
+            'generates session summary', function (): void {
+                $node = new Variable('x');
+                $change = new Change(Change::TYPE_RENAME, 'Test', $node, [], []);
+                $this->session->applyChange($change);
+
+                $summary = $this->session->getSessionSummary();
+
+                expect($summary)->toBeString()
+                    ->and($summary)->toContain('Session Duration')
+                    ->and($summary)->toContain('Applied Changes');
+            }
+        );
+
+        it(
+            'includes change statistics in summary', function (): void {
+                $node = new Variable('x');
+                $change = new Change(Change::TYPE_RENAME, 'Test', $node, [], []);
+                $this->session->applyChange($change);
+
+                $summary = $this->session->getSessionSummary();
+
+                expect($summary)->toContain('Changes by type')
+                    ->and($summary)->toContain(Change::TYPE_RENAME);
+            }
+        );
+    }
+);

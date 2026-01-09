@@ -8,14 +8,17 @@ use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Transformation\Visitor\TernarReturnVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 
-beforeEach(function () {
-    $this->parser = (new ParserFactory())->createForHostVersion();
-    $this->printer = new StandardPrinter();
-    $this->visitor = new TernarReturnVisitor();
-});
+beforeEach(
+    function (): void {
+        $this->parser = new ParserFactory()->createForHostVersion();
+        $this->printer = new StandardPrinter();
+        $this->visitor = new TernarReturnVisitor();
+    }
+);
 
-it('can convert if-return pattern to ternary operator', function () {
-    $code = '<?php
+it(
+    'can convert if-return pattern to ternary operator', function (): void {
+        $code = '<?php
 class Test {
     public function check($x) {
         if ($x > 0) {
@@ -25,21 +28,24 @@ class Test {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Accept both single and double quotes (php-parser may use either)
-    expect($result)->toMatch('/return \$x > 0 \? ["\']positive["\'] : ["\']negative["\']/');
-    expect($result)->not->toContain('if ($x > 0)');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can convert if-return with boolean condition', function () {
-    $code = '<?php
+        // Accept both single and double quotes (php-parser may use either)
+        expect($result)->toMatch('/return \$x > 0 \? ["\']positive["\'] : ["\']negative["\']/');
+        expect($result)->not->toContain('if ($x > 0)');
+    }
+);
+
+it(
+    'can convert if-return with boolean condition', function (): void {
+        $code = '<?php
 class Test {
     public function isValid($flag) {
         if ($flag) {
@@ -49,19 +55,22 @@ class Test {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('return $flag ? true : false');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can convert if-return with numeric values', function () {
-    $code = '<?php
+        expect($result)->toContain('return $flag ? true : false');
+    }
+);
+
+it(
+    'can convert if-return with numeric values', function (): void {
+        $code = '<?php
 class Math {
     public function sign($x) {
         if ($x > 0) {
@@ -71,19 +80,22 @@ class Math {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('return $x > 0 ? 1 : -1');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can convert if-return with expressions', function () {
-    $code = '<?php
+        expect($result)->toContain('return $x > 0 ? 1 : -1');
+    }
+);
+
+it(
+    'can convert if-return with expressions', function (): void {
+        $code = '<?php
 class Calculator {
     public function calculate($x, $y) {
         if ($x > $y) {
@@ -93,39 +105,45 @@ class Calculator {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('return $x > $y ? $x + $y : $x - $y');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('should not convert method without if-return pattern', function () {
-    $code = '<?php
+        expect($result)->toContain('return $x > $y ? $x + $y : $x - $y');
+    }
+);
+
+it(
+    'should not convert method without if-return pattern', function (): void {
+        $code = '<?php
 class Test {
     public function normal($x) {
         return $x * 2;
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('return $x * 2');
-    expect($result)->not->toContain('?');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('should not convert if without return in body', function () {
-    $code = '<?php
+        expect($result)->toContain('return $x * 2');
+        expect($result)->not->toContain('?');
+    }
+);
+
+it(
+    'should not convert if without return in body', function (): void {
+        $code = '<?php
 class Test {
     public function test($x) {
         if ($x > 0) {
@@ -135,20 +153,23 @@ class Test {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('if ($x > 0)');
-    expect($result)->not->toContain('? $x * 2 :');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can handle complex conditions', function () {
-    $code = '<?php
+        expect($result)->toContain('if ($x > 0)');
+        expect($result)->not->toContain('? $x * 2 :');
+    }
+);
+
+it(
+    'can handle complex conditions', function (): void {
+        $code = '<?php
 class Test {
     public function check($x, $y) {
         if ($x > 0 && $y < 10) {
@@ -158,20 +179,23 @@ class Test {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Accept both single and double quotes (php-parser may use either)
-    expect($result)->toMatch('/return \$x > 0 && \$y < 10 \? ["\']valid["\'] : ["\']invalid["\']/');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can convert if-return with variable returns', function () {
-    $code = '<?php
+        // Accept both single and double quotes (php-parser may use either)
+        expect($result)->toMatch('/return \$x > 0 && \$y < 10 \? ["\']valid["\'] : ["\']invalid["\']/');
+    }
+);
+
+it(
+    'can convert if-return with variable returns', function (): void {
+        $code = '<?php
 class Test {
     public function pick($choice, $a, $b) {
         if ($choice) {
@@ -181,13 +205,15 @@ class Test {
     }
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('return $choice ? $a : $b');
-});
+        $result = $this->printer->prettyPrint($ast);
+
+        expect($result)->toContain('return $choice ? $a : $b');
+    }
+);

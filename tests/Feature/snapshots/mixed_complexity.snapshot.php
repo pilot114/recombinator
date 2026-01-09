@@ -20,7 +20,7 @@ class Calculator
     const PI = 3.14159;
     const E = 2.71828;
     const PRECISION = 2;
-    public function circleArea($radius)
+    public function circleArea($radius): string
     {
         $area = self::PI * $radius * $radius;
         if ($area > 100) {

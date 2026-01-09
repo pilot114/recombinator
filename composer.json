@@ -9,8 +9,24 @@
         "nikic/php-parser": "^5.7"
     },
     "require-dev": {
-        "sebastian/diff": "^6.0",
-        "pestphp/pest": "^3.8"
+        "sebastian/diff": "^7.0",
+        "pestphp/pest": "^4.0",
+        "phpstan/phpstan": "^2.1",
+        "rector/rector": "^2.1",
+        "squizlabs/php_codesniffer": "^3.13"
+    },
+    "scripts": {
+      "test": "pest --compact",
+      "coverage": "XDEBUG_MODE=coverage pest --compact --coverage",
+      "check": [
+        "phpstan analyse --memory-limit=1G",
+        "rector process --dry-run",
+        "phpcs src/ tests/"
+      ],
+      "fix": [
+        "rector process",
+        "phpcbf src/ tests/"
+      ]
     },
     "authors": [
         {

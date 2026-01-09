@@ -12,7 +12,7 @@ use PhpParser\Node\Stmt\Expression;
  */
 class BinaryAndIssetVisitor extends BaseVisitor
 {
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): void
     {
         /**
          * if (isset(var)) {
@@ -21,18 +21,17 @@ class BinaryAndIssetVisitor extends BaseVisitor
          * =>
          * var2 = var ?? var2;
          */
-        if ($node instanceof Node\Stmt\If_) {
-            if ($node->cond instanceof Node\Expr\Isset_ && count($node->stmts) === 1) {
-                $expr = $node->stmts[0]->expr;
-                if ($expr instanceof Assign) {
-                    $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
-                    $newAssign = new Assign($expr->var, $newExp);
-                    $node->setAttribute('replace', new Expression($newAssign));
-                }
+        if ($node instanceof Node\Stmt\If_ && ($node->cond instanceof Node\Expr\Isset_ && count($node->stmts) === 1)) {
+            $expr = $node->stmts[0]->expr;
+            if ($expr instanceof Assign) {
+                $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
+                $newAssign = new Assign($expr->var, $newExp);
+                $node->setAttribute('replace', new Expression($newAssign));
             }
         }
     }
 
+    #[\Override]
     public function leaveNode(Node $node)
     {
         /**
@@ -43,6 +42,7 @@ class BinaryAndIssetVisitor extends BaseVisitor
             if ($node->right instanceof Node\Expr\ConstFetch) {
                 $node->right = $this->booleanBinaryTyping($node, $node->right);
             }
+
             if ($node->left instanceof Node\Expr\ConstFetch) {
                 $node->left = $this->booleanBinaryTyping($node, $node->left);
             }
@@ -50,18 +50,18 @@ class BinaryAndIssetVisitor extends BaseVisitor
             if ($node->left instanceof Node\Scalar && $node->right instanceof Node\Scalar) {
                 if ($node instanceof Node\Expr\BinaryOp\Plus) {
                     $calc = $node->left->value + $node->right->value;
-                } else if ($node instanceof Node\Expr\BinaryOp\Minus) {
+                } elseif ($node instanceof Node\Expr\BinaryOp\Minus) {
                     $calc = $node->left->value - $node->right->value;
-                } else if ($node instanceof Node\Expr\BinaryOp\Mul) {
+                } elseif ($node instanceof Node\Expr\BinaryOp\Mul) {
                     $calc = $node->left->value * $node->right->value;
-                } else if ($node instanceof Node\Expr\BinaryOp\Div) {
+                } elseif ($node instanceof Node\Expr\BinaryOp\Div) {
                     $calc = $node->left->value / $node->right->value;
-                } else if ($node instanceof Node\Expr\BinaryOp\Concat) {
-                    $newNode = new Node\Scalar\String_( $node->left->value . $node->right->value );
-                    return $newNode;
+                } elseif ($node instanceof Node\Expr\BinaryOp\Concat) {
+                    return new Node\Scalar\String_($node->left->value . $node->right->value);
                 } else {
-                    throw new \Exception('New BinaryOp! : ' . get_class($node));
+                    throw new \Exception('New BinaryOp! : ' . $node::class);
                 }
+
                 return is_int($calc) ? new Node\Scalar\LNumber($calc) : new Node\Scalar\DNumber($calc);
             }
         }
@@ -73,23 +73,27 @@ class BinaryAndIssetVisitor extends BaseVisitor
     protected function booleanBinaryTyping($expression, $bool)
     {
         // In php-parser 5.x, use toString() method
-        $name = strtolower($bool->name->toString());
+        $name = strtolower((string) $bool->name->toString());
         if ($expression instanceof Node\Expr\BinaryOp\Concat) {
             if ($name === 'true') {
                 return new Node\Scalar\String_('1');
             }
+
             if ($name === 'false') {
                 return new Node\Scalar\String_('');
             }
-        // math ?
+
+            // math ?
         } else {
             if ($name === 'true') {
                 return new Node\Scalar\LNumber(1);
             }
+
             if ($name === 'false') {
                 return new Node\Scalar\LNumber(0);
             }
         }
+
         // Return original value if no transformation is needed
         return $bool;
     }

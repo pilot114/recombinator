@@ -21,16 +21,21 @@ class StructureImprovement
      * Типы улучшений
      */
     public const TYPE_EXTRACT_FUNCTION = 'extract_function';
+
     public const TYPE_SIMPLIFY_CONDITION = 'simplify_condition';
+
     public const TYPE_REDUCE_NESTING = 'reduce_nesting';
+
     public const TYPE_SPLIT_LOGIC = 'split_logic';
+
     public const TYPE_INTRODUCE_VARIABLE = 'introduce_variable';
+
     public const TYPE_MERGE_OPERATIONS = 'merge_operations';
 
     public function __construct(
-        private string $type,
-        private string $description,
-        private Node $targetNode,
+        private readonly string $type,
+        private readonly string $description,
+        private readonly Node $targetNode,
         private array $metadata = []
     ) {
     }
@@ -90,7 +95,7 @@ class StructureImprovement
     public function format(): string
     {
         $line = $this->targetNode->getStartLine();
-        $location = $line !== null ? "Line {$line}" : "Unknown location";
+        $location = $line !== null ? 'Line ' . $line : "Unknown location";
 
         return sprintf(
             "[%s] %s\n  %s\n  Expected benefit: %s\n",

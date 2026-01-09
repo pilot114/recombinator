@@ -19,7 +19,8 @@ class PrettyDumper extends NodeDumper
     /**
      * @param Node|array<int, Node> $node
      */
-    public function dump($node, string $code = null): string
+    #[\Override]
+    public function dump($node, ?string $code = null): string
     {
         return $this->dumpRecursive($node);
     }
@@ -27,13 +28,14 @@ class PrettyDumper extends NodeDumper
     /**
      * @param Node|array<int, Node>|Comment|mixed $node
      */
+    #[\Override]
     protected function dumpRecursive($node, bool $isChild = false): string
     {
         if ($node instanceof Node) {
             // TODO: можно выводить кастомные аттрибуты
-//            $attrs = $node->getAttributes();
-//            unset($attrs['next'], $attrs['previous'], $attrs['parent']);
-//            var_dump($attrs);
+            //            $attrs = $node->getAttributes();
+            //            unset($attrs['next'], $attrs['previous'], $attrs['parent']);
+            //            var_dump($attrs);
 
             $r = $node->getType();
             $r = $this->yellow($r);
@@ -61,7 +63,8 @@ class PrettyDumper extends NodeDumper
                     } elseif ('type' === $key && $node instanceof Include_) {
                         $r .= $this->dumpIncludeType($value);
                     } elseif ('type' === $key
-                        && ($node instanceof Use_ || $node instanceof UseUse || $node instanceof GroupUse)) {
+                        && ($node instanceof Use_ || $node instanceof UseUse || $node instanceof GroupUse)
+                    ) {
                         $r .= $this->dumpUseType($value);
                     } else {
                         $r .= $value;
@@ -74,7 +77,7 @@ class PrettyDumper extends NodeDumper
         } elseif (is_array($node)) {
             $r = '';
 
-            foreach ($node as $key => $value) {
+            foreach ($node as $value) {
                 $r .= "\n";
 
                 if (null === $value) {
@@ -89,6 +92,7 @@ class PrettyDumper extends NodeDumper
                     if ($isChild) {
                         $r .= '    ';
                     }
+
                     $r .= $this->dumpRecursive($value, true);
                 }
             }

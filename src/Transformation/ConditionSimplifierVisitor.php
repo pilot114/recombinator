@@ -10,13 +10,6 @@ use PhpParser\NodeVisitorAbstract;
  */
 class ConditionSimplifierVisitor extends NodeVisitorAbstract
 {
-    private int $maxNestingLevel;
-
-    public function __construct(int $maxNestingLevel)
-    {
-        $this->maxNestingLevel = $maxNestingLevel;
-    }
-
     public function leaveNode(Node $node)
     {
         // Упрощаем вложенные if с одинаковыми условиями
@@ -37,7 +30,7 @@ class ConditionSimplifierVisitor extends NodeVisitorAbstract
             $firstStmt = $if->stmts[0];
 
             // Если это тоже if без else
-            if ($firstStmt instanceof Node\Stmt\If_ && $firstStmt->else === null) {
+            if ($firstStmt instanceof Node\Stmt\If_ && !$firstStmt->else instanceof \PhpParser\Node\Stmt\Else_) {
                 // Объединяем условия через &&
                 $newCondition = new Node\Expr\BinaryOp\BooleanAnd(
                     $if->cond,

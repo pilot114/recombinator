@@ -14,14 +14,17 @@ use Recombinator\Transformation\Visitor\TernarReturnVisitor;
 use Recombinator\Transformation\Visitor\RemoveVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 
-beforeEach(function () {
-    $this->parser = (new ParserFactory())->createForHostVersion();
-    $this->printer = new StandardPrinter();
-    $this->store = new ScopeStore();
-});
+beforeEach(
+    function (): void {
+        $this->parser = new ParserFactory()->createForHostVersion();
+        $this->printer = new StandardPrinter();
+        $this->store = new ScopeStore();
+    }
+);
 
-it('can unfold Auth class example from roadmap', function () {
-    $code = '<?php
+it(
+    'can unfold Auth class example from roadmap', function (): void {
+        $code = '<?php
 class Auth {
     const HASH = "test_test";
 
@@ -33,30 +36,33 @@ class Auth {
     }
 }';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new ConstClassVisitor($this->store));
-    $traverser->addVisitor(new TernarReturnVisitor());
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new ConstClassVisitor($this->store));
+        $traverser->addVisitor(new TernarReturnVisitor());
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Constant should be replaced
-    expect($result)->toContain('"test_test"');
-    expect($result)->not->toContain('const HASH');
+        $result = $this->printer->prettyPrint($ast);
 
-    // If-return should be converted to ternary
-    expect($result)->toContain('?');
-    // Accept both single and double quotes
-    expect($result)->toMatch('/["\']success["\']/');
-    expect($result)->toMatch('/["\']fail["\']/');
-});
+        // Constant should be replaced
+        expect($result)->toContain('"test_test"');
+        expect($result)->not->toContain('const HASH');
 
-it('can optimize binary operations and isset pattern', function () {
-    $code = '<?php
+        // If-return should be converted to ternary
+        expect($result)->toContain('?');
+        // Accept both single and double quotes
+        expect($result)->toMatch('/["\']success["\']/');
+        expect($result)->toMatch('/["\']fail["\']/');
+    }
+);
+
+it(
+    'can optimize binary operations and isset pattern', function (): void {
+        $code = '<?php
 $default = "default_value";
 if (isset($_GET["value"])) {
     $default = $_GET["value"];
@@ -64,50 +70,56 @@ if (isset($_GET["value"])) {
 
 $result = 2 + 3 + 5;';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Binary operations should be calculated
-    expect($result)->toContain('$result = 10');
+        $result = $this->printer->prettyPrint($ast);
 
-    // isset pattern should be converted to coalesce
-    expect($result)->toContain('??');
-});
+        // Binary operations should be calculated
+        expect($result)->toContain('$result = 10');
 
-it('can replace variables with scalar values', function () {
-    $code = '<?php
+        // isset pattern should be converted to coalesce
+        expect($result)->toContain('??');
+    }
+);
+
+it(
+    'can replace variables with scalar values', function (): void {
+        $code = '<?php
 $pi = 3.14;
 $radius = 5;
 $area = $pi * $radius * $radius;
 echo $area;';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new VarToScalarVisitor($this->store));
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new VarToScalarVisitor($this->store));
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Variables should be replaced with their values
-    expect($result)->toContain('3.14');
-    expect($result)->toContain('5');
-    expect($result)->not->toContain('$pi = 3.14');
-    expect($result)->not->toContain('$radius = 5');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can combine multiple optimizations', function () {
-    $code = '<?php
+        // Variables should be replaced with their values
+        expect($result)->toContain('3.14');
+        expect($result)->toContain('5');
+        expect($result)->not->toContain('$pi = 3.14');
+        expect($result)->not->toContain('$radius = 5');
+    }
+);
+
+it(
+    'can combine multiple optimizations', function (): void {
+        $code = '<?php
 class Config {
     const API_VERSION = 2;
     const API_BASE = 1;
@@ -116,29 +128,32 @@ class Config {
 $version = Config::API_VERSION + Config::API_BASE;
 echo "API v" . $version;';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new ConstClassVisitor($this->store));
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $traverser->addVisitor(new VarToScalarVisitor($this->store));
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new ConstClassVisitor($this->store));
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
+        $traverser->addVisitor(new VarToScalarVisitor($this->store));
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Constants replaced and added
-    expect($result)->toContain('$version = 3');
+        $result = $this->printer->prettyPrint($ast);
 
-    // String concatenation with scalar (accept both quote styles)
-    expect($result)->toMatch('/["\']API v["\']/');
+        // Constants replaced and added
+        expect($result)->toContain('$version = 3');
 
-});
+        // String concatenation with scalar (accept both quote styles)
+        expect($result)->toMatch('/["\']API v["\']/');
 
-it('can optimize complex isset patterns', function () {
-    $code = '<?php
+    }
+);
+
+it(
+    'can optimize complex isset patterns', function (): void {
+        $code = '<?php
 $username = "default_username";
 if (isset($_GET["username"])) {
     $username = $_GET["username"];
@@ -149,23 +164,26 @@ if (isset($_GET["password"])) {
     $password = $_GET["password"];
 }';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Both isset patterns should be converted (accept both quote styles)
-    expect($result)->toMatch('/\$username = \$_GET\[["\']username["\']\] \?\? \$username/');
-    expect($result)->toMatch('/\$password = \$_GET\[["\']password["\']\] \?\? \$password/');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can optimize mathematical expressions', function () {
-    $code = '<?php
+        // Both isset patterns should be converted (accept both quote styles)
+        expect($result)->toMatch('/\$username = \$_GET\[["\']username["\']\] \?\? \$username/');
+        expect($result)->toMatch('/\$password = \$_GET\[["\']password["\']\] \?\? \$password/');
+    }
+);
+
+it(
+    'can optimize mathematical expressions', function (): void {
+        $code = '<?php
 $a = 10;
 $b = 20;
 $c = 30;
@@ -174,64 +192,72 @@ $sum = $a + $b + $c;
 $product = $a * $b;
 $division = $b / $a;';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new VarToScalarVisitor($this->store));
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new VarToScalarVisitor($this->store));
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // All mathematical operations should be calculated
-    expect($result)->toContain('$sum = 60');
-    expect($result)->toContain('$product = 200');
-    expect($result)->toContain('$division = 2');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can optimize string concatenation chain', function () {
-    $code = '<?php
+        // All mathematical operations should be calculated
+        expect($result)->toContain('$sum = 60');
+        expect($result)->toContain('$product = 200');
+        expect($result)->toContain('$division = 2');
+    }
+);
+
+it(
+    'can optimize string concatenation chain', function (): void {
+        $code = '<?php
 $hello = "Hello";
 $world = "World";
 $message = $hello . " " . $world . "!";';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new VarToScalarVisitor($this->store));
-    $traverser->addVisitor(new BinaryAndIssetVisitor());
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new VarToScalarVisitor($this->store));
+        $traverser->addVisitor(new BinaryAndIssetVisitor());
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // String concatenations should be simplified
-    expect($result)->toContain('Hello');
-    expect($result)->toContain('World');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('preserves side effects and does not optimize non-pure code', function () {
-    $code = '<?php
+        // String concatenations should be simplified
+        expect($result)->toContain('Hello');
+        expect($result)->toContain('World');
+    }
+);
+
+it(
+    'preserves side effects and does not optimize non-pure code', function (): void {
+        $code = '<?php
 $arr = [1, 2, 3];
 $x = array_sum($arr);
 echo $x;';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ParentConnectingVisitor());
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor(new VarToScalarVisitor($this->store));
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor(new VarToScalarVisitor($this->store));
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Array and function call should remain
-    expect($result)->toContain('$arr = [1, 2, 3]');
-    expect($result)->toContain('array_sum($arr)');
-});
+        $result = $this->printer->prettyPrint($ast);
+
+        // Array and function call should remain
+        expect($result)->toContain('$arr = [1, 2, 3]');
+        expect($result)->toContain('array_sum($arr)');
+    }
+);
