@@ -129,6 +129,9 @@ class ComplexityWarning
         return $this->message;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function getContext(): array
     {
         return $this->context;

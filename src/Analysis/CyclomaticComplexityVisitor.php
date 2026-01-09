@@ -12,7 +12,7 @@ class CyclomaticComplexityVisitor extends NodeVisitorAbstract
 {
     private int $complexity = 1; // Базовая сложность = 1
 
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         // If, ElseIf, Else
         if ($node instanceof Node\Stmt\If_) {
@@ -71,6 +71,8 @@ class CyclomaticComplexityVisitor extends NodeVisitorAbstract
             );
             $this->complexity += count($nonDefaultArms);
         }
+
+        return null;
     }
 
     public function getComplexity(): int

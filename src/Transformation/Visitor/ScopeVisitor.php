@@ -11,13 +11,17 @@ use PhpParser\PrettyPrinter\Standard as StandardPrinter;
  */
 class ScopeVisitor extends BaseVisitor
 {
+    /**
+     * @param mixed $cacheDir
+     * @param mixed $entryPoint
+     */
     public function __construct(
         protected $entryPoint = null,
         protected $cacheDir = null
     ) {
     }
 
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         if ($node instanceof Function_) {
             $name = $node->name->name;
@@ -27,6 +31,9 @@ class ScopeVisitor extends BaseVisitor
                 file_put_contents($this->cacheDir . '/' . $filename, $code);
                 // Only mark for removal if we're caching
                 $node->setAttribute('remove', true);
+
+
+                return null;
             }
         }
 
@@ -40,5 +47,7 @@ class ScopeVisitor extends BaseVisitor
                 $node->setAttribute('remove', true);
             }
         }
+
+        return null;
     }
 }

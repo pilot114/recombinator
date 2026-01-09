@@ -16,7 +16,7 @@ use Recombinator\Domain\ScopeStore;
  */
 class TernarReturnVisitor extends BaseVisitor
 {
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         if ($node instanceof Node\Stmt\ClassMethod && ($node->stmts[0] instanceof Node\Stmt\If_ && $node->stmts[1] instanceof Node\Stmt\Return_)) {
             $if = $node->stmts[0];
@@ -29,5 +29,7 @@ class TernarReturnVisitor extends BaseVisitor
                 $node->setAttribute('replace', $nodeNew);
             }
         }
+
+        return null;
     }
 }

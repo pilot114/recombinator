@@ -23,9 +23,9 @@ class EffectDependencyGraph
 {
     /**
      * Узлы графа
-     * Каждый элемент: ['node' => Node, 'effect' => SideEffectType, 'id' => string]
+     * Каждый элемент: ['node' => Node, 'effect' => mixed, 'id' => string]
      *
-     * @var array<string, array{node: Node, effect: SideEffectType, id: string}>
+     * @var array<string, array{node: Node, effect: mixed, id: string}>
      */
     private array $nodes = [];
 
@@ -49,7 +49,7 @@ class EffectDependencyGraph
      *
      * AST должен быть предварительно обработан SideEffectMarkerVisitor
      *
-     * @param Node[] $ast AST с помеченными узлами
+     * @param array<Node> $ast AST с помеченными узлами
      */
     public function buildFromAST(array $ast): void
     {
@@ -67,6 +67,8 @@ class EffectDependencyGraph
 
     /**
      * Рекурсивно собирает узлы из AST
+     *
+     * @param array<Node>|Node $nodes
      */
     private function collectNodes(array|Node $nodes, ?string $parentId = null): void
     {
@@ -163,6 +165,9 @@ class EffectDependencyGraph
     private function buildDependencies(): void
     {
         // Отслеживаем присваивания переменных
+        /**
+ * @var array<string, string> $varDefinitions 
+*/
         $varDefinitions = [];
 
         foreach ($this->nodes as $id => $nodeData) {
@@ -187,7 +192,7 @@ class EffectDependencyGraph
     /**
      * Находит все используемые переменные в узле
      *
-     * @return string[] Имена переменных
+     * @return array<string> Имена переменных
      */
     private function findUsedVariables(Node $node): array
     {
@@ -220,7 +225,7 @@ class EffectDependencyGraph
      * Возвращает зависимости узла
      *
      * @param  string $nodeId ID узла
-     * @return string[] ID узлов, от которых зависит данный узел
+     * @return array<string> ID узлов, от которых зависит данный узел
      */
     public function getDependencies(string $nodeId): array
     {
@@ -231,7 +236,7 @@ class EffectDependencyGraph
      * Возвращает узлы, которые зависят от данного узла
      *
      * @param  string $nodeId ID узла
-     * @return string[] ID узлов, которые зависят от данного узла
+     * @return array<string> ID узлов, которые зависят от данного узла
      */
     public function getDependents(string $nodeId): array
     {
@@ -280,7 +285,7 @@ class EffectDependencyGraph
     /**
      * Возвращает все узлы графа
      *
-     * @return array<string, array{node: Node, effect: SideEffectType, id: string}>
+     * @return array<string, array{node: Node, effect: mixed, id: string}>
      */
     public function getNodes(): array
     {
@@ -324,7 +329,7 @@ class EffectDependencyGraph
      *
      * Порядок выполнения узлов с учетом зависимостей
      *
-     * @return string[] ID узлов в порядке выполнения
+     * @return array<string> ID узлов в порядке выполнения
      */
     public function topologicalSort(): array
     {
@@ -343,6 +348,10 @@ class EffectDependencyGraph
 
     /**
      * Рекурсивная функция для топологической сортировки
+     *
+     * @param array<string, bool> $visited
+     * @param array<string, bool> $temp
+     * @param array<string>       $sorted
      */
     private function topologicalSortVisit(
         string $nodeId,

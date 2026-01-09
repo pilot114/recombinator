@@ -14,11 +14,17 @@ class NestingAnalyzer extends NodeVisitorAbstract
 
     private int $maxNesting = 0;
 
+    /**
+     * @var array<int> 
+     */
     private array $nestingLevels = [];
 
+    /**
+     * @var array<array{node: Node, level: int, line: int}> 
+     */
     private array $complexNodes = [];
 
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         // Узлы, создающие вложенность
         if ($this->isNestingNode($node)) {
@@ -35,13 +41,17 @@ class NestingAnalyzer extends NodeVisitorAbstract
                 ];
             }
         }
+
+        return null;
     }
 
-    public function leaveNode(Node $node): void
+    public function leaveNode(Node $node): int|Node|array|null
     {
         if ($this->isNestingNode($node)) {
             $this->currentNesting--;
         }
+
+        return null;
     }
 
     public function getMaxNesting(): int
@@ -58,6 +68,9 @@ class NestingAnalyzer extends NodeVisitorAbstract
         return round(array_sum($this->nestingLevels) / count($this->nestingLevels), 2);
     }
 
+    /**
+     * @return array<array{node: Node, level: int, line: int}>
+     */
     public function getComplexNodes(): array
     {
         return $this->complexNodes;

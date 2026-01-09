@@ -192,6 +192,8 @@ class ComplexityController
 
     /**
      * Получает общую статистику по всем проверкам
+     *
+     * @return array{total: int, improved: int, worse: int, unchanged: int, errors: int, warnings: int, info: int}
      */
     public function getStatistics(): array
     {
@@ -259,14 +261,16 @@ class ComplexityController
 
         $lines[] = "=== Complexity Analysis Report ===";
         $lines[] = "";
-        $lines[] = sprintf("Total functions/methods analyzed: %d", $stats['total']);
-        $lines[] = sprintf("  Improved: %d", $stats['improved']);
-        $lines[] = sprintf("  Worse: %d", $stats['worse']);
-        $lines[] = sprintf("  Unchanged: %d", $stats['unchanged']);
+        $lines[] = sprintf("Total functions/methods analyzed: %d", (int) $stats['total']);
+        $lines[] = sprintf("  Improved: %d", (int) $stats['improved']);
+        $lines[] = sprintf("  Worse: %d", (int) $stats['worse']);
+        $lines[] = sprintf("  Unchanged: %d", (int) $stats['unchanged']);
         $lines[] = "";
         $lines[] = sprintf(
             "Issues: %d errors, %d warnings, %d info",
-            $stats['errors'], $stats['warnings'], $stats['info']
+            (int) $stats['errors'],
+            (int) $stats['warnings'],
+            (int) $stats['info']
         );
 
         if ($this->warnings !== []) {

@@ -144,6 +144,8 @@ class FunctionCandidate
 
     /**
      * Возвращает массив параметров функции
+     *
+     * @return array<mixed>
      */
     public function getFunctionParameters(): array
     {

@@ -11,9 +11,20 @@ use Recombinator\Core\PrettyDumper;
 
 class BaseVisitor extends NodeVisitorAbstract
 {
+    /**
+     * @var mixed 
+     */
     public $scopeName;
 
+    /**
+     * @var mixed 
+     */
+
     public $diff;
+
+    /**
+     * @var mixed 
+     */
 
     protected $ast;
 
@@ -41,6 +52,8 @@ class BaseVisitor extends NodeVisitorAbstract
 
     /**
      * напечатать AST и и соответствующий ему код
+     *
+     * @param mixed $onlyClass
      */
     protected function debug(Node $stmt, $onlyClass = false)
     {
@@ -76,6 +89,9 @@ class BaseVisitor extends NodeVisitorAbstract
      * Пример:
      * $assigns = $p->findNode(Assign::class);
      * $vars = array_map(function($x) { return $x->var->name; }, $assigns);
+     *
+     * @param  mixed $node
+     * @return array<mixed>
      */
     protected function findNode(string $className, $node = null): array
     {

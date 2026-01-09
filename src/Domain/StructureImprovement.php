@@ -55,6 +55,9 @@ class StructureImprovement
         return $this->targetNode;
     }
 
+    /**
+     * @return array<mixed>
+     */
     public function getMetadata(): array
     {
         return $this->metadata;

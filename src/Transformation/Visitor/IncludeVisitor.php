@@ -10,11 +10,14 @@ use PhpParser\ParserFactory;
  */
 class IncludeVisitor extends BaseVisitor
 {
+    /**
+     * @param mixed $entryPoint
+     */
     public function __construct(protected $entryPoint)
     {
     }
 
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         if ($node instanceof Node\Expr\Include_
         ) {
@@ -29,5 +32,7 @@ class IncludeVisitor extends BaseVisitor
 
             $node->getAttribute('parent')->setAttribute('replace', $nodes);
         }
+
+        return null;
     }
 }

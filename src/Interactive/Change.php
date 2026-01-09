@@ -45,11 +45,17 @@ class Change
         return $this->node;
     }
 
+    /**
+     * @return array<mixed>
+     */
     public function getBeforeState(): array
     {
         return $this->beforeState;
     }
 
+    /**
+     * @return array<mixed>
+     */
     public function getAfterState(): array
     {
         return $this->afterState;

@@ -297,6 +297,8 @@ class Sandbox
 
     /**
      * Возвращает статистику кеша
+     *
+     * @return array<mixed>
      */
     public function getCacheStats(): array
     {

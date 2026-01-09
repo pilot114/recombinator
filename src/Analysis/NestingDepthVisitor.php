@@ -15,19 +15,23 @@ class NestingDepthVisitor extends \PhpParser\NodeVisitorAbstract
 
     private int $maxDepth = 0;
 
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         if ($this->isNestingNode($node)) {
             $this->currentDepth++;
             $this->maxDepth = max($this->maxDepth, $this->currentDepth);
         }
+
+        return null;
     }
 
-    public function leaveNode(Node $node): void
+    public function leaveNode(Node $node): int|Node|array|null
     {
         if ($this->isNestingNode($node)) {
             $this->currentDepth--;
         }
+
+        return null;
     }
 
     public function getMaxDepth(): int

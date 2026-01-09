@@ -17,14 +17,20 @@ class EvalStandardFunction extends BaseVisitor
     /**
      * Гарантированно проходят со статичными аргументами
      */
-    protected $functionListNeedStatic = [
+    /**
+     * @var mixed 
+     */
+    protected $functionListNeedStatic= [
         'in_array',
     ];
 
     /**
      * Требуют специальной проверки аргументов (например, на тип)
      */
-    protected $specialFunction = [
+    /**
+     * @var mixed 
+     */
+    protected $specialFunction= [
         'is_array' => 'isArrayHandler'
     ];
 
@@ -38,6 +44,9 @@ class EvalStandardFunction extends BaseVisitor
             if (!str_contains($funcName, '\\')) {
                 if (in_array($funcName, $this->functionListNeedStatic) && $this->staticArgs($node)) {
                     // eval
+
+
+                    return [];
                 }
 
                 if (in_array($funcName, array_keys($this->specialFunction))) {
