@@ -139,6 +139,9 @@ class NamingSuggester
         return max(0, min(10, $score));
     }
 
+    /**
+     * @return array<mixed>
+     */
     private function suggestForBinaryOp(Expr\BinaryOp $node): array
     {
         if ($node instanceof Expr\BinaryOp\Plus || $node instanceof Expr\BinaryOp\Minus) {
@@ -168,6 +171,9 @@ class NamingSuggester
         return ['result'];
     }
 
+    /**
+     * @return array<mixed>
+     */
     private function suggestForFunctionCall(Expr\FuncCall $node): array
     {
         if (!$node->name instanceof Node\Name) {
@@ -202,6 +208,9 @@ class NamingSuggester
         return $suggestions;
     }
 
+    /**
+     * @return array<mixed>
+     */
     private function suggestForMethodCall(Expr\MethodCall $node): array
     {
         if (!$node->name instanceof Node\Identifier) {
@@ -225,6 +234,9 @@ class NamingSuggester
         return $suggestions;
     }
 
+    /**
+     * @return array<mixed>
+     */
     private function suggestForArrayAccess(Expr\ArrayDimFetch $node): array
     {
         $suggestions = [];
@@ -256,11 +268,17 @@ class NamingSuggester
         return $suggestions;
     }
 
+    /**
+     * @return array<mixed>
+     */
     private function suggestForTernary(): array
     {
         return ['result', 'value', 'chosen', 'selected'];
     }
 
+    /**
+     * @return array<mixed>
+     */
     private function suggestByEffectType(SideEffectType $effectType): array
     {
         return match ($effectType) {

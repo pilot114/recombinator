@@ -76,6 +76,8 @@ class SeparationResult
 
     /**
      * Возвращает статистику
+     *
+     * @return array<mixed>
      */
     public function getStats(): array
     {

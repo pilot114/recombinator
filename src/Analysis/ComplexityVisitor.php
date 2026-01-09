@@ -18,7 +18,7 @@ class ComplexityVisitor extends NodeVisitorAbstract
 
     private int $nestingLevel = 0;
 
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         // Вложенность: +1 балл за каждый уровень
         if ($this->isNestingNode($node)) {
@@ -59,14 +59,18 @@ class ComplexityVisitor extends NodeVisitorAbstract
         ) {
             $this->complexity++;
         }
+
+        return null;
     }
 
-    public function leaveNode(Node $node): void
+    public function leaveNode(Node $node): int|Node|array|null
     {
         // Выходим из вложенности
         if ($this->isNestingNode($node)) {
             $this->nestingLevel--;
         }
+
+        return null;
     }
 
     /**

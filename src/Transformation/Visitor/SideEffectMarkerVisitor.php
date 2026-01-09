@@ -30,6 +30,9 @@ class SideEffectMarkerVisitor extends BaseVisitor
     /**
      * Статистика маркировки
      */
+    /**
+     * @var array<mixed> 
+     */
     private array $stats = [
         'total' => 0,
         'pure' => 0,

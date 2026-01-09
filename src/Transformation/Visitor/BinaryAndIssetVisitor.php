@@ -12,7 +12,7 @@ use PhpParser\Node\Stmt\Expression;
  */
 class BinaryAndIssetVisitor extends BaseVisitor
 {
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         /**
          * if (isset(var)) {
@@ -29,6 +29,8 @@ class BinaryAndIssetVisitor extends BaseVisitor
                 $node->setAttribute('replace', new Expression($newAssign));
             }
         }
+
+        return null;
     }
 
     #[\Override]
@@ -70,6 +72,10 @@ class BinaryAndIssetVisitor extends BaseVisitor
         return parent::leaveNode($node);
     }
 
+    /**
+     * @param mixed $bool
+     * @param mixed $expression
+     */
     protected function booleanBinaryTyping($expression, $bool)
     {
         // In php-parser 5.x, use toString() method

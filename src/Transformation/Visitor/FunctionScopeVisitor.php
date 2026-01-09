@@ -13,9 +13,15 @@ use Recombinator\Domain\ScopeStore;
  */
 class FunctionScopeVisitor extends BaseVisitor
 {
+    /**
+     * @var mixed 
+     */
     protected $isGlobalScope;
 
 
+    /**
+     * @param mixed $cacheDir
+     */
     public function __construct(protected \Recombinator\Domain\ScopeStore $scopeStore, protected $cacheDir)
     {
     }

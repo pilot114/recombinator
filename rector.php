@@ -33,6 +33,9 @@ return RectorConfig::configure()
     ->withSkip([
         // Skip RemoveNonExistingVarAnnotationRector to preserve PHPStan type hints
         RemoveNonExistingVarAnnotationRector::class,
+
+        // Skip PrettyDumper.php - intentionally overrides parent method return type
+        __DIR__ . '/src/Core/PrettyDumper.php',
     ])
     ->withPhpSets(
         php84: true

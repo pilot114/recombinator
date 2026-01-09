@@ -134,6 +134,8 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
 
     /**
      * Инлайнинг конструктора
+     *
+     * @return array<mixed>
      */
     protected function inlineConstructor(Node\Stmt\ClassMethod $constructor, Node\Expr\New_ $newExpr, array $instance): array
     {

@@ -147,6 +147,8 @@ class EditSession
 
     /**
      * Возвращает все предпочтения
+     *
+     * @return array<mixed>
      */
     public function getAllPreferences(): array
     {
@@ -187,6 +189,8 @@ class EditSession
 
     /**
      * Возвращает статистику применённых изменений
+     *
+     * @return array<mixed>
      */
     public function getAppliedChangesStats(): array
     {

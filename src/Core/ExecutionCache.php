@@ -19,10 +19,16 @@ class ExecutionCache
     /**
      * Хранилище кеша
      */
+    /**
+     * @var array<mixed> 
+     */
     private array $cache = [];
 
     /**
      * Статистика кеша
+     */
+    /**
+     * @var array<mixed> 
      */
     private array $stats = [
         'hits' => 0,
@@ -32,6 +38,9 @@ class ExecutionCache
 
     /**
      * Порядок доступа к элементам (для LRU)
+     */
+    /**
+     * @var array<mixed> 
      */
     private array $accessOrder = [];
 
@@ -109,6 +118,8 @@ class ExecutionCache
 
     /**
      * Возвращает статистику кеша
+     *
+     * @return array<mixed>
      */
     public function getStats(): array
     {
@@ -168,6 +179,8 @@ class ExecutionCache
 
     /**
      * Экспортирует кеш для сохранения
+     *
+     * @return array<mixed>
      */
     public function export(): array
     {
@@ -194,6 +207,8 @@ class ExecutionCache
 
     /**
      * Возвращает все ключи в кеше
+     *
+     * @return array<mixed>
      */
     public function keys(): array
     {
@@ -202,6 +217,8 @@ class ExecutionCache
 
     /**
      * Возвращает все значения в кеше
+     *
+     * @return array<mixed>
      */
     public function values(): array
     {

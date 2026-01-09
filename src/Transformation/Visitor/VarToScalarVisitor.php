@@ -13,6 +13,9 @@ class VarToScalarVisitor extends BaseVisitor
     /**
      * @var \Recombinator\Domain\ScopeStore
      */
+    /**
+     * @var \Recombinator\Domain\ScopeStore 
+     */
     public $scopeStore;
 
     /**
@@ -23,6 +26,9 @@ class VarToScalarVisitor extends BaseVisitor
      * }
      * тут удалить скаляр нельзя
      */
+    /**
+     * @var mixed 
+     */
     public $maybeRemove;
 
     public function __construct(ScopeStore $scopeStore)
@@ -30,7 +36,7 @@ class VarToScalarVisitor extends BaseVisitor
         $this->scopeStore = $scopeStore;
     }
 
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         /**
          * Замена переменных 1/3 - Запись скаляра
@@ -53,6 +59,9 @@ class VarToScalarVisitor extends BaseVisitor
                 $parent = $node->getAttribute('parent');
                 if ($parent !== null) {
                     $parent->setAttribute('remove', true);
+
+
+                    return null;
                 }
             }
         }
@@ -89,10 +98,14 @@ class VarToScalarVisitor extends BaseVisitor
                 $this->scopeStore->removeVarFromScope($varName);
             }
         }
+
+        return null;
     }
 
     /**
      * Проверяем, что это чтение переменной
+     *
+     * @param mixed $varName
      */
     protected function isVarRead(Node $node, $varName): bool
     {

@@ -267,6 +267,8 @@ class PreExecutionVisitor extends BaseVisitor
 
     /**
      * Строит контекст выполнения из текущего scope
+     *
+     * @return array<mixed>
      */
     private function buildContext(): array
     {
@@ -283,6 +285,8 @@ class PreExecutionVisitor extends BaseVisitor
 
     /**
      * Возвращает статистику выполнения
+     *
+     * @return array<mixed>
      */
     public function getStats(): array
     {
@@ -295,6 +299,8 @@ class PreExecutionVisitor extends BaseVisitor
 
     /**
      * Возвращает статистику кеша
+     *
+     * @return array<mixed>
      */
     public function getCacheStats(): array
     {

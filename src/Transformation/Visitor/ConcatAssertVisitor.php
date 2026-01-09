@@ -13,9 +13,16 @@ use PhpParser\Node;
  */
 class ConcatAssertVisitor extends BaseVisitor
 {
-    protected $echoStack = [];
+    /**
+     * @var mixed 
+     */
+    protected $echoStack= [];
 
-    protected $singleAsserts = [];
+    /**
+     * @var mixed 
+     */
+
+    protected $singleAsserts= [];
 
     public function enterNode(Node $node)
     {

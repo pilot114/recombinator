@@ -308,8 +308,9 @@ class SideEffectSeparator
     /**
      * Вычисляет статистику разделения
      *
-     * @param array<string, EffectGroup> $groups
-     * @param PureComputation[]          $pureComputations
+     * @param  array<string, EffectGroup> $groups
+     * @param  PureComputation[]          $pureComputations
+     * @return array<mixed>
      */
     private function calculateStats(array $groups, array $pureComputations): array
     {

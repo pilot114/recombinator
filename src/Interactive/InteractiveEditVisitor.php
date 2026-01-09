@@ -41,7 +41,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
     ) {
     }
 
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         // Увеличиваем глубину при входе в блоки
         if ($this->isNestingNode($node)) {
@@ -77,14 +77,18 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
         if ($node instanceof Expr) {
             $this->analyzeExpression($node);
         }
+
+        return null;
     }
 
-    public function leaveNode(Node $node): void
+    public function leaveNode(Node $node): int|Node|array|null
     {
         // Уменьшаем глубину при выходе из блоков
         if ($this->isNestingNode($node)) {
             $this->currentDepth--;
         }
+
+        return null;
     }
 
     public function getResult(): InteractiveEditResult

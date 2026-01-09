@@ -6,6 +6,9 @@ use PhpParser\Node;
 
 class ParametersToArgsVisitor extends BaseVisitor
 {
+    /**
+     * @param mixed $node
+     */
     public function __construct(protected $node)
     {
     }

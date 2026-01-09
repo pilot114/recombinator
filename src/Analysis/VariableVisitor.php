@@ -29,21 +29,21 @@ class VariableVisitor extends NodeVisitorAbstract
      */
     private int $depth = 0;
 
-    public function enterNode(Node $node): void
+    public function enterNode(Node $node): int|Node|array|null
     {
         // Пропускаем вложенные функции и замыкания
-        if ($node instanceof Node\Stmt\Function_ 
-            || $node instanceof Node\Stmt\ClassMethod 
-            || $node instanceof Node\Expr\Closure 
+        if ($node instanceof Node\Stmt\Function_
+            || $node instanceof Node\Stmt\ClassMethod
+            || $node instanceof Node\Expr\Closure
             || $node instanceof Node\Expr\ArrowFunction
         ) {
             $this->depth++;
-            return;
+            return null;
         }
 
         // Игнорируем переменные внутри вложенных функций
         if ($this->depth > 0) {
-            return;
+            return null;
         }
 
         // Определение переменной (присваивание)
@@ -66,25 +66,35 @@ class VariableVisitor extends NodeVisitorAbstract
                 $this->used[] = $varName;
             }
         }
+
+        return null;
     }
 
-    public function leaveNode(Node $node): void
+    public function leaveNode(Node $node): int|Node|array|null
     {
         // Выходим из вложенной функции
-        if ($node instanceof Node\Stmt\Function_ 
-            || $node instanceof Node\Stmt\ClassMethod 
-            || $node instanceof Node\Expr\Closure 
+        if ($node instanceof Node\Stmt\Function_
+            || $node instanceof Node\Stmt\ClassMethod
+            || $node instanceof Node\Expr\Closure
             || $node instanceof Node\Expr\ArrowFunction
         ) {
             $this->depth--;
         }
+
+        return null;
     }
 
+    /**
+     * @return array<mixed>
+     */
     public function getUsedVariables(): array
     {
         return array_unique($this->used);
     }
 
+    /**
+     * @return array<mixed>
+     */
     public function getDefinedVariables(): array
     {
         return array_unique($this->defined);
