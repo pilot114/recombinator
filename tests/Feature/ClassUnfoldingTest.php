@@ -9,14 +9,17 @@ use Recombinator\Domain\ScopeStore;
 use Recombinator\Transformation\Visitor\ConstructorAndMethodsVisitor;
 use Recombinator\Transformation\Visitor\PropertyAccessVisitor;
 
-beforeEach(function () {
-    $this->parser = (new ParserFactory())->createForHostVersion();
-    $this->printer = new StandardPrinter();
-    $this->store = new ScopeStore();
-});
+beforeEach(
+    function (): void {
+        $this->parser = new ParserFactory()->createForHostVersion();
+        $this->printer = new StandardPrinter();
+        $this->store = new ScopeStore();
+    }
+);
 
-it('can unfold simple class instantiation and method call', function () {
-    $code = '<?php
+it(
+    'can unfold simple class instantiation and method call', function (): void {
+        $code = '<?php
 class Calculator {
     public $base = 10;
 
@@ -29,22 +32,25 @@ $calc = new Calculator();
 $result = $calc->add(5);
 ';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    // Первый проход - сбор информации о классах
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ConstructorAndMethodsVisitor($this->store));
-    $ast = $traverser->traverse($ast);
+        // Первый проход - сбор информации о классах
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ConstructorAndMethodsVisitor($this->store));
 
-    $class = $this->store->getClassFromGlobal('Calculator');
+        $ast = $traverser->traverse($ast);
 
-    expect($class)->toBeArray()
-        ->and($class['props'])->toHaveKey('base')
-        ->and($class['methods'])->toHaveKey('add');
-});
+        $class = $this->store->getClassFromGlobal('Calculator');
 
-it('can unfold class with constructor', function () {
-    $code = '<?php
+        expect($class)->toBeArray()
+            ->and($class['props'])->toHaveKey('base')
+            ->and($class['methods'])->toHaveKey('add');
+    }
+);
+
+it(
+    'can unfold class with constructor', function (): void {
+        $code = '<?php
 class Person {
     public $name = "";
 
@@ -58,21 +64,24 @@ class Person {
 }
 ';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ConstructorAndMethodsVisitor($this->store));
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ConstructorAndMethodsVisitor($this->store));
 
-    $class = $this->store->getClassFromGlobal('Person');
+        $ast = $traverser->traverse($ast);
 
-    expect($class)->toBeArray()
-        ->and($class['methods'])->toHaveKey('__construct')
-        ->and($class['methods'])->toHaveKey('greet');
-});
+        $class = $this->store->getClassFromGlobal('Person');
 
-it('can unfold method chain calls', function () {
-    $code = '<?php
+        expect($class)->toBeArray()
+            ->and($class['methods'])->toHaveKey('__construct')
+            ->and($class['methods'])->toHaveKey('greet');
+    }
+);
+
+it(
+    'can unfold method chain calls', function (): void {
+        $code = '<?php
 class Builder {
     public $value = 0;
 
@@ -86,21 +95,24 @@ class Builder {
 }
 ';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ConstructorAndMethodsVisitor($this->store));
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ConstructorAndMethodsVisitor($this->store));
 
-    $class = $this->store->getClassFromGlobal('Builder');
+        $ast = $traverser->traverse($ast);
 
-    expect($class)->toBeArray()
-        ->and($class['methods'])->toHaveKey('add')
-        ->and($class['methods'])->toHaveKey('multiply');
-});
+        $class = $this->store->getClassFromGlobal('Builder');
 
-it('can handle class inheritance', function () {
-    $code = '<?php
+        expect($class)->toBeArray()
+            ->and($class['methods'])->toHaveKey('add')
+            ->and($class['methods'])->toHaveKey('multiply');
+    }
+);
+
+it(
+    'can handle class inheritance', function (): void {
+        $code = '<?php
 class Animal {
     public function sound() {
         return "Some sound";
@@ -114,18 +126,20 @@ class Dog extends Animal {
 }
 ';
 
-    $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse($code);
 
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ConstructorAndMethodsVisitor($this->store));
-    $ast = $traverser->traverse($ast);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ConstructorAndMethodsVisitor($this->store));
 
-    $animal = $this->store->getClassFromGlobal('Animal');
-    $dog = $this->store->getClassFromGlobal('Dog');
+        $ast = $traverser->traverse($ast);
 
-    expect($animal)->toBeArray()
-        ->and($animal['methods'])->toHaveKey('sound')
-        ->and($dog)->toBeArray()
-        ->and($dog['parent'])->toBe('Animal')
-        ->and($dog['methods'])->toHaveKey('bark');
-});
+        $animal = $this->store->getClassFromGlobal('Animal');
+        $dog = $this->store->getClassFromGlobal('Dog');
+
+        expect($animal)->toBeArray()
+            ->and($animal['methods'])->toHaveKey('sound')
+            ->and($dog)->toBeArray()
+            ->and($dog['parent'])->toBe('Animal')
+            ->and($dog['methods'])->toHaveKey('bark');
+    }
+);

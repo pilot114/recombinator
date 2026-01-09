@@ -31,19 +31,17 @@ class ExecutionCache
     ];
 
     /**
-     * Максимальный размер кеша (количество элементов)
-     * При превышении начинается вытеснение старых элементов (LRU)
-     */
-    private int $maxSize;
-
-    /**
      * Порядок доступа к элементам (для LRU)
      */
     private array $accessOrder = [];
 
-    public function __construct(int $maxSize = 1000)
-    {
-        $this->maxSize = $maxSize;
+    public function __construct(
+        /**
+         * Максимальный размер кеша (количество элементов)
+         * При превышении начинается вытеснение старых элементов (LRU)
+         */
+        private readonly int $maxSize = 1000
+    ) {
     }
 
     /**
@@ -160,7 +158,7 @@ class ExecutionCache
      */
     private function evictLeastRecentlyUsed(): void
     {
-        if (empty($this->accessOrder)) {
+        if ($this->accessOrder === []) {
             return;
         }
 
@@ -215,6 +213,6 @@ class ExecutionCache
      */
     public function isEmpty(): bool
     {
-        return empty($this->cache);
+        return $this->cache === [];
     }
 }

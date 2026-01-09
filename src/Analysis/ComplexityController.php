@@ -16,31 +16,37 @@ use Recombinator\Domain\ComplexityMetrics;
  */
 class ComplexityController
 {
-    /** @var ComplexityWarning[] */
+    /**
+     * @var ComplexityWarning[]
+     */
     private array $warnings = [];
 
-    /** @var array<string, ComplexityMetrics> */
+    /**
+     * @var array<string, ComplexityMetrics>
+     */
     private array $beforeMetrics = [];
 
-    /** @var array<string, ComplexityMetrics> */
+    /**
+     * @var array<string, ComplexityMetrics>
+     */
     private array $afterMetrics = [];
 
     /**
-     * @param int $cognitiveThreshold Порог когнитивной сложности (по умолчанию 15)
-     * @param int $cyclomaticThreshold Порог цикломатической сложности (по умолчанию 10)
-     * @param bool $strictMode Строгий режим - любое увеличение считается ошибкой
+     * @param int  $cognitiveThreshold  Порог когнитивной сложности (по умолчанию 15)
+     * @param int  $cyclomaticThreshold Порог цикломатической сложности (по умолчанию 10)
+     * @param bool $strictMode          Строгий режим - любое увеличение считается ошибкой
      */
     public function __construct(
-        private int $cognitiveThreshold = 15,
-        private int $cyclomaticThreshold = 10,
-        private bool $strictMode = false
+        private readonly int $cognitiveThreshold = 15,
+        private readonly int $cyclomaticThreshold = 10,
+        private readonly bool $strictMode = false
     ) {
     }
 
     /**
      * Регистрирует метрики кода до оптимизации
      *
-     * @param string $identifier Идентификатор (имя функции/метода)
+     * @param string      $identifier Идентификатор (имя функции/метода)
      * @param Node|Node[] $nodes
      */
     public function registerBefore(string $identifier, Node|array $nodes): void
@@ -51,7 +57,7 @@ class ComplexityController
     /**
      * Регистрирует метрики кода после оптимизации и проверяет изменения
      *
-     * @param string $identifier Идентификатор (имя функции/метода)
+     * @param string      $identifier Идентификатор (имя функции/метода)
      * @param Node|Node[] $nodes
      */
     public function registerAfter(string $identifier, Node|array $nodes): void
@@ -157,14 +163,14 @@ class ComplexityController
     /**
      * Получает предупреждения по уровню серьезности
      *
-     * @param string $level 'error', 'warning', 'info'
+     * @param  string $level 'error', 'warning', 'info'
      * @return ComplexityWarning[]
      */
     public function getWarningsByLevel(string $level): array
     {
         return array_filter(
             $this->warnings,
-            fn(ComplexityWarning $w) => $w->getLevel() === $level
+            fn(ComplexityWarning $w): bool => $w->getLevel() === $level
         );
     }
 
@@ -173,7 +179,7 @@ class ComplexityController
      */
     public function hasErrors(): bool
     {
-        return !empty($this->getWarningsByLevel('error'));
+        return $this->getWarningsByLevel('error') !== [];
     }
 
     /**
@@ -181,7 +187,7 @@ class ComplexityController
      */
     public function hasWarnings(): bool
     {
-        return !empty($this->getWarningsByLevel('warning'));
+        return $this->getWarningsByLevel('warning') !== [];
     }
 
     /**
@@ -258,10 +264,12 @@ class ComplexityController
         $lines[] = sprintf("  Worse: %d", $stats['worse']);
         $lines[] = sprintf("  Unchanged: %d", $stats['unchanged']);
         $lines[] = "";
-        $lines[] = sprintf("Issues: %d errors, %d warnings, %d info",
-            $stats['errors'], $stats['warnings'], $stats['info']);
+        $lines[] = sprintf(
+            "Issues: %d errors, %d warnings, %d info",
+            $stats['errors'], $stats['warnings'], $stats['info']
+        );
 
-        if (!empty($this->warnings)) {
+        if ($this->warnings !== []) {
             $lines[] = "";
             $lines[] = "=== Warnings ===";
 

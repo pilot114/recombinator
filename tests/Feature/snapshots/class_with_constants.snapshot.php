@@ -14,18 +14,19 @@
 class Config
 {
 }
+
 class Auth
 {
-    public function validateToken($token)
+    public function validateToken($token): string
     {
-        $lifetime = 3600;
-        $algorithm = "sha256";
         if ($token !== null) {
             return "valid";
         }
+
         return "invalid";
     }
 }
+
 $version = 2 + 1;
 $baseUrl = "https://api.example.com";
 $retries = 3 * 2;

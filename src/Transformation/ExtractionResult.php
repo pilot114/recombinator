@@ -18,7 +18,8 @@ class ExtractionResult
         public readonly string $functionName,
         public readonly array $parameters,
         public readonly ?string $returnVariable,
-    ) {}
+    ) {
+    }
 
     /**
      * Возвращает количество параметров функции

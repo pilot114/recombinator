@@ -11,8 +11,8 @@ $firstName = "John";
 $lastName = "Doe";
 $fullName = $firstName . " " . $lastName;
 
-$greeting = "Hello" . ", " . "World" . "!";
-$separator = "-" . "-" . "-" . "-" . "-";
+$greeting = 'Hello, World!';
+$separator = '-----';
 
 $protocol = "https";
 $domain = "example";

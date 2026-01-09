@@ -1,6 +1,6 @@
 <?php
 
-require ('Auth.php');
+require __DIR__ . '/Auth.php';
 
 echo 1 . 2 . 3 . 4 . 5 . true . false;
 

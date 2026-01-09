@@ -12,14 +12,11 @@ use Recombinator\Domain\ScopeStore;
  */
 class ConstClassVisitor extends BaseVisitor
 {
-    protected $scopeStore;
-
-    public function __construct(ScopeStore $scopeStore)
+    public function __construct(protected \Recombinator\Domain\ScopeStore $scopeStore)
     {
-        $this->scopeStore = $scopeStore;
     }
 
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): void
     {
         if ($node instanceof Node\Stmt\ClassConst) {
             $name = $node->consts[0]->name->name;

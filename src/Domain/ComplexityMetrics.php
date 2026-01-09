@@ -18,18 +18,26 @@ use Recombinator\Analysis\NestingDepthVisitor;
 class ComplexityMetrics
 {
     /**
-     * @param int $cognitiveComplexity Когнитивная сложность
-     * @param int $cyclomaticComplexity Цикломатическая сложность
-     * @param int $linesOfCode Количество строк кода
-     * @param int $nestingDepth Максимальная глубина вложенности
-     * @param string|null $name Имя функции/метода (опционально)
+     * @param int         $cognitiveComplexity  Когнитивная
+     *                                          сложность
+     * @param int         $cyclomaticComplexity Цикломатическая
+     *                                          сложность
+     * @param int         $linesOfCode          Количество
+     *                                          строк
+     *                                          кода
+     * @param int         $nestingDepth         Максимальная
+     *                                          глубина
+     *                                          вложенности
+     * @param string|null $name                 Имя
+     *                                          функции/метода
+     *                                          (опционально)
      */
     public function __construct(
-        private int $cognitiveComplexity,
-        private int $cyclomaticComplexity,
-        private int $linesOfCode = 0,
-        private int $nestingDepth = 0,
-        private ?string $name = null
+        private readonly int $cognitiveComplexity,
+        private readonly int $cyclomaticComplexity,
+        private readonly int $linesOfCode = 0,
+        private readonly int $nestingDepth = 0,
+        private readonly ?string $name = null
     ) {
     }
 
@@ -37,8 +45,6 @@ class ComplexityMetrics
      * Создает метрики из узла AST
      *
      * @param Node|Node[] $nodes
-     * @param string|null $name
-     * @return self
      */
     public static function fromNodes(Node|array $nodes, ?string $name = null): self
     {
@@ -83,9 +89,6 @@ class ComplexityMetrics
 
     /**
      * Сравнивает с другими метриками
-     *
-     * @param ComplexityMetrics $other
-     * @return ComplexityComparison
      */
     public function compareTo(ComplexityMetrics $other): ComplexityComparison
     {
@@ -94,9 +97,6 @@ class ComplexityMetrics
 
     /**
      * Проверяет, уменьшилась ли сложность по сравнению с другими метриками
-     *
-     * @param ComplexityMetrics $other
-     * @return bool
      */
     public function isImprovedComparedTo(ComplexityMetrics $other): bool
     {
@@ -106,9 +106,6 @@ class ComplexityMetrics
 
     /**
      * Проверяет, ухудшилась ли сложность
-     *
-     * @param ComplexityMetrics $other
-     * @return bool
      */
     public function isWorseComparedTo(ComplexityMetrics $other): bool
     {
@@ -150,7 +147,7 @@ class ComplexityMetrics
      */
     public function format(): string
     {
-        $name = $this->name ? "{$this->name}: " : '';
+        $name = $this->name ? $this->name . ': ' : '';
         return sprintf(
             '%sCognitive: %d (%s), Cyclomatic: %d (%s), LOC: %d, Nesting: %d',
             $name,
@@ -167,11 +164,10 @@ class ComplexityMetrics
      * Подсчитывает количество строк кода
      *
      * @param Node[] $nodes
-     * @return int
      */
     private static function countLines(array $nodes): int
     {
-        if (empty($nodes)) {
+        if ($nodes === []) {
             return 0;
         }
 
@@ -185,6 +181,7 @@ class ComplexityMetrics
             if ($startLine !== -1) {
                 $minLine = min($minLine, $startLine);
             }
+
             if ($endLine !== -1) {
                 $maxLine = max($maxLine, $endLine);
             }
@@ -197,7 +194,6 @@ class ComplexityMetrics
      * Вычисляет максимальную глубину вложенности
      *
      * @param Node[] $nodes
-     * @return int
      */
     private static function calculateNestingDepth(array $nodes): int
     {

@@ -10,7 +10,11 @@ use Recombinator\Domain\ScopeStore;
  */
 class VarToScalarVisitor extends BaseVisitor
 {
+    /**
+     * @var \Recombinator\Domain\ScopeStore
+     */
     public $scopeStore;
+
     /**
      * TODO не всегда возможно удалить
      * $test = 'abc';
@@ -26,7 +30,7 @@ class VarToScalarVisitor extends BaseVisitor
         $this->scopeStore = $scopeStore;
     }
 
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): void
     {
         /**
          * Замена переменных 1/3 - Запись скаляра
@@ -70,7 +74,7 @@ class VarToScalarVisitor extends BaseVisitor
          * Замена переменных 3/3 - Запись нескаляра
          * Очищаем замену из кеша, если модифицируем переменную не скаляром
          */
-        if (isset($node->expr) && $node->expr instanceof Node\Expr\Assign) {
+        if (property_exists($node, 'expr') && $node->expr !== null && $node->expr instanceof Node\Expr\Assign) {
             $assign = $node->expr;
             $varName = $assign->var->name;
             // Also check for ConstFetch like in the storing logic
@@ -78,13 +82,11 @@ class VarToScalarVisitor extends BaseVisitor
             $isConstFetch = $assign->expr instanceof Node\Expr\ConstFetch &&
                             in_array(strtolower($assign->expr->name->toString()), ['true', 'false', 'null']);
 
-            if (!$isScalar && !$isConstFetch) {
-                if ($this->scopeStore->getVarFromScope($varName)) {
-                    // Don't try to replace inner variables - just clear from scope
-                    // The inner variable replacement logic was causing the left-hand side
-                    // variable to be incorrectly replaced with its value
-                    $this->scopeStore->removeVarFromScope($varName);
-                }
+            if (!$isScalar && !$isConstFetch && $this->scopeStore->getVarFromScope($varName)) {
+                // Don't try to replace inner variables - just clear from scope
+                // The inner variable replacement logic was causing the left-hand side
+                // variable to be incorrectly replaced with its value
+                $this->scopeStore->removeVarFromScope($varName);
             }
         }
     }
@@ -92,12 +94,9 @@ class VarToScalarVisitor extends BaseVisitor
     /**
      * Проверяем, что это чтение переменной
      */
-    protected function isVarRead(Node $node, $varName)
+    protected function isVarRead(Node $node, $varName): bool
     {
         $parent = $node->getAttribute('parent');
-        if ($parent instanceof Node\Expr\Assign && $parent->var->name === $varName) {
-            return false;
-        }
-        return true;
+        return !($parent instanceof Node\Expr\Assign && $parent->var->name === $varName);
     }
 }

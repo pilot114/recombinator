@@ -22,10 +22,14 @@ namespace Recombinator\Domain;
  */
 class ScopeStore
 {
-    /** @var array<string, mixed> */
+    /**
+     * @var array<string, mixed> 
+     */
     private array $global = [];
 
-    /** @var array<string, mixed> */
+    /**
+     * @var array<string, mixed> 
+     */
     private array $scopes = [];
 
     private ?string $currentScope = null;
@@ -38,6 +42,7 @@ class ScopeStore
                 'vars' => []
             ];
         }
+
         $this->scopes[$scope]['vars'][$name] = $value;
     }
 
@@ -61,6 +66,7 @@ class ScopeStore
                 'consts' => []
             ];
         }
+
         $this->scopes[$scope]['consts'][$name] = $value;
     }
 
@@ -75,6 +81,7 @@ class ScopeStore
         if (!isset($this->global['consts'])) {
             $this->global['consts'] = [];
         }
+
         $this->global['consts'][$name] = $value;
     }
 
@@ -88,6 +95,7 @@ class ScopeStore
         if (!isset($this->global['functions'])) {
             $this->global['functions'] = [];
         }
+
         $this->global['functions'][$name] = $value;
     }
 
@@ -101,6 +109,7 @@ class ScopeStore
         if (!isset($this->global['classes'])) {
             $this->global['classes'] = [];
         }
+
         $this->global['classes'][$name] = $value;
     }
 
@@ -114,9 +123,11 @@ class ScopeStore
         if (!isset($this->global['classes'])) {
             $this->global['classes'] = [];
         }
+
         if (!isset($this->global['classes'][$className])) {
             $this->global['classes'][$className] = [];
         }
+
         if (!isset($this->global['classes'][$className]['instances'])) {
             $this->global['classes'][$className]['instances'] = [];
         }
@@ -138,6 +149,7 @@ class ScopeStore
             if (!isset($class['instances'])) {
                 continue;
             }
+
             foreach ($class['instances'] as $instance) {
                 if ($instance['name'] === $instanceName) {
                     return [$className, $instance];
@@ -160,6 +172,7 @@ class ScopeStore
 
     /**
      * Get all global constants
+     *
      * @return array<string, mixed>
      */
     public function getAllGlobalConsts(): array
@@ -169,6 +182,7 @@ class ScopeStore
 
     /**
      * Get all scopes
+     *
      * @return array<string, mixed>
      */
     public function getAllScopes(): array
@@ -178,6 +192,7 @@ class ScopeStore
 
     /**
      * Get all global data
+     *
      * @return array<string, mixed>
      */
     public function getGlobal(): array

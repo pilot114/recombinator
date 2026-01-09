@@ -24,7 +24,7 @@ class VariableAnalyzer
     /**
      * Анализирует использование переменных в узле или массиве узлов
      *
-     * @param Node|Node[] $nodes
+     * @param  Node|Node[] $nodes
      * @return array{used: array<string>, defined: array<string>}
      */
     public function analyze(Node|array $nodes): array
@@ -50,7 +50,7 @@ class VariableAnalyzer
     /**
      * Возвращает переменные, которые используются, но не определены (параметры)
      *
-     * @param Node|Node[] $nodes
+     * @param  Node|Node[] $nodes
      * @return array<string>
      */
     public function getParameters(Node|array $nodes): array
@@ -62,7 +62,7 @@ class VariableAnalyzer
     /**
      * Возвращает внутренние переменные (определены, но не используются снаружи)
      *
-     * @param Node|Node[] $nodes
+     * @param  Node|Node[] $nodes
      * @return array<string>
      */
     public function getLocalVariables(Node|array $nodes): array

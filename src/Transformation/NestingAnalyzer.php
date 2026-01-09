@@ -11,8 +11,11 @@ use PhpParser\NodeVisitorAbstract;
 class NestingAnalyzer extends NodeVisitorAbstract
 {
     private int $currentNesting = 0;
+
     private int $maxNesting = 0;
+
     private array $nestingLevels = [];
+
     private array $complexNodes = [];
 
     public function enterNode(Node $node): void
@@ -48,7 +51,7 @@ class NestingAnalyzer extends NodeVisitorAbstract
 
     public function getAvgNesting(): float
     {
-        if (empty($this->nestingLevels)) {
+        if ($this->nestingLevels === []) {
             return 0.0;
         }
 

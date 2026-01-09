@@ -27,21 +27,24 @@ use Recombinator\Support\ColorDiffer;
  */
 class InteractiveCLI
 {
-    private EditSession $session;
-    private bool $running = false;
-    private ColorDiffer $colorDiffer;
+    private readonly EditSession $session;
 
-    /** @var array<string, callable> */
+    private bool $running = false;
+
+
+    /**
+     * 
+     *
+     * @var array<string, callable> 
+     */
     private array $commands = [];
 
     /**
      * @param Node[] $ast
-     * @param InteractiveEditResult $analysisResult
      */
     public function __construct(array $ast, InteractiveEditResult $analysisResult)
     {
         $this->session = new EditSession($ast, $analysisResult);
-        $this->colorDiffer = new ColorDiffer();
         $this->registerCommands();
     }
 
@@ -56,8 +59,11 @@ class InteractiveCLI
         while ($this->running) {
             $this->showPrompt();
             $input = $this->readInput();
+            if ($input === false) {
+                continue;
+            }
 
-            if ($input === false || trim($input) === '') {
+            if (trim($input) === '') {
                 continue;
             }
 
@@ -77,15 +83,15 @@ class InteractiveCLI
         $args = $parts[1] ?? '';
 
         if (!isset($this->commands[$cmd])) {
-            $this->output("Unknown command: {$cmd}. Type 'help' for available commands.");
+            $this->output(sprintf("Unknown command: %s. Type 'help' for available commands.", $cmd));
             return false;
         }
 
         try {
             $this->commands[$cmd]($args);
             return true;
-        } catch (\Exception $e) {
-            $this->output("Error executing command: " . $e->getMessage());
+        } catch (\Exception $exception) {
+            $this->output("Error executing command: " . $exception->getMessage());
             return false;
         }
     }
@@ -116,13 +122,13 @@ class InteractiveCLI
             'status' => fn($args) => $this->commandStatus(),
             's' => fn($args) => $this->commandStatus(),
 
-            'list' => fn($args) => $this->commandList($args),
-            'l' => fn($args) => $this->commandList($args),
+            'list' => $this->commandList(...),
+            'l' => $this->commandList(...),
 
-            'show' => fn($args) => $this->commandShow($args),
+            'show' => $this->commandShow(...),
 
-            'apply' => fn($args) => $this->commandApply($args),
-            'a' => fn($args) => $this->commandApply($args),
+            'apply' => $this->commandApply(...),
+            'a' => $this->commandApply(...),
 
             'undo' => fn($args) => $this->commandUndo(),
             'u' => fn($args) => $this->commandUndo(),
@@ -132,9 +138,9 @@ class InteractiveCLI
 
             'history' => fn($args) => $this->commandHistory(),
 
-            'pref' => fn($args) => $this->commandPreferences($args),
+            'pref' => $this->commandPreferences(...),
 
-            'save' => fn($args) => $this->commandSave($args),
+            'save' => $this->commandSave(...),
 
             'report' => fn($args) => $this->commandReport(),
 
@@ -181,27 +187,30 @@ class InteractiveCLI
             'critical' => $result->getCriticalCandidates(),
             'high' => array_filter(
                 $result->getEditCandidates(),
-                fn($c) => $c->getPriority() === EditCandidate::PRIORITY_HIGH
+                fn(\Recombinator\Interactive\EditCandidate $c): bool => $c->getPriority() === EditCandidate::PRIORITY_HIGH
             ),
             'all', '' => $result->getEditCandidatesByPriority(),
             default => $result->getEditCandidatesByType($type),
         };
 
-        if (empty($candidates)) {
-            $this->output("No issues found for filter: {$type}");
+        if ($candidates === []) {
+            $this->output('No issues found for filter: ' . $type);
             return;
         }
 
         $this->output("\n=== Issues ({$type}) ===");
         foreach ($candidates as $i => $candidate) {
-            $this->output(sprintf(
-                "%d. [%s] Line %s: %s",
-                $i + 1,
-                $candidate->getPriorityLabel(),
-                $candidate->getLine() ?? '?',
-                $candidate->getDescription()
-            ));
+            $this->output(
+                sprintf(
+                    "%d. [%s] Line %s: %s",
+                    $i + 1,
+                    $candidate->getPriorityLabel(),
+                    $candidate->getLine() ?? '?',
+                    $candidate->getDescription()
+                )
+            );
         }
+
         $this->output("");
     }
 
@@ -268,7 +277,7 @@ class InteractiveCLI
     {
         $changes = $this->session->getHistory()->getAllChanges();
 
-        if (empty($changes)) {
+        if ($changes === []) {
             $this->output("No changes in history");
             return;
         }
@@ -277,6 +286,7 @@ class InteractiveCLI
         foreach ($changes as $i => $change) {
             $this->output(sprintf("%d. %s", $i + 1, $change->format()));
         }
+
         $this->output("");
     }
 
@@ -288,12 +298,15 @@ class InteractiveCLI
             // Показать все предпочтения
             $this->output("\n=== User Preferences ===");
             foreach ($this->session->getAllPreferences() as $key => $value) {
-                $this->output(sprintf(
-                    "  %s = %s",
-                    $key,
-                    is_bool($value) ? ($value ? 'true' : 'false') : $value
-                ));
+                $this->output(
+                    sprintf(
+                        "  %s = %s",
+                        $key,
+                        is_bool($value) ? ($value ? 'true' : 'false') : $value
+                    )
+                );
             }
+
             $this->output("");
             return;
         }
@@ -303,29 +316,34 @@ class InteractiveCLI
         if (!isset($parts[1])) {
             // Показать конкретное предпочтение
             $value = $this->session->getPreference($key);
-            $this->output("{$key} = " . ($value ?? 'not set'));
+            $this->output($key . ' = ' . ($value ?? 'not set'));
             return;
         }
 
         // Установить предпочтение
         $value = $parts[1];
-        if ($value === 'true') $value = true;
-        if ($value === 'false') $value = false;
-        if (is_numeric($value)) $value = (int)$value;
+        if ($value === 'true') { $value = true;
+        }
+
+        if ($value === 'false') { $value = false;
+        }
+
+        if (is_numeric($value)) { $value = (int)$value;
+        }
 
         $this->session->setPreference($key, $value);
-        $this->output("Preference set: {$key} = {$value}");
+        $this->output(sprintf('Preference set: %s = %s', $key, $value));
     }
 
     private function commandSave(string $args): void
     {
         $path = trim($args);
-        if (empty($path)) {
+        if ($path === '' || $path === '0') {
             $path = './interactive_edits.json';
         }
 
         if ($this->session->savePreferences($path)) {
-            $this->output("Preferences saved to: {$path}");
+            $this->output('Preferences saved to: ' . $path);
         } else {
             $this->output("Failed to save preferences");
         }

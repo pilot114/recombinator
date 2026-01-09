@@ -218,7 +218,7 @@ enum SideEffectType: string
      *
      * Используется когда узел AST содержит несколько типов эффектов
      *
-     * @param SideEffectType $other Другой тип эффекта
+     * @param  SideEffectType $other Другой тип эффекта
      * @return SideEffectType Результирующий тип эффекта
      */
     public function combine(SideEffectType $other): SideEffectType
@@ -237,6 +237,7 @@ enum SideEffectType: string
         if ($this === self::PURE) {
             return $other;
         }
+
         if ($other === self::PURE) {
             return $this;
         }

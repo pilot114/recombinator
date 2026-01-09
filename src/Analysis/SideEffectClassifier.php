@@ -18,7 +18,7 @@ class SideEffectClassifier
     /**
      * Функции I/O операций
      */
-    private const IO_FUNCTIONS = [
+    private const array IO_FUNCTIONS = [
         // Вывод в консоль
         'echo', 'print', 'printf', 'vprintf', 'sprintf', 'fprintf',
         'var_dump', 'var_export', 'print_r', 'debug_zval_dump',
@@ -48,7 +48,7 @@ class SideEffectClassifier
     /**
      * Функции работы с базой данных
      */
-    private const DATABASE_FUNCTIONS = [
+    private const array DATABASE_FUNCTIONS = [
         // MySQLi
         'mysqli_query', 'mysqli_execute', 'mysqli_prepare',
         'mysqli_stmt_execute', 'mysqli_multi_query',
@@ -71,7 +71,7 @@ class SideEffectClassifier
     /**
      * Функции HTTP запросов
      */
-    private const HTTP_FUNCTIONS = [
+    private const array HTTP_FUNCTIONS = [
         // cURL
         'curl_exec', 'curl_init', 'curl_multi_exec',
 
@@ -92,7 +92,7 @@ class SideEffectClassifier
     /**
      * Недетерминированные функции
      */
-    private const NON_DETERMINISTIC_FUNCTIONS = [
+    private const array NON_DETERMINISTIC_FUNCTIONS = [
         // Случайные числа
         'rand', 'mt_rand', 'random_int', 'random_bytes',
         'srand', 'mt_srand', 'shuffle', 'array_rand',
@@ -111,7 +111,7 @@ class SideEffectClassifier
     /**
      * Функции изменения глобального состояния
      */
-    private const GLOBAL_STATE_FUNCTIONS = [
+    private const array GLOBAL_STATE_FUNCTIONS = [
         // PHP конфигурация
         'ini_set', 'ini_alter', 'ini_restore', 'set_time_limit',
         'set_include_path', 'restore_include_path',
@@ -135,7 +135,7 @@ class SideEffectClassifier
     /**
      * Суперглобальные переменные
      */
-    private const SUPERGLOBALS = [
+    private const array SUPERGLOBALS = [
         '_GET', '_POST', '_REQUEST', '_COOKIE', '_SESSION',
         '_SERVER', '_ENV', '_FILES', 'GLOBALS',
     ];
@@ -143,7 +143,7 @@ class SideEffectClassifier
     /**
      * Классифицирует узел AST и возвращает тип побочного эффекта
      *
-     * @param Node $node Узел AST для анализа
+     * @param  Node $node Узел AST для анализа
      * @return SideEffectType Тип побочного эффекта
      */
     public function classify(Node $node): SideEffectType
@@ -280,11 +280,13 @@ class SideEffectClassifier
     private function classifyStaticCall(Node\Expr\StaticCall $node): SideEffectType
     {
         // Аналогично методам
-        return $this->classifyMethodCall(new Node\Expr\MethodCall(
-            new Node\Expr\Variable('tmp'),
-            $node->name,
-            $node->args
-        ));
+        return $this->classifyMethodCall(
+            new Node\Expr\MethodCall(
+                new Node\Expr\Variable('tmp'),
+                $node->name,
+                $node->args
+            )
+        );
     }
 
     /**
@@ -314,7 +316,7 @@ class SideEffectClassifier
         }
 
         // Проверяем индекс
-        if ($node->dim) {
+        if ($node->dim instanceof \PhpParser\Node\Expr) {
             $dimEffect = $this->classify($node->dim);
             return $varEffect->combine($dimEffect);
         }
@@ -327,9 +329,10 @@ class SideEffectClassifier
      */
     private function classifyAssignment(Node\Expr $node): SideEffectType
     {
-        if (!($node instanceof Node\Expr\Assign ||
-              $node instanceof Node\Expr\AssignOp ||
-              $node instanceof Node\Expr\AssignRef)) {
+        if (!($node instanceof Node\Expr\Assign 
+            || $node instanceof Node\Expr\AssignOp 
+            || $node instanceof Node\Expr\AssignRef)
+        ) {
             return SideEffectType::PURE;
         }
 
@@ -337,8 +340,9 @@ class SideEffectClassifier
         $leftEffect = $this->classify($node->var);
 
         // Если присваиваем в глобал или суперглобал
-        if ($leftEffect === SideEffectType::EXTERNAL_STATE ||
-            $leftEffect === SideEffectType::GLOBAL_STATE) {
+        if ($leftEffect === SideEffectType::EXTERNAL_STATE 
+            || $leftEffect === SideEffectType::GLOBAL_STATE
+        ) {
             return $leftEffect;
         }
 
@@ -388,6 +392,7 @@ class SideEffectClassifier
         if ($node->name instanceof Node\Name) {
             return $node->name->toString();
         }
+
         return null;
     }
 
@@ -399,6 +404,7 @@ class SideEffectClassifier
         if ($node->name instanceof Node\Identifier) {
             return $node->name->toString();
         }
+
         return null;
     }
 
@@ -437,7 +443,7 @@ class SideEffectClassifier
     /**
      * Анализирует блок кода (массив узлов) и возвращает тип эффекта
      *
-     * @param Node[] $nodes Массив узлов для анализа
+     * @param  Node[] $nodes Массив узлов для анализа
      * @return SideEffectType Комбинированный тип эффекта
      */
     public function classifyBlock(array $nodes): SideEffectType

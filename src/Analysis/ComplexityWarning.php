@@ -8,18 +8,23 @@ namespace Recombinator\Analysis;
 class ComplexityWarning
 {
     /**
-     * @param string $identifier Идентификатор функции/метода
-     * @param string $type Тип предупреждения
-     * @param string $level Уровень: 'error', 'warning', 'info'
-     * @param string $message Сообщение
-     * @param array<string, mixed> $context Контекст (значения метрик и т.д.)
+     * @param string               $identifier Идентификатор
+     *                                         функции/метода
+     * @param string               $type       Тип
+     *                                         предупреждения
+     * @param string               $level      Уровень: 'error',
+     *                                         'warning', 'info'
+     * @param string               $message    Сообщение
+     * @param array<string, mixed> $context    Контекст
+     *                                         (значения метрик и
+     *                                         т.д.)
      */
     public function __construct(
-        private string $identifier,
-        private string $type,
-        private string $level,
-        private string $message,
-        private array $context = []
+        private readonly string $identifier,
+        private readonly string $type,
+        private readonly string $level,
+        private readonly string $message,
+        private readonly array $context = []
     ) {
     }
 

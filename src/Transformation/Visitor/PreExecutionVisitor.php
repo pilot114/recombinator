@@ -28,16 +28,16 @@ use Recombinator\Domain\ScopeStore;
  */
 class PreExecutionVisitor extends BaseVisitor
 {
-    private Sandbox $sandbox;
-    private ScopeStore $scopeStore;
+    private readonly Sandbox $sandbox;
+
     private int $executedCount = 0;
+
     private int $failedCount = 0;
 
-    public function __construct(?ScopeStore $scopeStore = null)
+    public function __construct(private readonly ?ScopeStore $scopeStore = new ScopeStore())
     {
         $cache = new ExecutionCache();
         $this->sandbox = new Sandbox($cache);
-        $this->scopeStore = $scopeStore ?? new ScopeStore();
     }
 
     /**
@@ -156,9 +156,9 @@ class PreExecutionVisitor extends BaseVisitor
         $this->executedCount++;
         if ($condResult) {
             return $node->if ?? $node->cond;
-        } else {
-            return $node->else;
         }
+
+        return $node->else;
     }
 
     /**
@@ -166,12 +166,7 @@ class PreExecutionVisitor extends BaseVisitor
      */
     private function hasConstantArgs(Node\Expr\FuncCall $node): bool
     {
-        foreach ($node->args as $arg) {
-            if (!$this->isConstant($arg->value)) {
-                return false;
-            }
-        }
-        return true;
+        return array_all($node->args, fn($arg): bool => $this->isConstant($arg->value));
     }
 
     /**
@@ -195,13 +190,16 @@ class PreExecutionVisitor extends BaseVisitor
                 if ($item === null) {
                     continue;
                 }
+
                 if (!$this->isConstant($item->value)) {
                     return false;
                 }
+
                 if ($item->key !== null && !$this->isConstant($item->key)) {
                     return false;
                 }
             }
+
             return true;
         }
 
@@ -259,6 +257,7 @@ class PreExecutionVisitor extends BaseVisitor
                     is_string($key) ? new Scalar\String_($key) : new Scalar\Int_($key)
                 );
             }
+
             return new Node\Expr\Array_($items);
         }
 
@@ -302,7 +301,8 @@ class PreExecutionVisitor extends BaseVisitor
         return $this->sandbox->getCacheStats();
     }
 
-    public function afterTraverse(array $nodes)
+    #[\Override]
+    public function afterTraverse(array $nodes): void
     {
         if ($this->executedCount > 0 || $this->failedCount > 0) {
             $total = $this->executedCount + $this->failedCount;

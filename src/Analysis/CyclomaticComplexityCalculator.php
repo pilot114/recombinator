@@ -34,7 +34,7 @@ class CyclomaticComplexityCalculator
     /**
      * Вычисляет цикломатическую сложность узла или массива узлов
      *
-     * @param Node|Node[] $nodes
+     * @param  Node|Node[] $nodes
      * @return int Цикломатическая сложность
      */
     public function calculate(Node|array $nodes): int
@@ -57,7 +57,7 @@ class CyclomaticComplexityCalculator
     /**
      * Определяет уровень сложности по цикломатической метрике
      *
-     * @param int $complexity Цикломатическая сложность
+     * @param  int $complexity Цикломатическая сложность
      * @return string Уровень сложности: 'simple', 'moderate', 'complex', 'very_complex'
      */
     public function getComplexityLevel(int $complexity): string
@@ -74,8 +74,8 @@ class CyclomaticComplexityCalculator
      * Проверяет, является ли сложность приемлемой
      *
      * @param int $complexity Цикломатическая сложность
-     * @param int $threshold Порог (по умолчанию 10)
-     * @return bool
+     * @param int $threshold  Порог (по
+     *                        умолчанию 10)
      */
     public function isAcceptable(int $complexity, int $threshold = 10): bool
     {
@@ -86,11 +86,10 @@ class CyclomaticComplexityCalculator
      * Вычисляет среднюю цикломатическую сложность для набора функций/методов
      *
      * @param array<Node\Stmt\Function_|Node\Stmt\ClassMethod> $functions
-     * @return float
      */
     public function calculateAverage(array $functions): float
     {
-        if (empty($functions)) {
+        if ($functions === []) {
             return 0.0;
         }
 

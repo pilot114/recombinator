@@ -35,7 +35,7 @@ class PureBlockFinder
      * Минимальный размер блока (количество узлов)
      * Блоки меньше этого размера игнорируются
      */
-    private int $minBlockSize;
+    private readonly int $minBlockSize;
 
     /**
      * @param int $minBlockSize Минимальный размер блока для поиска
@@ -50,7 +50,7 @@ class PureBlockFinder
      *
      * AST должен быть предварительно обработан SideEffectMarkerVisitor
      *
-     * @param Node[] $ast AST с помеченными узлами
+     * @param  Node[] $ast AST с помеченными узлами
      * @return array<int, array{start: int, end: int, nodes: Node[], size: int}>
      */
     public function findBlocks(array $ast): array
@@ -60,7 +60,7 @@ class PureBlockFinder
         // Извлекаем только statement узлы верхнего уровня
         $statements = $this->extractStatements($ast);
 
-        if (empty($statements)) {
+        if ($statements === []) {
             return [];
         }
 
@@ -71,9 +71,10 @@ class PureBlockFinder
         foreach ($statements as $index => $stmt) {
             if ($this->isPureNode($stmt)) {
                 // Узел чистый - добавляем в текущий блок
-                if (empty($currentBlock)) {
+                if ($currentBlock === []) {
                     $currentStart = $index;
                 }
+
                 $currentBlock[] = $stmt;
             } else {
                 // Узел не чистый - завершаем текущий блок
@@ -85,6 +86,7 @@ class PureBlockFinder
                         'size' => count($currentBlock),
                     ];
                 }
+
                 $currentBlock = [];
             }
         }
@@ -105,7 +107,7 @@ class PureBlockFinder
     /**
      * Извлекает statement узлы из AST
      *
-     * @param Node[] $ast
+     * @param  Node[] $ast
      * @return Node\Stmt[]
      */
     private function extractStatements(array $ast): array
@@ -169,7 +171,7 @@ class PureBlockFinder
      */
     public function getLargestBlock(): ?array
     {
-        if (empty($this->blocks)) {
+        if ($this->blocks === []) {
             return null;
         }
 
@@ -191,14 +193,14 @@ class PureBlockFinder
     public function getBlocksSortedBySize(): array
     {
         $blocks = $this->blocks;
-        usort($blocks, fn($a, $b) => $b['size'] <=> $a['size']);
+        usort($blocks, fn(array $a, array $b): int => $b['size'] <=> $a['size']);
         return $blocks;
     }
 
     /**
      * Находит чистые блоки внутри составных узлов (if, while, etc.)
      *
-     * @param Node[] $ast AST с помеченными узлами
+     * @param  Node[] $ast AST с помеченными узлами
      * @return array<string, array<int, array{start: int, end: int, nodes: Node[], size: int, context: string}>>
      */
     public function findNestedBlocks(array $ast): array
@@ -213,9 +215,10 @@ class PureBlockFinder
             // Ищем составные statement'ы
             if ($node instanceof Node\Stmt\If_) {
                 $nestedBlocks['if'][] = $this->findBlocksInContext($node->stmts, 'if_then');
-                if ($node->else) {
+                if ($node->else instanceof \PhpParser\Node\Stmt\Else_) {
                     $nestedBlocks['if'][] = $this->findBlocksInContext($node->else->stmts, 'if_else');
                 }
+
                 foreach ($node->elseifs as $elseif) {
                     $nestedBlocks['if'][] = $this->findBlocksInContext($elseif->stmts, 'if_elseif');
                 }
@@ -234,21 +237,23 @@ class PureBlockFinder
                 foreach ($node->catches as $catch) {
                     $nestedBlocks['try'][] = $this->findBlocksInContext($catch->stmts, 'catch_block');
                 }
-                if ($node->finally) {
+
+                if ($node->finally instanceof \PhpParser\Node\Stmt\Finally_) {
                     $nestedBlocks['try'][] = $this->findBlocksInContext($node->finally->stmts, 'finally_block');
                 }
             }
         }
 
         // Фильтруем пустые результаты
-        return array_filter($nestedBlocks, fn($blocks) => !empty($blocks));
+        return array_filter($nestedBlocks, fn($blocks): bool => !empty($blocks));
     }
 
     /**
      * Находит чистые блоки в контексте (например, внутри if или while)
      *
-     * @param Node[] $stmts Statement'ы для анализа
-     * @param string $context Контекст (например, 'if_then', 'while_body')
+     * @param  Node[] $stmts   Statement'ы для
+     *                         анализа
+     * @param  string $context Контекст (например, 'if_then', 'while_body')
      * @return array{start: int, end: int, nodes: Node[], size: int, context: string}[]
      */
     private function findBlocksInContext(array $stmts, string $context): array
@@ -259,9 +264,10 @@ class PureBlockFinder
 
         foreach ($stmts as $index => $stmt) {
             if ($this->isPureNode($stmt)) {
-                if (empty($currentBlock)) {
+                if ($currentBlock === []) {
                     $currentStart = $index;
                 }
+
                 $currentBlock[] = $stmt;
             } else {
                 if (count($currentBlock) >= $this->minBlockSize) {
@@ -273,6 +279,7 @@ class PureBlockFinder
                         'context' => $context,
                     ];
                 }
+
                 $currentBlock = [];
             }
         }
@@ -304,7 +311,7 @@ class PureBlockFinder
      */
     public function getStats(): array
     {
-        if (empty($this->blocks)) {
+        if ($this->blocks === []) {
             return [
                 'total_blocks' => 0,
                 'total_pure_nodes' => 0,

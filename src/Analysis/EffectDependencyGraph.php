@@ -133,7 +133,9 @@ class EffectDependencyGraph
      * Добавляет ребро (зависимость) в граф
      *
      * @param string $fromId ID узла, который зависит
-     * @param string $toId ID узла, от которого зависит
+     * @param string $toId   ID узла, от
+     *                       которого
+     *                       зависит
      */
     public function addEdge(string $fromId, string $toId): void
     {
@@ -167,11 +169,9 @@ class EffectDependencyGraph
             $node = $nodeData['node'];
 
             // Если это присваивание, запоминаем определение переменной
-            if ($node instanceof Node\Expr\Assign) {
-                if ($node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
-                    $varName = $node->var->name;
-                    $varDefinitions[$varName] = $id;
-                }
+            if ($node instanceof Node\Expr\Assign && ($node->var instanceof Node\Expr\Variable && is_string($node->var->name))) {
+                $varName = $node->var->name;
+                $varDefinitions[$varName] = $id;
             }
 
             // Если используется переменная, добавляем зависимость от её определения
@@ -219,7 +219,7 @@ class EffectDependencyGraph
     /**
      * Возвращает зависимости узла
      *
-     * @param string $nodeId ID узла
+     * @param  string $nodeId ID узла
      * @return string[] ID узлов, от которых зависит данный узел
      */
     public function getDependencies(string $nodeId): array
@@ -230,7 +230,7 @@ class EffectDependencyGraph
     /**
      * Возвращает узлы, которые зависят от данного узла
      *
-     * @param string $nodeId ID узла
+     * @param  string $nodeId ID узла
      * @return string[] ID узлов, которые зависят от данного узла
      */
     public function getDependents(string $nodeId): array
@@ -246,7 +246,6 @@ class EffectDependencyGraph
      * 2. У него нет зависимостей от узлов с побочными эффектами
      *
      * @param string $nodeId ID узла
-     * @return bool
      */
     public function canReorder(string $nodeId): bool
     {

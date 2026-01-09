@@ -49,28 +49,20 @@ use Recombinator\Domain\PureComputation;
  */
 class SideEffectSeparator
 {
-    private EffectDependencyGraph $dependencyGraph;
-    private PureBlockFinder $pureBlockFinder;
-
-    /**
-     * Минимальный размер чистого блока для выделения
-     */
-    private int $minPureBlockSize;
+    private readonly PureBlockFinder $pureBlockFinder;
 
     public function __construct(
-        ?EffectDependencyGraph $dependencyGraph = null,
+        private readonly ?EffectDependencyGraph $dependencyGraph = new EffectDependencyGraph(),
         ?PureBlockFinder $pureBlockFinder = null,
         int $minPureBlockSize = 1
     ) {
-        $this->dependencyGraph = $dependencyGraph ?? new EffectDependencyGraph();
         $this->pureBlockFinder = $pureBlockFinder ?? new PureBlockFinder($minPureBlockSize);
-        $this->minPureBlockSize = $minPureBlockSize;
     }
 
     /**
      * Разделяет код по типам побочных эффектов
      *
-     * @param Node[] $ast AST, обработанный SideEffectMarkerVisitor
+     * @param  Node[] $ast AST, обработанный SideEffectMarkerVisitor
      * @return SeparationResult Результат разделения
      */
     public function separate(array $ast): SeparationResult
@@ -82,7 +74,7 @@ class SideEffectSeparator
         $pureBlocks = $this->pureBlockFinder->findBlocks($ast);
 
         // 3. Группируем узлы по типу эффекта
-        $groups = $this->groupByEffect($ast);
+        $groups = $this->groupByEffect();
 
         // 4. Находим границы между эффектами
         $boundaries = $this->findBoundaries($ast);
@@ -91,7 +83,7 @@ class SideEffectSeparator
         $optimizedGroups = $this->minimizeInteractions($groups, $boundaries);
 
         // 6. Выделяем чистые вычисления
-        $pureComputations = $this->extractPureComputations($pureBlocks, $groups);
+        $pureComputations = $this->extractPureComputations($pureBlocks);
 
         return new SeparationResult(
             groups: $optimizedGroups,
@@ -106,16 +98,13 @@ class SideEffectSeparator
     /**
      * Группирует узлы по типу побочного эффекта
      *
-     * @param Node[] $ast
      * @return array<string, EffectGroup>
      */
-    private function groupByEffect(array $ast): array
+    private function groupByEffect(): array
     {
         $groups = [];
-
         // Получаем группировку из графа зависимостей
         $nodesByEffect = $this->dependencyGraph->getNodesByEffect();
-
         foreach ($nodesByEffect as $effectType => $nodeIds) {
             $nodes = [];
             foreach ($nodeIds as $nodeId) {
@@ -134,8 +123,7 @@ class SideEffectSeparator
         }
 
         // Сортируем по приоритету (PURE первым)
-        uasort($groups, fn($a, $b) => $a->priority <=> $b->priority);
-
+        uasort($groups, fn($a, $b): int => $a->priority <=> $b->priority);
         return $groups;
     }
 
@@ -145,7 +133,7 @@ class SideEffectSeparator
      * Граница - это переход от одного типа эффекта к другому
      * в последовательности statement'ов
      *
-     * @param Node[] $ast
+     * @param  Node[] $ast
      * @return EffectBoundary[]
      */
     private function findBoundaries(array $ast): array
@@ -189,8 +177,8 @@ class SideEffectSeparator
      * 2. Находим узлы, которые можно безопасно переместить
      * 3. Объединяем смежные группы одного типа
      *
-     * @param array<string, EffectGroup> $groups
-     * @param EffectBoundary[] $boundaries
+     * @param  array<string, EffectGroup> $groups
+     * @param  EffectBoundary[]           $boundaries
      * @return array<string, EffectGroup>
      */
     private function minimizeInteractions(array $groups, array $boundaries): array
@@ -204,6 +192,7 @@ class SideEffectSeparator
             if (!isset($transitionCounts[$fromType])) {
                 $transitionCounts[$fromType] = 0;
             }
+
             $transitionCounts[$fromType]++;
         }
 
@@ -214,14 +203,14 @@ class SideEffectSeparator
 
         // Находим узлы, которые можно безопасно переупорядочить
         $reorderableNodes = [];
-        foreach ($this->dependencyGraph->getNodes() as $nodeId => $nodeData) {
+        foreach (array_keys($this->dependencyGraph->getNodes()) as $nodeId) {
             if ($this->dependencyGraph->canReorder($nodeId)) {
                 $reorderableNodes[] = $nodeId;
             }
         }
 
         // Добавляем информацию о переупорядочиваемых узлах в группы
-        foreach ($groups as $effectType => $group) {
+        foreach ($groups as $group) {
             $group->reorderableCount = 0;
             foreach ($group->nodes as $node) {
                 $nodeId = $this->getNodeId($node);
@@ -237,11 +226,12 @@ class SideEffectSeparator
     /**
      * Выделяет чистые вычисления
      *
-     * @param array $pureBlocks Чистые блоки из PureBlockFinder
-     * @param array<string, EffectGroup> $groups Группы эффектов
+     * @param  array $pureBlocks Чистые
+     *                           блоки из
+     *                           PureBlockFinder
      * @return PureComputation[]
      */
-    private function extractPureComputations(array $pureBlocks, array $groups): array
+    private function extractPureComputations(array $pureBlocks): array
     {
         $computations = [];
 
@@ -262,6 +252,7 @@ class SideEffectSeparator
                 $nodeDeps = $this->dependencyGraph->getDependencies($nodeId);
                 $dependencies = array_merge($dependencies, $nodeDeps);
             }
+
             $computation->dependencies = array_unique($dependencies);
 
             // Проверяем, можно ли вычислить в compile-time
@@ -318,8 +309,7 @@ class SideEffectSeparator
      * Вычисляет статистику разделения
      *
      * @param array<string, EffectGroup> $groups
-     * @param PureComputation[] $pureComputations
-     * @return array
+     * @param PureComputation[]          $pureComputations
      */
     private function calculateStats(array $groups, array $pureComputations): array
     {
@@ -332,7 +322,7 @@ class SideEffectSeparator
             $effectCounts[$effectType] = $count;
         }
 
-        $totalPureNodes = array_sum(array_map(fn($c) => $c->size, $pureComputations));
+        $totalPureNodes = array_sum(array_map(fn(\Recombinator\Domain\PureComputation $c): int => $c->size, $pureComputations));
 
         return [
             'total_nodes' => $totalNodes,
@@ -341,7 +331,7 @@ class SideEffectSeparator
             'total_pure_computations' => count($pureComputations),
             'total_pure_nodes' => $totalPureNodes,
             'pure_percentage' => $totalNodes > 0 ? round(($totalPureNodes / $totalNodes) * 100, 2) : 0,
-            'compile_time_evaluable' => count(array_filter($pureComputations, fn($c) => $c->isCompileTimeEvaluable)),
+            'compile_time_evaluable' => count(array_filter($pureComputations, fn(\Recombinator\Domain\PureComputation $c): bool => $c->isCompileTimeEvaluable)),
         ];
     }
 }

@@ -14,17 +14,11 @@ interface EffectClassifierInterface
 {
     /**
      * Classify node for side effects
-     *
-     * @param Node $node
-     * @return SideEffectType
      */
     public function classify(Node $node): SideEffectType;
 
     /**
      * Check if function is pure
-     *
-     * @param string $functionName
-     * @return bool
      */
     public function isPureFunction(string $functionName): bool;
 }

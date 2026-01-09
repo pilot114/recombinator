@@ -12,12 +12,19 @@ use Recombinator\Analysis\EffectDependencyGraph;
 class SeparationResult
 {
     /**
-     * @param array<string, EffectGroup> $groups Группы узлов по типу эффекта
-     * @param PureComputation[] $pureComputations Чистые вычисления
-     * @param EffectBoundary[] $boundaries Границы между эффектами
-     * @param array $pureBlocks Чистые блоки из PureBlockFinder
-     * @param EffectDependencyGraph $dependencyGraph Граф зависимостей
-     * @param array $stats Статистика
+     * @param array<string, EffectGroup> $groups           Группы узлов по
+     *                                                     типу эффекта
+     * @param PureComputation[]          $pureComputations Чистые
+     *                                                     вычисления
+     * @param EffectBoundary[]           $boundaries       Границы
+     *                                                     между
+     *                                                     эффектами
+     * @param array                      $pureBlocks       Чистые
+     *                                                     блоки из
+     *                                                     PureBlockFinder
+     * @param EffectDependencyGraph      $dependencyGraph  Граф
+     *                                                     зависимостей
+     * @param array                      $stats            Статистика
      */
     public function __construct(
         public readonly array $groups,
@@ -26,7 +33,8 @@ class SeparationResult
         public readonly array $pureBlocks,
         public readonly EffectDependencyGraph $dependencyGraph,
         public readonly array $stats,
-    ) {}
+    ) {
+    }
 
     /**
      * Возвращает группы узлов по типу эффекта
@@ -99,7 +107,7 @@ class SeparationResult
     {
         return array_filter(
             $this->pureComputations,
-            fn($c) => $c->isCompileTimeEvaluable
+            fn(\Recombinator\Domain\PureComputation $c): bool => $c->isCompileTimeEvaluable
         );
     }
 }

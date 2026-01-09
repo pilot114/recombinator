@@ -17,29 +17,29 @@ use PhpParser\Node;
  */
 class EditSession
 {
-    /** @var Node[] */
-    private array $currentAst;
-
-    private ChangeHistory $history;
-
-    private InteractiveEditResult $analysisResult;
-
-    /** @var array<string, mixed> */
-    private array $userPreferences = [];
-
-    /** @var array<string, int> */
-    private array $appliedChangesStats = [];
-
-    private int $sessionStartTime;
+    private readonly ChangeHistory $history;
 
     /**
-     * @param Node[] $ast
-     * @param InteractiveEditResult $analysisResult
+     * 
+     *
+     * @var array<string, mixed> 
      */
-    public function __construct(array $ast, InteractiveEditResult $analysisResult)
+    private array $userPreferences = [];
+
+    /**
+     * 
+     *
+     * @var array<string, int> 
+     */
+    private array $appliedChangesStats = [];
+
+    private readonly int $sessionStartTime;
+
+    /**
+     * @param Node[] $currentAst
+     */
+    public function __construct(private readonly array $currentAst, private readonly InteractiveEditResult $analysisResult)
     {
-        $this->currentAst = $ast;
-        $this->analysisResult = $analysisResult;
         $this->history = new ChangeHistory();
         $this->sessionStartTime = time();
         $this->loadDefaultPreferences();
@@ -78,6 +78,7 @@ class EditSession
         if (!isset($this->appliedChangesStats[$type])) {
             $this->appliedChangesStats[$type] = 0;
         }
+
         $this->appliedChangesStats[$type]++;
 
         return true;
@@ -89,7 +90,7 @@ class EditSession
     public function undo(): bool
     {
         $change = $this->history->undo();
-        if ($change === null) {
+        if (!$change instanceof \Recombinator\Interactive\Change) {
             return false;
         }
 
@@ -111,7 +112,7 @@ class EditSession
     public function redo(): bool
     {
         $change = $this->history->redo();
-        if ($change === null) {
+        if (!$change instanceof \Recombinator\Interactive\Change) {
             return false;
         }
 
@@ -122,6 +123,7 @@ class EditSession
         if (!isset($this->appliedChangesStats[$type])) {
             $this->appliedChangesStats[$type] = 0;
         }
+
         $this->appliedChangesStats[$type]++;
 
         return true;
@@ -227,16 +229,14 @@ class EditSession
             $this->getTotalAppliedChanges()
         );
 
-        if (!empty($this->appliedChangesStats)) {
+        if ($this->appliedChangesStats !== []) {
             $summary .= "Changes by type:\n";
             foreach ($this->appliedChangesStats as $type => $count) {
                 $summary .= sprintf("  %s: %d\n", $type, $count);
             }
         }
 
-        $summary .= "\n" . $this->history->getSummary();
-
-        return $summary;
+        return $summary . ("\n" . $this->history->getSummary());
     }
 
     private function loadDefaultPreferences(): void

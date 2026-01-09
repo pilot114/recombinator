@@ -9,7 +9,7 @@ use Throwable;
 /**
  * Класс для представления ошибок, возникших при выполнении в sandbox
  */
-readonly class SandboxError
+readonly class SandboxError implements \Stringable
 {
     public function __construct(
         private string     $message,

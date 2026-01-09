@@ -1,0 +1,45 @@
+parameters:
+    level: max
+    paths:
+        - src
+
+    # PHPStan 2.x compatible settings
+    checkMissingCallableSignature: true
+    checkUninitializedProperties: true
+    checkDynamicProperties: true
+    checkTooWideReturnTypesInProtectedAndPublicMethods: true
+    checkImplicitMixed: true
+    checkBenevolentUnionTypes: true
+
+    # Additional strict checks
+    reportMaybes: true
+    reportStaticMethodSignatures: true
+    reportMagicMethods: true
+    reportMagicProperties: true
+    reportUnmatchedIgnoredErrors: true
+    treatPhpDocTypesAsCertain: false
+
+    # Exception analysis
+    exceptions:
+        check:
+            missingCheckedExceptionInThrows: true
+            tooWideThrowType: true
+        implicitThrows: true
+        checkedExceptionClasses:
+            - RuntimeException
+
+    # PHP version and features
+    phpVersion: 80400
+
+    # Parallel processing
+    parallel:
+        maximumNumberOfProcesses: 4
+
+    # Ignore some paths if needed
+    excludePaths:
+        - vendor/*
+
+    # Type aliases for better documentation
+    typeAliases:
+        StringOrInt: 'string|int'
+        MixedArray: 'array<mixed>'

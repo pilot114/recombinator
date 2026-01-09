@@ -12,11 +12,8 @@ use Recombinator\Domain\ScopeStore;
  */
 class ConstructorAndMethodsVisitor extends BaseVisitor
 {
-    protected $scopeStore;
-
-    public function __construct(ScopeStore $scopeStore)
+    public function __construct(protected \Recombinator\Domain\ScopeStore $scopeStore)
     {
-        $this->scopeStore = $scopeStore;
     }
 
     public function enterNode(Node $node)
@@ -35,6 +32,8 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         if ($node instanceof Node\Expr\MethodCall) {
             return $this->processMethodCall($node);
         }
+
+        return null;
     }
 
     /**
@@ -68,16 +67,18 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
 
             // Обработка наследования
             $parentClass = null;
-            if ($node->extends !== null) {
+            if ($node->extends instanceof \PhpParser\Node\Name) {
                 $parentClass = $node->extends->toString();
             }
 
-            $this->scopeStore->setClassToGlobal($node->name->name, [
+            $this->scopeStore->setClassToGlobal(
+                $node->name->name, [
                 'props' => $optimizeProperties,
                 'methods' => $optimizeMethods,
                 'instances' => [],
                 'parent' => $parentClass,
-            ]);
+                ]
+            );
         }
     }
 
@@ -162,7 +163,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         // Если это цепочка вызовов, сначала обрабатываем внутренний вызов
         if ($var instanceof Node\Expr\MethodCall) {
             $innerResult = $this->processMethodCall($var);
-            if ($innerResult !== null) {
+            if ($innerResult instanceof \PhpParser\Node) {
                 $var = $innerResult;
             }
         }
@@ -206,7 +207,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         return null;
     }
 
-    protected function replaceCallToBody(Node\Expr\MethodCall $call, Node\Stmt\ClassMethod $method, array $instance)
+    protected function replaceCallToBody(Node\Expr\MethodCall $call, Node\Stmt\ClassMethod $method, array $instance): ?\PhpParser\Node\Expr
     {
         if (count($method->stmts) === 1 && $method->stmts[0] instanceof Node\Stmt\Return_) {
             // Заменяем в копии тела параметры на аргументы и $this->property на значения
@@ -216,10 +217,11 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $result = $traverser->traverse([clone $method->stmts[0]]);
 
             // Возвращаем выражение из return (без самого return)
-            if ($result[0] instanceof Node\Stmt\Return_ && $result[0]->expr !== null) {
+            if ($result[0] instanceof Node\Stmt\Return_ && $result[0]->expr instanceof \PhpParser\Node\Expr) {
                 return $result[0]->expr;
             }
         }
+
         return null;
     }
 }

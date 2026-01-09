@@ -8,106 +8,129 @@ use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\RemoveVisitor;
 
-beforeEach(function () {
-    $this->parser = (new ParserFactory())->createForHostVersion();
-    $this->printer = new StandardPrinter();
-    $this->visitor = new BinaryAndIssetVisitor();
-});
+beforeEach(
+    function (): void {
+        $this->parser = new ParserFactory()->createForHostVersion();
+        $this->printer = new StandardPrinter();
+        $this->visitor = new BinaryAndIssetVisitor();
+    }
+);
 
-it('can calculate addition of integers', function () {
-    $code = '<?php $result = 5 + 3;';
+it(
+    'can calculate addition of integers', function (): void {
+        $code = '<?php $result = 5 + 3;';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('$result = 8');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can calculate subtraction of integers', function () {
-    $code = '<?php $result = 10 - 3;';
+        expect($result)->toContain('$result = 8');
+    }
+);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+it(
+    'can calculate subtraction of integers', function (): void {
+        $code = '<?php $result = 10 - 3;';
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-    expect($result)->toContain('$result = 7');
-});
+        $ast = $traverser->traverse($ast);
 
-it('can calculate multiplication of integers', function () {
-    $code = '<?php $result = 4 * 5;';
+        $result = $this->printer->prettyPrint($ast);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        expect($result)->toContain('$result = 7');
+    }
+);
 
-    $result = $this->printer->prettyPrint($ast);
+it(
+    'can calculate multiplication of integers', function (): void {
+        $code = '<?php $result = 4 * 5;';
 
-    expect($result)->toContain('$result = 20');
-});
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-it('can calculate division of integers', function () {
-    $code = '<?php $result = 10 / 2;';
+        $ast = $traverser->traverse($ast);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $result = $this->printer->prettyPrint($ast);
 
-    $result = $this->printer->prettyPrint($ast);
+        expect($result)->toContain('$result = 20');
+    }
+);
 
-    expect($result)->toContain('$result = 5');
-});
+it(
+    'can calculate division of integers', function (): void {
+        $code = '<?php $result = 10 / 2;';
 
-it('can calculate division resulting in float', function () {
-    $code = '<?php $result = 10 / 3;';
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $traverser->traverse($ast);
 
-    $result = $this->printer->prettyPrint($ast);
+        $result = $this->printer->prettyPrint($ast);
 
-    expect($result)->toContain('3.333');
-});
+        expect($result)->toContain('$result = 5');
+    }
+);
 
-it('can concatenate strings', function () {
-    $code = '<?php $result = "Hello" . " World";';
+it(
+    'can calculate division resulting in float', function (): void {
+        $code = '<?php $result = 10 / 3;';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('Hello World');
-});
+        $result = $this->printer->prettyPrint($ast);
+
+        expect($result)->toContain('3.333');
+    }
+);
+
+it(
+    'can concatenate strings', function (): void {
+        $code = '<?php $result = "Hello" . " World";';
+
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
+
+        $ast = $traverser->traverse($ast);
+
+        $result = $this->printer->prettyPrint($ast);
+
+        expect($result)->toContain('Hello World');
+    }
+);
 
 // Boolean conversion tests skipped due to current implementation limitations
 
-it('can transform isset check to coalesce operator', function () {
-    $code = '<?php
+it(
+    'can transform isset check to coalesce operator', function (): void {
+        $code = '<?php
 $default = "default";
 if (isset($value)) {
     $default = $value;
 }';
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $traverser->addVisitor(new RemoveVisitor());
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
+        $traverser->addVisitor(new RemoveVisitor());
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('$default = $value ?? $default');
-});
+        $result = $this->printer->prettyPrint($ast);
+
+        expect($result)->toContain('$default = $value ?? $default');
+    }
+);

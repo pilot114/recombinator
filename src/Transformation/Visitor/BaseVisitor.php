@@ -12,18 +12,20 @@ use Recombinator\Core\PrettyDumper;
 class BaseVisitor extends NodeVisitorAbstract
 {
     public $scopeName;
+
     public $diff;
+
     protected $ast;
 
-    public function beforeTraverse(array $nodes)
+    public function beforeTraverse(array $nodes): void
     {
         $this->ast = $nodes;
-//        echo sprintf("*** %s start ***\n", (new \ReflectionClass(static::class))->getShortName());
+        //        echo sprintf("*** %s start ***\n", (new \ReflectionClass(static::class))->getShortName());
     }
 
-    public function afterTraverse(array $nodes)
+    public function afterTraverse(array $nodes): void
     {
-//        echo sprintf("*** %s end ***\n", (new \ReflectionClass(static::class))->getShortName());
+        //        echo sprintf("*** %s end ***\n", (new \ReflectionClass(static::class))->getShortName());
     }
 
     public function leaveNode(Node $node)
@@ -31,6 +33,7 @@ class BaseVisitor extends NodeVisitorAbstract
         if ($node->getAttribute('remove')) {
             return NodeTraverser::REMOVE_NODE;
         }
+
         if ($node->getAttribute('replace')) {
             return $node->getAttribute('replace');
         }
@@ -43,22 +46,25 @@ class BaseVisitor extends NodeVisitorAbstract
     {
         // удаленный узел - у него нет позиции
         if ($stmt->getStartLine() < 0) {
-            echo sprintf("%s\n", get_class($stmt));
+            echo sprintf("%s\n", $stmt::class);
         } else {
             echo sprintf(
-                "%s %s:%s-%s\n", get_class($stmt),
+                "%s %s:%s-%s\n", $stmt::class,
                 $stmt->getStartLine(), $stmt->getStartFilePos(), $stmt->getEndFilePos()
             );
         }
-        if ($onlyClass) return;
-        echo (new PrettyDumper())->dump($stmt) . "\n";
+
+        if ($onlyClass) { return;
+        }
+
+        echo new PrettyDumper()->dump($stmt) . "\n";
         echo (new StandardPrinter)->prettyPrint([$stmt]) . "\n";
     }
 
     /**
      * Создание уникального идентификатора на основе сигнатур узла
      */
-    protected function buildUidByNode(Node $stmt)
+    protected function buildUidByNode(Node $stmt): int
     {
         return crc32($stmt->getStartFilePos() . $stmt->getEndFilePos());
     }
@@ -71,7 +77,7 @@ class BaseVisitor extends NodeVisitorAbstract
      * $assigns = $p->findNode(Assign::class);
      * $vars = array_map(function($x) { return $x->var->name; }, $assigns);
      */
-    protected function findNode($className, $node = null)
+    protected function findNode(string $className, $node = null): array
     {
         $nodeFinder = new NodeFinder();
         return $nodeFinder->findInstanceOf($node ?? $this->ast, $className);
@@ -80,7 +86,7 @@ class BaseVisitor extends NodeVisitorAbstract
     /**
      * Выводит список нод с их позициями (строка:смещение в файле)
      */
-    protected function printNodesPos($className)
+    protected function printNodesPos(string $className)
     {
         $nodes = $this->findNode($className);
 
@@ -90,8 +96,10 @@ class BaseVisitor extends NodeVisitorAbstract
             if ($maxLenToken < $lenToken) {
                 $maxLenToken = $lenToken;
             }
+
             $node->setAttribute('lenToken', $lenToken);
         }
+
         echo $className . " count: " . count($nodes) . "\n";
         foreach ($nodes as $node) {
             echo sprintf(
@@ -103,11 +111,12 @@ class BaseVisitor extends NodeVisitorAbstract
                 $node->getAttribute('endFilePos')
             );
         }
+
         echo "\n";
     }
 
     // расставляет arg_index/arg_default в однострочной функции
-    protected function markupFunctionBody(Node $node)
+    protected function markupFunctionBody(Node $node): Node
     {
         $return = $node->stmts[0];
         $params = [];
@@ -117,6 +126,7 @@ class BaseVisitor extends NodeVisitorAbstract
                 'default' => $param->default->value ?? null,
             ];
         }
+
         $vars = $this->findNode(Node\Expr\Variable::class, $return->expr);
         foreach ($vars as $var) {
             if (isset($params[$var->name])) {
@@ -124,6 +134,7 @@ class BaseVisitor extends NodeVisitorAbstract
                 $var->setAttribute('arg_default', $params[$var->name]['default']);
             }
         }
+
         return $node;
     }
 }

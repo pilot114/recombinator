@@ -8,160 +8,204 @@ use PhpParser\Node\Scalar;
 use Recombinator\Domain\NamingSuggester;
 use Recombinator\Domain\SideEffectType;
 
-beforeEach(function () {
-    $this->suggester = new NamingSuggester();
-});
+beforeEach(
+    function (): void {
+        $this->suggester = new NamingSuggester();
+    }
+);
 
-describe('Variable Name Suggestions', function () {
-    it('suggests names for binary operations', function () {
-        $node = new Expr\BinaryOp\Plus(
-            new Scalar\LNumber(1),
-            new Scalar\LNumber(2)
+describe(
+    'Variable Name Suggestions', function (): void {
+        it(
+            'suggests names for binary operations', function (): void {
+                $node = new Expr\BinaryOp\Plus(
+                    new Scalar\LNumber(1),
+                    new Scalar\LNumber(2)
+                );
+
+                $suggestions = $this->suggester->suggestVariableName($node);
+
+                expect($suggestions)->toBeArray()
+                    ->and($suggestions)->toContain('sum')
+                    ->and($suggestions)->toContain('total');
+            }
         );
 
-        $suggestions = $this->suggester->suggestVariableName($node);
+        it(
+            'suggests names for function calls', function (): void {
+                $node = new Expr\FuncCall(
+                    new Node\Name('count'),
+                    []
+                );
 
-        expect($suggestions)->toBeArray()
-            ->and($suggestions)->toContain('sum')
-            ->and($suggestions)->toContain('total');
-    });
+                $suggestions = $this->suggester->suggestVariableName($node);
 
-    it('suggests names for function calls', function () {
-        $node = new Expr\FuncCall(
-            new Node\Name('count'),
-            []
+                expect($suggestions)->toBeArray()
+                    ->and($suggestions)->toContain('count')
+                    ->and($suggestions)->toContain('total');
+            }
         );
 
-        $suggestions = $this->suggester->suggestVariableName($node);
+        it(
+            'suggests names for array access', function (): void {
+                $node = new Expr\ArrayDimFetch(
+                    new Expr\Variable('_GET'),
+                    new Scalar\String_('username')
+                );
 
-        expect($suggestions)->toBeArray()
-            ->and($suggestions)->toContain('count')
-            ->and($suggestions)->toContain('total');
-    });
+                $suggestions = $this->suggester->suggestVariableName($node);
 
-    it('suggests names for array access', function () {
-        $node = new Expr\ArrayDimFetch(
-            new Expr\Variable('_GET'),
-            new Scalar\String_('username')
+                expect($suggestions)->toBeArray()
+                    ->and($suggestions)->not->toBeEmpty();
+            }
         );
 
-        $suggestions = $this->suggester->suggestVariableName($node);
+        it(
+            'suggests names for ternary operations', function (): void {
+                $node = new Expr\Ternary(
+                    new Expr\Variable('condition'),
+                    new Scalar\String_('yes'),
+                    new Scalar\String_('no')
+                );
 
-        expect($suggestions)->toBeArray()
-            ->and($suggestions)->not->toBeEmpty();
-    });
+                $suggestions = $this->suggester->suggestVariableName($node);
 
-    it('suggests names for ternary operations', function () {
-        $node = new Expr\Ternary(
-            new Expr\Variable('condition'),
-            new Scalar\String_('yes'),
-            new Scalar\String_('no')
+                expect($suggestions)->toBeArray()
+                    ->and($suggestions)->toContain('result');
+            }
         );
 
-        $suggestions = $this->suggester->suggestVariableName($node);
+        it(
+            'suggests names for concat operations', function (): void {
+                $node = new Expr\BinaryOp\Concat(
+                    new Scalar\String_('hello'),
+                    new Scalar\String_('world')
+                );
 
-        expect($suggestions)->toBeArray()
-            ->and($suggestions)->toContain('result');
-    });
+                $suggestions = $this->suggester->suggestVariableName($node);
 
-    it('suggests names for concat operations', function () {
-        $node = new Expr\BinaryOp\Concat(
-            new Scalar\String_('hello'),
-            new Scalar\String_('world')
+                expect($suggestions)->toBeArray()
+                    ->and($suggestions)->toContain('text');
+            }
+        );
+    }
+);
+
+describe(
+    'Function Name Suggestions', function (): void {
+        it(
+            'suggests names based on effect type PURE', function (): void {
+                $suggestions = $this->suggester->suggestFunctionName([], SideEffectType::PURE);
+
+                expect($suggestions)->toBeArray()
+                    ->and($suggestions)->toContain('calculate');
+            }
         );
 
-        $suggestions = $this->suggester->suggestVariableName($node);
+        it(
+            'suggests names based on effect type IO', function (): void {
+                $suggestions = $this->suggester->suggestFunctionName([], SideEffectType::IO);
 
-        expect($suggestions)->toBeArray()
-            ->and($suggestions)->toContain('text');
-    });
-});
+                expect($suggestions)->toBeArray()
+                    ->and($suggestions)->toContain('display');
+            }
+        );
 
-describe('Function Name Suggestions', function () {
-    it('suggests names based on effect type PURE', function () {
-        $suggestions = $this->suggester->suggestFunctionName([], SideEffectType::PURE);
+        it(
+            'suggests names based on effect type DATABASE', function (): void {
+                $suggestions = $this->suggester->suggestFunctionName([], SideEffectType::DATABASE);
 
-        expect($suggestions)->toBeArray()
-            ->and($suggestions)->toContain('calculate');
-    });
+                expect($suggestions)->toBeArray()
+                    ->and($suggestions)->toContain('queryDb');
+            }
+        );
+    }
+);
 
-    it('suggests names based on effect type IO', function () {
-        $suggestions = $this->suggester->suggestFunctionName([], SideEffectType::IO);
+describe(
+    'Name Quality Assessment', function (): void {
+        it(
+            'detects poor names - too short', function (): void {
+                expect($this->suggester->isPoorName('x'))->toBeTrue()
+                ->and($this->suggester->isPoorName('y'))->toBeTrue()
+                ->and($this->suggester->isPoorName('a'))->toBeTrue();
+            }
+        );
 
-        expect($suggestions)->toBeArray()
-            ->and($suggestions)->toContain('display');
-    });
+        it(
+            'allows standard short names', function (): void {
+                expect($this->suggester->isPoorName('i'))->toBeFalse()
+                ->and($this->suggester->isPoorName('j'))->toBeFalse()
+                ->and($this->suggester->isPoorName('id'))->toBeFalse();
+            }
+        );
 
-    it('suggests names based on effect type DATABASE', function () {
-        $suggestions = $this->suggester->suggestFunctionName([], SideEffectType::DATABASE);
+        it(
+            'detects poor names - common bad patterns', function (): void {
+                expect($this->suggester->isPoorName('tmp'))->toBeTrue()
+                ->and($this->suggester->isPoorName('temp'))->toBeTrue()
+                ->and($this->suggester->isPoorName('foo'))->toBeTrue()
+                ->and($this->suggester->isPoorName('bar'))->toBeTrue();
+            }
+        );
 
-        expect($suggestions)->toBeArray()
-            ->and($suggestions)->toContain('queryDb');
-    });
-});
+        it(
+            'detects poor names - number suffixes', function (): void {
+                expect($this->suggester->isPoorName('a1'))->toBeTrue()
+                ->and($this->suggester->isPoorName('x2'))->toBeTrue();
+            }
+        );
 
-describe('Name Quality Assessment', function () {
-    it('detects poor names - too short', function () {
-        expect($this->suggester->isPoorName('x'))->toBeTrue()
-            ->and($this->suggester->isPoorName('y'))->toBeTrue()
-            ->and($this->suggester->isPoorName('a'))->toBeTrue();
-    });
+        it(
+            'accepts good names', function (): void {
+                expect($this->suggester->isPoorName('username'))->toBeFalse()
+                ->and($this->suggester->isPoorName('totalCount'))->toBeFalse()
+                ->and($this->suggester->isPoorName('user_id'))->toBeFalse();
+            }
+        );
+    }
+);
 
-    it('allows standard short names', function () {
-        expect($this->suggester->isPoorName('i'))->toBeFalse()
-            ->and($this->suggester->isPoorName('j'))->toBeFalse()
-            ->and($this->suggester->isPoorName('id'))->toBeFalse();
-    });
+describe(
+    'Name Quality Scoring', function (): void {
+        it(
+            'gives high scores to good names', function (): void {
+                $score = $this->suggester->scoreNameQuality('username');
+                expect($score)->toBeGreaterThan(5);
 
-    it('detects poor names - common bad patterns', function () {
-        expect($this->suggester->isPoorName('tmp'))->toBeTrue()
-            ->and($this->suggester->isPoorName('temp'))->toBeTrue()
-            ->and($this->suggester->isPoorName('foo'))->toBeTrue()
-            ->and($this->suggester->isPoorName('bar'))->toBeTrue();
-    });
+                $score = $this->suggester->scoreNameQuality('totalCount');
+                expect($score)->toBeGreaterThan(5);
+            }
+        );
 
-    it('detects poor names - number suffixes', function () {
-        expect($this->suggester->isPoorName('a1'))->toBeTrue()
-            ->and($this->suggester->isPoorName('x2'))->toBeTrue();
-    });
+        it(
+            'gives low scores to poor names', function (): void {
+                $score = $this->suggester->scoreNameQuality('x');
+                expect($score)->toBeLessThan(5);
 
-    it('accepts good names', function () {
-        expect($this->suggester->isPoorName('username'))->toBeFalse()
-            ->and($this->suggester->isPoorName('totalCount'))->toBeFalse()
-            ->and($this->suggester->isPoorName('user_id'))->toBeFalse();
-    });
-});
+                $score = $this->suggester->scoreNameQuality('tmp');
+                expect($score)->toBeLessThan(5);
+            }
+        );
 
-describe('Name Quality Scoring', function () {
-    it('gives high scores to good names', function () {
-        $score = $this->suggester->scoreNameQuality('username');
-        expect($score)->toBeGreaterThan(5);
+        it(
+            'penalizes very long names', function (): void {
+                $longName = 'thisIsAVeryLongVariableNameThatIsProbablyTooLong';
+                $score = $this->suggester->scoreNameQuality($longName);
+                expect($score)->toBeLessThan(8);
+            }
+        );
 
-        $score = $this->suggester->scoreNameQuality('totalCount');
-        expect($score)->toBeGreaterThan(5);
-    });
+        it(
+            'scores are in valid range 0-10', function (): void {
+                $names = ['x', 'tmp', 'username', 'veryLongNameHere', 'id', 'foo'];
 
-    it('gives low scores to poor names', function () {
-        $score = $this->suggester->scoreNameQuality('x');
-        expect($score)->toBeLessThan(5);
-
-        $score = $this->suggester->scoreNameQuality('tmp');
-        expect($score)->toBeLessThan(5);
-    });
-
-    it('penalizes very long names', function () {
-        $longName = 'thisIsAVeryLongVariableNameThatIsProbablyTooLong';
-        $score = $this->suggester->scoreNameQuality($longName);
-        expect($score)->toBeLessThan(8);
-    });
-
-    it('scores are in valid range 0-10', function () {
-        $names = ['x', 'tmp', 'username', 'veryLongNameHere', 'id', 'foo'];
-
-        foreach ($names as $name) {
-            $score = $this->suggester->scoreNameQuality($name);
-            expect($score)->toBeGreaterThanOrEqual(0)
-                ->and($score)->toBeLessThanOrEqual(10);
-        }
-    });
-});
+                foreach ($names as $name) {
+                    $score = $this->suggester->scoreNameQuality($name);
+                    expect($score)->toBeGreaterThanOrEqual(0)
+                        ->and($score)->toBeLessThanOrEqual(10);
+                }
+            }
+        );
+    }
+);

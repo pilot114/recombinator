@@ -12,7 +12,8 @@ class RelatedVariableGroup
      */
     public function __construct(
         public readonly array $assignments
-    ) {}
+    ) {
+    }
 
     /**
      * Возвращает количество переменных в группе
@@ -27,7 +28,7 @@ class RelatedVariableGroup
      */
     public function getSignature(): string
     {
-        $vars = array_map(fn($a) => $a['var'], $this->assignments);
+        $vars = array_map(fn(array $a) => $a['var'], $this->assignments);
         sort($vars);
         return implode('|', $vars);
     }
@@ -39,6 +40,6 @@ class RelatedVariableGroup
      */
     public function getIndices(): array
     {
-        return array_map(fn($a) => $a['index'], $this->assignments);
+        return array_map(fn(array $a) => $a['index'], $this->assignments);
     }
 }

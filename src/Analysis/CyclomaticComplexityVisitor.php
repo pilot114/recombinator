@@ -25,15 +25,16 @@ class CyclomaticComplexityVisitor extends NodeVisitorAbstract
         }
 
         // Циклы
-        if ($node instanceof Node\Stmt\For_ ||
-            $node instanceof Node\Stmt\Foreach_ ||
-            $node instanceof Node\Stmt\While_ ||
-            $node instanceof Node\Stmt\Do_) {
+        if ($node instanceof Node\Stmt\For_ 
+            || $node instanceof Node\Stmt\Foreach_ 
+            || $node instanceof Node\Stmt\While_ 
+            || $node instanceof Node\Stmt\Do_
+        ) {
             $this->complexity++;
         }
 
         // Switch: каждый case добавляет точку принятия решения
-        if ($node instanceof Node\Stmt\Case_ && $node->cond !== null) {
+        if ($node instanceof Node\Stmt\Case_ && $node->cond instanceof \PhpParser\Node\Expr) {
             $this->complexity++;
         }
 
@@ -48,10 +49,11 @@ class CyclomaticComplexityVisitor extends NodeVisitorAbstract
         }
 
         // Логические операторы && и ||
-        if ($node instanceof Node\Expr\BinaryOp\BooleanAnd ||
-            $node instanceof Node\Expr\BinaryOp\BooleanOr ||
-            $node instanceof Node\Expr\BinaryOp\LogicalAnd ||
-            $node instanceof Node\Expr\BinaryOp\LogicalOr) {
+        if ($node instanceof Node\Expr\BinaryOp\BooleanAnd 
+            || $node instanceof Node\Expr\BinaryOp\BooleanOr 
+            || $node instanceof Node\Expr\BinaryOp\LogicalAnd 
+            || $node instanceof Node\Expr\BinaryOp\LogicalOr
+        ) {
             $this->complexity++;
         }
 
@@ -65,7 +67,7 @@ class CyclomaticComplexityVisitor extends NodeVisitorAbstract
             // Match сам по себе = 1, плюс каждая arm (кроме default)
             $nonDefaultArms = array_filter(
                 $node->arms,
-                fn($arm) => $arm->conds !== null
+                fn(\PhpParser\Node\MatchArm $arm): bool => $arm->conds !== null
             );
             $this->complexity += count($nonDefaultArms);
         }

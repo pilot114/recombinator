@@ -12,22 +12,22 @@ use PhpParser\NodeVisitor;
  */
 class Fluent
 {
-    /** @var array<int, \PhpParser\Node> */
-    protected array $ast = [];
-
-    /** @var array<int, NodeVisitor> */
+    /**
+     * 
+     *
+     * @var array<int, NodeVisitor> 
+     */
     protected array $visitors = [];
 
     /**
      * @param array<int, \PhpParser\Node> $ast
      */
-    public function __construct(array $ast)
+    public function __construct(protected array $ast)
     {
-        $this->ast = $ast;
     }
 
     /**
-     * @param array<int, NodeVisitor> $visitors
+     * @param  array<int, NodeVisitor> $visitors
      * @return $this
      */
     public function withVisitors(array $visitors): self
@@ -45,6 +45,7 @@ class Fluent
         foreach ($this->visitors as $visitor) {
             $traverser->addVisitor($visitor);
         }
+
         return $traverser->traverse($this->ast);
     }
 }

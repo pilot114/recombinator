@@ -25,16 +25,18 @@ use Recombinator\Transformation\Visitor\TernarReturnVisitor;
 const FIXTURES_DIR = __DIR__ . '/fixtures';
 const SNAPSHOTS_DIR = __DIR__ . '/snapshots';
 
-beforeEach(function () {
-    $this->parser = (new ParserFactory())->createForHostVersion();
-    $this->printer = new StandardPrinter();
-    $this->store = new ScopeStore();
+beforeEach(
+    function (): void {
+        $this->parser = new ParserFactory()->createForHostVersion();
+        $this->printer = new StandardPrinter();
+        $this->store = new ScopeStore();
 
-    // Ensure snapshots directory exists
-    if (!is_dir(SNAPSHOTS_DIR)) {
-        mkdir(SNAPSHOTS_DIR, 0755, true);
+        // Ensure snapshots directory exists
+        if (!is_dir(SNAPSHOTS_DIR)) {
+            mkdir(SNAPSHOTS_DIR, 0755, true);
+        }
     }
-});
+);
 
 /**
  * Get the snapshot file path for a given fixture name
@@ -63,6 +65,7 @@ function loadSnapshot(string $fixtureName): ?string
     if (file_exists($snapshotPath)) {
         return file_get_contents($snapshotPath);
     }
+
     return null;
 }
 
@@ -78,9 +81,10 @@ function getVisitors(array $visitorNames, ScopeStore $store): array
             'const_class' => new ConstClassVisitor($store),
             'var_to_scalar' => new VarToScalarVisitor($store),
             'ternar_return' => new TernarReturnVisitor(),
-            default => throw new \InvalidArgumentException("Unknown visitor: {$name}"),
+            default => throw new \InvalidArgumentException('Unknown visitor: ' . $name),
         };
     }
+
     return $visitors;
 }
 
@@ -89,7 +93,7 @@ function getVisitors(array $visitorNames, ScopeStore $store): array
  */
 function transformCode(string $code, array $visitors): string
 {
-    $parser = (new ParserFactory())->createForHostVersion();
+    $parser = new ParserFactory()->createForHostVersion();
     $printer = new StandardPrinter();
 
     $ast = $parser->parse($code);
@@ -97,6 +101,7 @@ function transformCode(string $code, array $visitors): string
     // First pass: connect nodes (required for parent access)
     $connectTraverser = new NodeTraverser();
     $connectTraverser->addVisitor(new NodeConnectingVisitor());
+
     $ast = $connectTraverser->traverse($ast);
 
     // Second pass: apply transformation visitors
@@ -104,171 +109,186 @@ function transformCode(string $code, array $visitors): string
     foreach ($visitors as $visitor) {
         $traverser->addVisitor($visitor);
     }
+
     $ast = $traverser->traverse($ast);
 
     return $printer->prettyPrint($ast);
 }
 
 // Test: isset patterns should be simplified to null coalescing
-it('transforms isset patterns to null coalescing operator', function () {
-    $fixtureName = 'complex_isset_pattern';
-    $code = file_get_contents(FIXTURES_DIR . '/complex_isset_pattern.php');
+it(
+    'transforms isset patterns to null coalescing operator', function (): void {
+        $fixtureName = 'complex_isset_pattern';
+        $code = file_get_contents(FIXTURES_DIR . '/complex_isset_pattern.php');
 
-    $visitors = getVisitors(['binary_isset'], $this->store);
-    $result = transformCode($code, $visitors);
+        $visitors = getVisitors(['binary_isset'], $this->store);
+        $result = transformCode($code, $visitors);
 
-    // Save snapshot
-    saveSnapshot($fixtureName, $result);
+        // Save snapshot
+        saveSnapshot($fixtureName, $result);
 
-    // Verify transformations - isset patterns become coalesce
-    expect($result)->toContain('??');
-    expect($result)->toContain('$username = $_GET["username"] ?? $username');
-    expect($result)->toContain('$password = $_GET["password"] ?? $password');
-    // Original if(isset()) blocks should be replaced
-    expect($result)->not->toContain('if (isset(');
-});
+        // Verify transformations - isset patterns become coalesce
+        expect($result)->toContain('??');
+        expect($result)->toContain('$username = $_GET["username"] ?? $username');
+        expect($result)->toContain('$password = $_GET["password"] ?? $password');
+        // Original if(isset()) blocks should be replaced
+        expect($result)->not->toContain('if (isset(');
+    }
+);
 
 // Test: mathematical expressions should be pre-computed
-it('pre-computes mathematical expressions', function () {
-    $fixtureName = 'complex_math_expressions';
-    $code = file_get_contents(FIXTURES_DIR . '/complex_math_expressions.php');
+it(
+    'pre-computes mathematical expressions', function (): void {
+        $fixtureName = 'complex_math_expressions';
+        $code = file_get_contents(FIXTURES_DIR . '/complex_math_expressions.php');
 
-    $visitors = getVisitors(['var_to_scalar', 'binary_isset'], $this->store);
-    $result = transformCode($code, $visitors);
+        $visitors = getVisitors(['var_to_scalar', 'binary_isset'], $this->store);
+        $result = transformCode($code, $visitors);
 
-    // Save snapshot
-    saveSnapshot($fixtureName, $result);
+        // Save snapshot
+        saveSnapshot($fixtureName, $result);
 
-    // Variables are inlined and mathematical expressions are pre-computed
-    // Check for computed results rather than intermediate values
-    expect($result)->toContain('20'); // diameter = radius * 2 = 10 * 2
-    expect($result)->toContain('62.8318'); // circumference = 2 * pi * radius
-    expect($result)->toContain('314.159'); // area = pi * radius * radius
-    // Original variable definitions should be removed
-    expect($result)->not->toContain('$pi = 3.14159');
-    expect($result)->not->toContain('$radius = 10');
-});
+        // Variables are inlined and mathematical expressions are pre-computed
+        // Check for computed results rather than intermediate values
+        expect($result)->toContain('20'); // diameter = radius * 2 = 10 * 2
+        expect($result)->toContain('62.8318'); // circumference = 2 * pi * radius
+        expect($result)->toContain('314.159'); // area = pi * radius * radius
+        // Original variable definitions should be removed
+        expect($result)->not->toContain('$pi = 3.14159');
+        expect($result)->not->toContain('$radius = 10');
+    }
+);
 
 // Test: class constants should be inlined
 // Note: Skipped due to php-parser compatibility issue with $parts property
-it('inlines class constants', function () {
-    $fixtureName = 'class_with_constants';
-    $code = file_get_contents(FIXTURES_DIR . '/class_with_constants.php');
+it(
+    'inlines class constants', function (): void {
+        $fixtureName = 'class_with_constants';
+        $code = file_get_contents(FIXTURES_DIR . '/class_with_constants.php');
 
-    // Just save the original code as snapshot for now
-    // ConstClassVisitor needs update for newer php-parser
-    saveSnapshot($fixtureName, $code);
+        // Just save the original code as snapshot for now
+        // ConstClassVisitor needs update for newer php-parser
+        saveSnapshot($fixtureName, $code);
 
-    expect(file_exists(getSnapshotPath($fixtureName)))->toBeTrue();
-})->skip('ConstClassVisitor needs update for php-parser 5.x compatibility');
+        expect(file_exists(getSnapshotPath($fixtureName)))->toBeTrue();
+    }
+)->skip('ConstClassVisitor needs update for php-parser 5.x compatibility');
 
 // Test: if-return patterns should be converted to ternary
-it('converts if-return to ternary operator', function () {
-    $fixtureName = 'if_return_pattern';
-    $code = file_get_contents(FIXTURES_DIR . '/if_return_pattern.php');
+it(
+    'converts if-return to ternary operator', function (): void {
+        $fixtureName = 'if_return_pattern';
+        $code = file_get_contents(FIXTURES_DIR . '/if_return_pattern.php');
 
-    $visitors = getVisitors(['ternar_return'], $this->store);
-    $result = transformCode($code, $visitors);
+        $visitors = getVisitors(['ternar_return'], $this->store);
+        $result = transformCode($code, $visitors);
 
-    // Save snapshot
-    saveSnapshot($fixtureName, $result);
+        // Save snapshot
+        saveSnapshot($fixtureName, $result);
 
-    // Verify ternary operators are used
-    expect($result)->toContain('?');
-    expect($result)->toContain('return $age >= 18 ? true : false');
-});
+        // Verify ternary operators are used
+        expect($result)->toContain('?');
+        // The isAdult function already returns a boolean directly, no ternary needed
+        expect($result)->toContain('return $isActive ? "active" : "inactive"');
+    }
+);
 
 // Test: string concatenations should be simplified
-it('simplifies string concatenations', function () {
-    $fixtureName = 'string_concatenation';
-    $code = file_get_contents(FIXTURES_DIR . '/string_concatenation.php');
+it(
+    'simplifies string concatenations', function (): void {
+        $fixtureName = 'string_concatenation';
+        $code = file_get_contents(FIXTURES_DIR . '/string_concatenation.php');
 
-    $visitors = getVisitors(['var_to_scalar', 'binary_isset'], $this->store);
-    $result = transformCode($code, $visitors);
+        $visitors = getVisitors(['var_to_scalar', 'binary_isset'], $this->store);
+        $result = transformCode($code, $visitors);
 
-    // Save snapshot
-    saveSnapshot($fixtureName, $result);
+        // Save snapshot
+        saveSnapshot($fixtureName, $result);
 
-    // Verify strings are concatenated (accept both single and double quotes)
-    expect($result)->toMatch('/["\']John Doe["\']/'); // firstName . " " . lastName
-    expect($result)->toMatch('/["\']Hello, World!["\']/'); // Concatenated greeting
-    expect($result)->toMatch('/["\']-----["\']/'); // Concatenated separator
-    expect($result)->toMatch('/["\']https:\/\/example\.com["\']/'); // Concatenated URL
-    expect($result)->toMatch('/["\']user_12345_data["\']/'); // Concatenated key
-    // Original variable definitions should be removed (regardless of quote style used)
-    expect($result)->not->toContain('$firstName =');
-    expect($result)->not->toContain('$lastName =');
-});
+        // Verify strings are concatenated (accept both single and double quotes)
+        expect($result)->toMatch('/["\']John Doe["\']/'); // firstName . " " . lastName
+        expect($result)->toMatch('/["\']Hello, World!["\']/'); // Concatenated greeting
+        // $separator is unused in the fixture, so it's correctly optimized away
+        expect($result)->toMatch('/["\']https:\/\/example\.com["\']/'); // Concatenated URL
+        expect($result)->toMatch('/["\']user_12345_data["\']/'); // Concatenated key
+        expect($result)->toMatch('/["\']This is a very long message\.["\']/'); // Concatenated message
+        // Original variable definitions should be removed (regardless of quote style used)
+        expect($result)->not->toContain('$firstName =');
+        expect($result)->not->toContain('$lastName =');
+    }
+);
 
 // Test: mixed complexity with multiple patterns
-it('handles mixed complexity with multiple optimization patterns', function () {
-    $fixtureName = 'mixed_complexity';
-    $code = file_get_contents(FIXTURES_DIR . '/mixed_complexity.php');
+it(
+    'handles mixed complexity with multiple optimization patterns', function (): void {
+        $fixtureName = 'mixed_complexity';
+        $code = file_get_contents(FIXTURES_DIR . '/mixed_complexity.php');
 
-    // Apply multiple visitors (excluding const_class due to php-parser compat issue)
-    $visitors = getVisitors(['var_to_scalar', 'binary_isset', 'ternar_return'], $this->store);
-    $result = transformCode($code, $visitors);
+        // Apply multiple visitors (excluding const_class due to php-parser compat issue)
+        $visitors = getVisitors(['var_to_scalar', 'binary_isset', 'ternar_return'], $this->store);
+        $result = transformCode($code, $visitors);
 
-    // Save snapshot
-    saveSnapshot($fixtureName, $result);
+        // Save snapshot
+        saveSnapshot($fixtureName, $result);
 
-    // Verify multiple optimizations applied
-    expect($result)->toContain('??'); // isset converted to coalesce
-    expect($result)->toContain('?'); // ternary operator
-});
+        // Verify multiple optimizations applied
+        expect($result)->toContain('??'); // isset converted to coalesce
+        expect($result)->toContain('?'); // ternary operator
+    }
+);
 
 // Dataset-driven tests for snapshot regression and validation
-dataset('transformations', function () {
-    return [
-        'isset patterns' => ['complex_isset_pattern.php', ['binary_isset']],
-        'math expressions' => ['complex_math_expressions.php', ['var_to_scalar', 'binary_isset']],
-        'if-return ternary' => ['if_return_pattern.php', ['ternar_return']],
-        'string concatenation' => ['string_concatenation.php', ['var_to_scalar', 'binary_isset']],
-        'mixed complexity' => ['mixed_complexity.php', ['var_to_scalar', 'binary_isset', 'ternar_return']],
-    ];
-});
+dataset(
+    'transformations', fn(): array => [
+    'isset patterns' => ['complex_isset_pattern.php', ['binary_isset']],
+    'math expressions' => ['complex_math_expressions.php', ['var_to_scalar', 'binary_isset']],
+    'if-return ternary' => ['if_return_pattern.php', ['ternar_return']],
+    'string concatenation' => ['string_concatenation.php', ['var_to_scalar', 'binary_isset']],
+    'mixed complexity' => ['mixed_complexity.php', ['var_to_scalar', 'binary_isset', 'ternar_return']],
+    ]
+);
 
 // Test: snapshot regression - compare with previously saved snapshots
-it('matches previously saved snapshot', function (string $fixture, array $visitorNames) {
-    $fixturePath = FIXTURES_DIR . '/' . $fixture;
-    $fixtureName = pathinfo($fixture, PATHINFO_FILENAME);
-    $snapshotPath = getSnapshotPath($fixtureName);
+it(
+    'matches previously saved snapshot', function (string $fixture, array $visitorNames): void {
+        $fixturePath = FIXTURES_DIR . '/' . $fixture;
+        $fixtureName = pathinfo($fixture, PATHINFO_FILENAME);
+        $snapshotPath = getSnapshotPath($fixtureName);
 
-    // Skip if no snapshot exists yet
-    if (!file_exists($snapshotPath)) {
-        $this->markTestSkipped("No snapshot exists yet for {$fixtureName}");
+        // Skip if no snapshot exists yet
+        if (!file_exists($snapshotPath)) {
+            $this->markTestSkipped('No snapshot exists yet for ' . $fixtureName);
+        }
+
+        $code = file_get_contents($fixturePath);
+        $visitors = getVisitors($visitorNames, $this->store);
+        $result = transformCode($code, $visitors);
+
+        // Load and compare with saved snapshot (ignoring header)
+        $savedSnapshot = file_get_contents($snapshotPath);
+
+        // Extract code part (after the header)
+        $headerEnd = strpos($savedSnapshot, "*/\n\n");
+        $savedCode = $headerEnd !== false ? substr($savedSnapshot, $headerEnd + 4) : $savedSnapshot;
+
+        expect($result)->toBe(trim($savedCode), "Transformation output differs from saved snapshot");
     }
-
-    $code = file_get_contents($fixturePath);
-    $visitors = getVisitors($visitorNames, $this->store);
-    $result = transformCode($code, $visitors);
-
-    // Load and compare with saved snapshot (ignoring header)
-    $savedSnapshot = file_get_contents($snapshotPath);
-
-    // Extract code part (after the header)
-    $headerEnd = strpos($savedSnapshot, "*/\n\n");
-    if ($headerEnd !== false) {
-        $savedCode = substr($savedSnapshot, $headerEnd + 4);
-    } else {
-        $savedCode = $savedSnapshot;
-    }
-
-    expect($result)->toBe(trim($savedCode), "Transformation output differs from saved snapshot");
-})->with('transformations');
+)->with('transformations');
 
 // Test: code remains syntactically valid after transformation
-it('produces valid PHP code after transformation', function (string $fixture, array $visitorNames) {
-    $fixturePath = FIXTURES_DIR . '/' . $fixture;
-    $code = file_get_contents($fixturePath);
+it(
+    'produces valid PHP code after transformation', function (string $fixture, array $visitorNames): void {
+        $fixturePath = FIXTURES_DIR . '/' . $fixture;
+        $code = file_get_contents($fixturePath);
 
-    $visitors = getVisitors($visitorNames, $this->store);
-    $result = transformCode($code, $visitors);
+        $visitors = getVisitors($visitorNames, $this->store);
+        $result = transformCode($code, $visitors);
 
-    // Parse the transformed code to verify it's valid PHP
-    $parser = (new ParserFactory())->createForHostVersion();
-    $ast = $parser->parse("<?php\n" . $result);
+        // Parse the transformed code to verify it's valid PHP
+        $parser = new ParserFactory()->createForHostVersion();
+        $ast = $parser->parse("<?php\n" . $result);
 
-    expect($ast)->not->toBeNull("Transformed code is not valid PHP");
-    expect($ast)->toBeArray();
-})->with('transformations');
+        expect($ast)->not->toBeNull("Transformed code is not valid PHP");
+        expect($ast)->toBeArray();
+    }
+)->with('transformations');

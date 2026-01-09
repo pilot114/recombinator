@@ -133,20 +133,20 @@ class Sandbox
         'preg_quote', 'preg_grep',
     ];
 
-    private ExecutionCache $cache;
-    private StandardPrinter $printer;
+    private readonly StandardPrinter $printer;
 
-    public function __construct(ExecutionCache $cache)
+    public function __construct(private readonly ExecutionCache $cache)
     {
-        $this->cache = $cache;
         $this->printer = new StandardPrinter();
     }
 
     /**
      * Выполняет код в безопасном окружении
      *
-     * @param Node $node AST узел для выполнения
-     * @param array $context Контекст выполнения (переменные, константы)
+     * @param  Node  $node    AST узел
+     *                        для
+     *                        выполнения
+     * @param  array $context Контекст выполнения (переменные, константы)
      * @return mixed Результат выполнения или null в случае ошибки
      */
     public function execute(Node $node, array $context = []): mixed
@@ -185,7 +185,8 @@ class Sandbox
         if ($node instanceof Node\Expr\Eval_
             || $node instanceof Node\Expr\Include_
             || $node instanceof Node\Expr\Exit_
-            || $node instanceof Node\Expr\ShellExec) {
+            || $node instanceof Node\Expr\ShellExec
+        ) {
             return false;
         }
 
@@ -195,6 +196,7 @@ class Sandbox
             if ($funcName && in_array(strtolower($funcName), self::FORBIDDEN_FUNCTIONS, true)) {
                 return false;
             }
+
             // Если функция не в whitelist, тоже запрещаем
             if ($funcName && !in_array(strtolower($funcName), self::ALLOWED_PURE_FUNCTIONS, true)) {
                 return false;
@@ -228,6 +230,7 @@ class Sandbox
         if ($node->name instanceof Node\Name) {
             return $node->name->toString();
         }
+
         return null;
     }
 
@@ -266,11 +269,11 @@ class Sandbox
             set_time_limit((int)$oldTimeLimit);
 
             return $result;
-        } catch (Throwable $e) {
+        } catch (Throwable $throwable) {
             // Восстанавливаем лимит в случае ошибки
             set_time_limit((int)$oldTimeLimit);
 
-            return new SandboxError($e->getMessage(), $e->getCode(), $e);
+            return new SandboxError($throwable->getMessage(), $throwable->getCode(), $throwable);
         }
     }
 

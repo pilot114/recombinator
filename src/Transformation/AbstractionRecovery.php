@@ -47,42 +47,24 @@ use Recombinator\Domain\EffectGroup;
  */
 class AbstractionRecovery
 {
-    private SideEffectSeparator $separator;
-    private CognitiveComplexityCalculator $complexityCalculator;
-
-    /**
-     * Минимальный размер чистого блока для создания функции (FOLD-FUNC-1)
-     */
-    private int $minPureBlockSize;
-
-    /**
-     * Минимальный размер блока с эффектами для создания функции (FOLD-FUNC-2)
-     */
-    private int $minEffectBlockSize;
-
-    /**
-     * Минимальная когнитивная сложность для создания функции
-     */
-    private int $minComplexity;
-
     public function __construct(
-        ?SideEffectSeparator $separator = null,
-        ?CognitiveComplexityCalculator $complexityCalculator = null,
-        int $minPureBlockSize = 5,
-        int $minEffectBlockSize = 3,
-        int $minComplexity = 10
+        private readonly ?SideEffectSeparator $separator = new SideEffectSeparator(),
+        private readonly ?CognitiveComplexityCalculator $complexityCalculator = new CognitiveComplexityCalculator(),
+        /**
+         * Минимальный размер чистого блока для создания функции (FOLD-FUNC-1)
+         */
+        private readonly int $minPureBlockSize = 5,
+        /**
+         * Минимальный размер блока с эффектами для создания функции (FOLD-FUNC-2)
+         */
+        private readonly int $minEffectBlockSize = 3
     ) {
-        $this->separator = $separator ?? new SideEffectSeparator();
-        $this->complexityCalculator = $complexityCalculator ?? new CognitiveComplexityCalculator();
-        $this->minPureBlockSize = $minPureBlockSize;
-        $this->minEffectBlockSize = $minEffectBlockSize;
-        $this->minComplexity = $minComplexity;
     }
 
     /**
      * Анализирует AST и находит кандидатов на выделение в функции
      *
-     * @param Node[] $ast AST, обработанный SideEffectMarkerVisitor
+     * @param  Node[] $ast AST, обработанный SideEffectMarkerVisitor
      * @return FunctionCandidate[] Массив кандидатов на выделение
      */
     public function analyze(array $ast): array
@@ -95,7 +77,7 @@ class AbstractionRecovery
         // 2. Анализируем чистые блоки (FOLD-FUNC-1)
         foreach ($separation->getPureComputations() as $pureComp) {
             $candidate = $this->analyzePureBlock($pureComp);
-            if ($candidate !== null) {
+            if ($candidate instanceof \Recombinator\Domain\FunctionCandidate) {
                 $candidates[] = $candidate;
             }
         }
@@ -103,13 +85,13 @@ class AbstractionRecovery
         // 3. Анализируем группы по эффектам (FOLD-FUNC-2)
         foreach ($separation->getGroups() as $group) {
             $candidate = $this->analyzeEffectGroup($group);
-            if ($candidate !== null) {
+            if ($candidate instanceof \Recombinator\Domain\FunctionCandidate) {
                 $candidates[] = $candidate;
             }
         }
 
         // 4. Сортируем кандидатов по приоритету
-        usort($candidates, fn($a, $b) => $b->getPriority() <=> $a->getPriority());
+        usort($candidates, fn($a, $b): int => $b->getPriority() <=> $a->getPriority());
 
         return $candidates;
     }
@@ -186,7 +168,7 @@ class AbstractionRecovery
     /**
      * Анализирует переменные в блоке кода
      *
-     * @param Node[] $nodes
+     * @param  Node[] $nodes
      * @return array{used: array<string>, defined: array<string>}
      */
     private function analyzeVariables(array $nodes): array
@@ -212,7 +194,7 @@ class AbstractionRecovery
      */
     private function detectReturnVariable(array $nodes): ?string
     {
-        if (empty($nodes)) {
+        if ($nodes === []) {
             return null;
         }
 
@@ -238,7 +220,7 @@ class AbstractionRecovery
      */
     private function getStartLine(array $nodes): int
     {
-        if (empty($nodes)) {
+        if ($nodes === []) {
             return 0;
         }
 
@@ -251,7 +233,7 @@ class AbstractionRecovery
      */
     private function getEndLine(array $nodes): int
     {
-        if (empty($nodes)) {
+        if ($nodes === []) {
             return 0;
         }
 

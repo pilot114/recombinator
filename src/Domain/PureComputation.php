@@ -24,11 +24,16 @@ class PureComputation
     public bool $isCompileTimeEvaluable = false;
 
     /**
-     * @param Node[] $nodes Узлы чистого вычисления
-     * @param int $startPosition Начальная позиция
-     * @param int $endPosition Конечная позиция
-     * @param int $size Количество узлов
-     * @param string $id Уникальный идентификатор
+     * @param Node[] $nodes         Узлы чистого
+     *                              вычисления
+     * @param int    $startPosition Начальная
+     *                              позиция
+     * @param int    $endPosition   Конечная
+     *                              позиция
+     * @param int    $size          Количество
+     *                              узлов
+     * @param string $id            Уникальный
+     *                              идентификатор
      */
     public function __construct(
         public readonly array $nodes,
@@ -36,14 +41,15 @@ class PureComputation
         public readonly int $endPosition,
         public readonly int $size,
         public readonly string $id,
-    ) {}
+    ) {
+    }
 
     /**
      * Проверяет, зависит ли вычисление от внешних узлов
      */
     public function hasDependencies(): bool
     {
-        return !empty($this->dependencies);
+        return $this->dependencies !== [];
     }
 
     /**

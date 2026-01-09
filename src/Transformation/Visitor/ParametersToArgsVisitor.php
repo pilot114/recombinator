@@ -6,11 +6,8 @@ use PhpParser\Node;
 
 class ParametersToArgsVisitor extends BaseVisitor
 {
-    protected $node;
-
-    public function __construct($node)
+    public function __construct(protected $node)
     {
-        $this->node = $node;
     }
 
     public function enterNode(Node $var)
@@ -19,9 +16,9 @@ class ParametersToArgsVisitor extends BaseVisitor
             $i = $var->getAttribute('arg_index');
             if (isset($this->node->args[$i])) {
                 return $this->node->args[$i]->value;
-            } else {
-                return $var->getAttribute('arg_default');
             }
+
+            return $var->getAttribute('arg_default');
         }
     }
 }

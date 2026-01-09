@@ -15,23 +15,29 @@ use Recombinator\Domain\StructureImprovement;
  */
 class InteractiveEditVisitor extends NodeVisitorAbstract
 {
-    /** @var EditCandidate[] */
+    /**
+     * @var EditCandidate[] 
+     */
     private array $editCandidates = [];
 
-    /** @var StructureImprovement[] */
+    /**
+     * @var StructureImprovement[] 
+     */
     private array $structureImprovements = [];
 
-    /** @var array<string, int> Статистика по типам проблем */
+    /**
+     * @var array<string, int> Статистика по типам проблем 
+     */
     private array $issueStats = [];
 
     private int $currentDepth = 0;
 
     public function __construct(
-        private NamingSuggester $namingSuggester,
-        private CognitiveComplexityCalculator $complexityCalculator,
-        private int $complexityThreshold,
-        private int $maxNestingDepth,
-        private int $minNameQuality
+        private readonly NamingSuggester $namingSuggester,
+        private readonly CognitiveComplexityCalculator $complexityCalculator,
+        private readonly int $complexityThreshold,
+        private readonly int $maxNestingDepth,
+        private readonly int $minNameQuality
     ) {
     }
 
@@ -103,7 +109,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
             $this->addEditCandidate(
                 $node,
                 EditCandidate::ISSUE_POOR_NAMING,
-                "Variable '\${$name}' has poor name quality (score: {$quality}/10)",
+                sprintf("Variable '\$%s' has poor name quality (score: %d/10)", $name, $quality),
                 EditCandidate::PRIORITY_MEDIUM,
                 ["Consider renaming to something more descriptive"]
             );
@@ -121,13 +127,13 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
         // Генерация предложений для имени на основе значения
         $suggestions = $this->namingSuggester->suggestVariableName($node->expr);
 
-        if (!empty($suggestions) && $this->namingSuggester->isPoorName($varName)) {
+        if ($suggestions !== [] && $this->namingSuggester->isPoorName($varName)) {
             $this->addEditCandidate(
                 $node,
                 EditCandidate::ISSUE_POOR_NAMING,
-                "Variable '\${$varName}' could have a more meaningful name",
+                sprintf("Variable '\$%s' could have a more meaningful name", $varName),
                 EditCandidate::PRIORITY_HIGH,
-                array_map(fn($s) => "Consider: \${$s}", $suggestions)
+                array_map(fn($s): string => 'Consider: $' . $s, $suggestions)
             );
         }
 
@@ -136,7 +142,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
         if ($complexity > $this->complexityThreshold) {
             $this->addStructureImprovement(
                 StructureImprovement::TYPE_INTRODUCE_VARIABLE,
-                "Complex expression (complexity: {$complexity}) could be split into intermediate variables",
+                sprintf('Complex expression (complexity: %d) could be split into intermediate variables', $complexity),
                 $node,
                 ['complexity' => $complexity, 'priority' => 7]
             );
@@ -145,7 +151,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
 
     private function analyzeFunction(Stmt\Function_|Expr\Closure $node): void
     {
-        if ($node instanceof Stmt\Function_ && $node->name !== null) {
+        if ($node instanceof Stmt\Function_ && $node->name instanceof \PhpParser\Node\Identifier) {
             $name = $node->name->toString();
             $quality = $this->namingSuggester->scoreNameQuality($name);
 
@@ -153,7 +159,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
                 $this->addEditCandidate(
                     $node,
                     EditCandidate::ISSUE_POOR_NAMING,
-                    "Function '{$name}' has poor name quality (score: {$quality}/10)",
+                    sprintf("Function '%s' has poor name quality (score: %d/10)", $name, $quality),
                     EditCandidate::PRIORITY_HIGH,
                     ["Consider using a more descriptive verb-based name"]
                 );
@@ -165,7 +171,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
         if ($complexity > 20) {
             $this->addStructureImprovement(
                 StructureImprovement::TYPE_SPLIT_LOGIC,
-                "Function is too complex (complexity: {$complexity}), consider splitting",
+                sprintf('Function is too complex (complexity: %d), consider splitting', $complexity),
                 $node,
                 ['complexity' => $complexity, 'priority' => 9]
             );
@@ -179,7 +185,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
             $this->addEditCandidate(
                 $node,
                 EditCandidate::ISSUE_DEEP_NESTING,
-                "Deep nesting (level {$this->currentDepth}), consider extracting to function or early return",
+                sprintf('Deep nesting (level %d), consider extracting to function or early return', $this->currentDepth),
                 EditCandidate::PRIORITY_HIGH,
                 [
                     "Use early returns to reduce nesting",
@@ -190,7 +196,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
 
             $this->addStructureImprovement(
                 StructureImprovement::TYPE_REDUCE_NESTING,
-                "Reduce nesting depth from {$this->currentDepth} to {$this->maxNestingDepth}",
+                sprintf('Reduce nesting depth from %d to %d', $this->currentDepth, $this->maxNestingDepth),
                 $node,
                 [
                     'current_depth' => $this->currentDepth,
@@ -206,7 +212,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
         if ($complexity > 4) {
             $this->addStructureImprovement(
                 StructureImprovement::TYPE_SIMPLIFY_CONDITION,
-                "Complex condition (complexity: {$complexity}), consider introducing variable",
+                sprintf('Complex condition (complexity: %d), consider introducing variable', $complexity),
                 $node,
                 ['complexity' => $complexity, 'priority' => 6]
             );
@@ -231,7 +237,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
         $this->addEditCandidate(
             $node,
             EditCandidate::ISSUE_MAGIC_NUMBER,
-            "Magic number '{$value}' should be replaced with named constant",
+            sprintf("Magic number '%s' should be replaced with named constant", $value),
             EditCandidate::PRIORITY_LOW,
             ["Define a constant with meaningful name (e.g., MAX_RETRIES, TIMEOUT_SECONDS)"]
         );
@@ -250,7 +256,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
             $this->addEditCandidate(
                 $node,
                 EditCandidate::ISSUE_COMPLEX_EXPRESSION,
-                "Very complex expression (complexity: {$complexity})",
+                sprintf('Very complex expression (complexity: %d)', $complexity),
                 EditCandidate::PRIORITY_CRITICAL,
                 [
                     "Break down into smaller parts",
@@ -262,7 +268,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
             $this->addEditCandidate(
                 $node,
                 EditCandidate::ISSUE_COMPLEX_EXPRESSION,
-                "Complex expression (complexity: {$complexity})",
+                sprintf('Complex expression (complexity: %d)', $complexity),
                 EditCandidate::PRIORITY_HIGH,
                 [
                     "Consider breaking down into smaller parts",
@@ -298,6 +304,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
         if (!isset($this->issueStats[$issueType])) {
             $this->issueStats[$issueType] = 0;
         }
+
         $this->issueStats[$issueType]++;
     }
 

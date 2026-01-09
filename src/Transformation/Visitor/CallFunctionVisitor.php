@@ -12,36 +12,30 @@ use Recombinator\Domain\ScopeStore;
  */
 class CallFunctionVisitor extends BaseVisitor
 {
-    protected $scopeStore;
-
-    public function __construct(ScopeStore $scopeStore)
+    public function __construct(protected \Recombinator\Domain\ScopeStore $scopeStore)
     {
-        $this->scopeStore = $scopeStore;
     }
 
     public function enterNode(Node $node)
     {
-        if ($node instanceof Node\Expr\FuncCall) {
-            // Check if name is a Node\Name
-            if ($node->name instanceof Node\Name) {
-                // In php-parser 5.x, use toString() or $name property
-                $funcName = $node->name->toString();
-                $expr = $this->scopeStore->getFunctionFromGlobal($funcName);
+        // Check if name is a Node\Name
+        if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name) {
+            // In php-parser 5.x, use toString() or $name property
+            $funcName = $node->name->toString();
+            $expr = $this->scopeStore->getFunctionFromGlobal($funcName);
+            if ($expr) {
+                // заменяем в копии тела параметры на аргументы
+                $clonedExpr = clone $expr;
 
-                if ($expr) {
-                    // заменяем в копии тела параметры на аргументы
-                    $clonedExpr = clone $expr;
-
-                    // If there are arguments, replace parameters with arguments
-                    if (!empty($node->args)) {
-                        $traverser = new NodeTraverser();
-                        $traverser->addVisitor(new ParametersToArgsVisitor($node));
-                        $result = $traverser->traverse([$clonedExpr]);
-                        return $result[0];
-                    }
-
-                    return $clonedExpr;
+                // If there are arguments, replace parameters with arguments
+                if ($node->args !== []) {
+                    $traverser = new NodeTraverser();
+                    $traverser->addVisitor(new ParametersToArgsVisitor($node));
+                    $result = $traverser->traverse([$clonedExpr]);
+                    return $result[0];
                 }
+
+                return $clonedExpr;
             }
         }
     }

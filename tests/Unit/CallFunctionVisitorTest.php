@@ -10,101 +10,116 @@ use Recombinator\Domain\ScopeStore;
 use Recombinator\Transformation\Visitor\CallFunctionVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 
-beforeEach(function () {
-    $this->parser = (new ParserFactory())->createForHostVersion();
-    $this->printer = new StandardPrinter();
-    $this->store = new ScopeStore();
-    $this->visitor = new CallFunctionVisitor($this->store);
-});
+beforeEach(
+    function (): void {
+        $this->parser = new ParserFactory()->createForHostVersion();
+        $this->printer = new StandardPrinter();
+        $this->store = new ScopeStore();
+        $this->visitor = new CallFunctionVisitor($this->store);
+    }
+);
 
-it('can inline simple function call', function () {
-    $code = '<?php
+it(
+    'can inline simple function call', function (): void {
+        $code = '<?php
 function getNumber() {
     return 42;
 }
 
 $result = getNumber();';
 
-    // First, manually register the function in store
-    $returnExpr = new Node\Scalar\LNumber(42);
-    $this->store->setFunctionToGlobal('getNumber', $returnExpr);
+        // First, manually register the function in store
+        $returnExpr = new Node\Scalar\LNumber(42);
+        $this->store->setFunctionToGlobal('getNumber', $returnExpr);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('$result = 42');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can inline function with expression', function () {
-    $code = '<?php
+        expect($result)->toContain('$result = 42');
+    }
+);
+
+it(
+    'can inline function with expression', function (): void {
+        $code = '<?php
 function double($x) {
     return $x * 2;
 }
 
 $result = double(5);';
 
-    // Register function body
-    $param = new Node\Param(new Node\Expr\Variable('x'));
-    $returnExpr = new Node\Expr\BinaryOp\Mul(
-        new Node\Expr\Variable('x'),
-        new Node\Scalar\LNumber(2)
-    );
-    $this->store->setFunctionToGlobal('double', $returnExpr);
+        // Register function body
+        $param = new Node\Param(new Node\Expr\Variable('x'));
+        $returnExpr = new Node\Expr\BinaryOp\Mul(
+            new Node\Expr\Variable('x'),
+            new Node\Scalar\LNumber(2)
+        );
+        $this->store->setFunctionToGlobal('double', $returnExpr);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor(new ScopeVisitor());
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    // Function call should be replaced with expression
-    expect($result)->not->toContain('double(5)');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('can inline function returning string', function () {
-    $code = '<?php
+        // Function call should be replaced with expression
+        expect($result)->not->toContain('double(5)');
+    }
+);
+
+it(
+    'can inline function returning string', function (): void {
+        $code = '<?php
 function getMessage() {
     return "Hello World";
 }
 
 $msg = getMessage();';
 
-    // Register function body
-    $returnExpr = new Node\Scalar\String_('Hello World');
-    $this->store->setFunctionToGlobal('getMessage', $returnExpr);
+        // Register function body
+        $returnExpr = new Node\Scalar\String_('Hello World');
+        $this->store->setFunctionToGlobal('getMessage', $returnExpr);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain("'Hello World'");
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('should not inline unknown function', function () {
-    $code = '<?php $result = unknownFunction();';
+        expect($result)->toContain("'Hello World'");
+    }
+);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+it(
+    'should not inline unknown function', function (): void {
+        $code = '<?php $result = unknownFunction();';
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-    // Function call should remain unchanged
-    expect($result)->toContain('unknownFunction()');
-});
+        $ast = $traverser->traverse($ast);
 
-it('can inline multiple function calls', function () {
-    $code = '<?php
+        $result = $this->printer->prettyPrint($ast);
+
+        // Function call should remain unchanged
+        expect($result)->toContain('unknownFunction()');
+    }
+);
+
+it(
+    'can inline multiple function calls', function (): void {
+        $code = '<?php
 function getOne() {
     return 1;
 }
@@ -115,48 +130,55 @@ function getTwo() {
 
 $sum = getOne() + getTwo();';
 
-    // Register both functions
-    $this->store->setFunctionToGlobal('getOne', new Node\Scalar\LNumber(1));
-    $this->store->setFunctionToGlobal('getTwo', new Node\Scalar\LNumber(2));
+        // Register both functions
+        $this->store->setFunctionToGlobal('getOne', new Node\Scalar\LNumber(1));
+        $this->store->setFunctionToGlobal('getTwo', new Node\Scalar\LNumber(2));
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('$sum = 1 + 2');
-});
+        $result = $this->printer->prettyPrint($ast);
 
-it('retrieves function from scope store', function () {
-    $returnExpr = new Node\Scalar\LNumber(100);
-    $this->store->setFunctionToGlobal('testFunc', $returnExpr);
+        expect($result)->toContain('$sum = 1 + 2');
+    }
+);
 
-    $retrieved = $this->store->getFunctionFromGlobal('testFunc');
+it(
+    'retrieves function from scope store', function (): void {
+        $returnExpr = new Node\Scalar\LNumber(100);
+        $this->store->setFunctionToGlobal('testFunc', $returnExpr);
 
-    expect($retrieved)->not->toBeNull()
-        ->and($retrieved->value)->toBe(100);
-});
+        $retrieved = $this->store->getFunctionFromGlobal('testFunc');
 
-it('can inline function with boolean return', function () {
-    $code = '<?php
+        expect($retrieved)->not->toBeNull()
+            ->and($retrieved->value)->toBe(100);
+    }
+);
+
+it(
+    'can inline function with boolean return', function (): void {
+        $code = '<?php
 function isTrue() {
     return true;
 }
 
 $flag = isTrue();';
 
-    // Register function body
-    $returnExpr = new Node\Expr\ConstFetch(new Node\Name('true'));
-    $this->store->setFunctionToGlobal('isTrue', $returnExpr);
+        // Register function body
+        $returnExpr = new Node\Expr\ConstFetch(new Node\Name('true'));
+        $this->store->setFunctionToGlobal('isTrue', $returnExpr);
 
-    $ast = $this->parser->parse($code);
-    $traverser = new NodeTraverser();
-    $traverser->addVisitor($this->visitor);
-    $ast = $traverser->traverse($ast);
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($this->visitor);
 
-    $result = $this->printer->prettyPrint($ast);
+        $ast = $traverser->traverse($ast);
 
-    expect($result)->toContain('$flag = true');
-});
+        $result = $this->printer->prettyPrint($ast);
+
+        expect($result)->toContain('$flag = true');
+    }
+);
