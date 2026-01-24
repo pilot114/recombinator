@@ -24,9 +24,11 @@ beforeEach(
 );
 
 describe(
-    'Session Initialization', function (): void {
+    'Session Initialization',
+    function (): void {
         it(
-            'initializes with AST and analysis result', function (): void {
+            'initializes with AST and analysis result',
+            function (): void {
                 expect($this->session->getCurrentAst())->toBeArray()
                 ->and($this->session->getAnalysisResult())->toBeInstanceOf(InteractiveEditResult::class)
                 ->and($this->session->getHistory())->toBeInstanceOf(ChangeHistory::class);
@@ -34,7 +36,8 @@ describe(
         );
 
         it(
-            'loads default preferences', function (): void {
+            'loads default preferences',
+            function (): void {
                 $prefs = $this->session->getAllPreferences();
 
                 expect($prefs)->toBeArray()
@@ -45,7 +48,8 @@ describe(
         );
 
         it(
-            'tracks session start time', function (): void {
+            'tracks session start time',
+            function (): void {
                 $duration = $this->session->getSessionDuration();
 
                 expect($duration)->toBeGreaterThanOrEqual(0)
@@ -56,9 +60,11 @@ describe(
 );
 
 describe(
-    'Applying Changes', function (): void {
+    'Applying Changes',
+    function (): void {
         it(
-            'applies a change', function (): void {
+            'applies a change',
+            function (): void {
                 $node = new Variable('x');
                 $change = new Change(
                     Change::TYPE_RENAME,
@@ -76,7 +82,8 @@ describe(
         );
 
         it(
-            'updates statistics when applying changes', function (): void {
+            'updates statistics when applying changes',
+            function (): void {
                 $node = new Variable('x');
 
                 $change1 = new Change(Change::TYPE_RENAME, 'Change 1', $node, [], []);
@@ -98,7 +105,8 @@ describe(
 );
 
 describe(
-    'Undo/Redo', function (): void {
+    'Undo/Redo',
+    function (): void {
         beforeEach(
             function (): void {
                 $node = new Variable('x');
@@ -116,7 +124,8 @@ describe(
         );
 
         it(
-            'can undo changes', function (): void {
+            'can undo changes',
+            function (): void {
                 expect($this->session->getTotalAppliedChanges())->toBe(3);
 
                 $result = $this->session->undo();
@@ -127,7 +136,8 @@ describe(
         );
 
         it(
-            'can redo changes', function (): void {
+            'can redo changes',
+            function (): void {
                 $this->session->undo();
 
                 expect($this->session->getTotalAppliedChanges())->toBe(2);
@@ -140,7 +150,8 @@ describe(
         );
 
         it(
-            'returns false when nothing to undo', function (): void {
+            'returns false when nothing to undo',
+            function (): void {
                 $this->session->undo();
                 $this->session->undo();
                 $this->session->undo();
@@ -152,7 +163,8 @@ describe(
         );
 
         it(
-            'returns false when nothing to redo', function (): void {
+            'returns false when nothing to redo',
+            function (): void {
                 $result = $this->session->redo();
 
                 expect($result)->toBeFalse();
@@ -162,9 +174,11 @@ describe(
 );
 
 describe(
-    'Preferences Management', function (): void {
+    'Preferences Management',
+    function (): void {
         it(
-            'can set and get preferences', function (): void {
+            'can set and get preferences',
+            function (): void {
                 $this->session->setPreference('test_key', 'test_value');
 
                 expect($this->session->getPreference('test_key'))->toBe('test_value');
@@ -172,7 +186,8 @@ describe(
         );
 
         it(
-            'returns default value for missing preference', function (): void {
+            'returns default value for missing preference',
+            function (): void {
                 $value = $this->session->getPreference('non_existent', 'default');
 
                 expect($value)->toBe('default');
@@ -180,7 +195,8 @@ describe(
         );
 
         it(
-            'returns all preferences', function (): void {
+            'returns all preferences',
+            function (): void {
                 $this->session->setPreference('custom', 'value');
 
                 $all = $this->session->getAllPreferences();
@@ -192,7 +208,8 @@ describe(
         );
 
         it(
-            'can save preferences to file', function (): void {
+            'can save preferences to file',
+            function (): void {
                 $tempFile = tempnam(sys_get_temp_dir(), 'prefs_');
 
                 $this->session->setPreference('test', 'value');
@@ -207,7 +224,8 @@ describe(
         );
 
         it(
-            'can load preferences from file', function (): void {
+            'can load preferences from file',
+            function (): void {
                 $tempFile = tempnam(sys_get_temp_dir(), 'prefs_');
                 file_put_contents($tempFile, json_encode(['loaded_key' => 'loaded_value']));
 
@@ -222,7 +240,8 @@ describe(
         );
 
         it(
-            'returns false when loading non-existent file', function (): void {
+            'returns false when loading non-existent file',
+            function (): void {
                 $result = $this->session->loadPreferences('/non/existent/file.json');
 
                 expect($result)->toBeFalse();
@@ -232,9 +251,11 @@ describe(
 );
 
 describe(
-    'Session Statistics', function (): void {
+    'Session Statistics',
+    function (): void {
         it(
-            'tracks session duration', function (): void {
+            'tracks session duration',
+            function (): void {
                 sleep(1);
 
                 $duration = $this->session->getSessionDuration();
@@ -244,7 +265,8 @@ describe(
         );
 
         it(
-            'generates session summary', function (): void {
+            'generates session summary',
+            function (): void {
                 $node = new Variable('x');
                 $change = new Change(Change::TYPE_RENAME, 'Test', $node, [], []);
                 $this->session->applyChange($change);
@@ -258,7 +280,8 @@ describe(
         );
 
         it(
-            'includes change statistics in summary', function (): void {
+            'includes change statistics in summary',
+            function (): void {
                 $node = new Variable('x');
                 $change = new Change(Change::TYPE_RENAME, 'Test', $node, [], []);
                 $this->session->applyChange($change);

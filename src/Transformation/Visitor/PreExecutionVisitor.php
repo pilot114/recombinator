@@ -34,7 +34,7 @@ class PreExecutionVisitor extends BaseVisitor
 
     private int $failedCount = 0;
 
-    public function __construct(private readonly ?ScopeStore $scopeStore = new ScopeStore())
+    public function __construct(private readonly ScopeStore $scopeStore = new ScopeStore())
     {
         $cache = new ExecutionCache();
         $this->sandbox = new Sandbox($cache);
@@ -56,7 +56,12 @@ class PreExecutionVisitor extends BaseVisitor
         }
 
         // Обрабатываем унарные операции
-        if ($node instanceof Node\Expr\UnaryOp) {
+        if (
+            $node instanceof Node\Expr\UnaryMinus
+            || $node instanceof Node\Expr\UnaryPlus
+            || $node instanceof Node\Expr\BitwiseNot
+            || $node instanceof Node\Expr\BooleanNot
+        ) {
             return $this->handleUnaryOp($node);
         }
 
@@ -116,7 +121,7 @@ class PreExecutionVisitor extends BaseVisitor
     /**
      * Обрабатывает унарные операции
      */
-    private function handleUnaryOp(Node\Expr\UnaryOp $node): ?Node
+    private function handleUnaryOp(Node\Expr\UnaryMinus|Node\Expr\UnaryPlus|Node\Expr\BitwiseNot|Node\Expr\BooleanNot $node): ?Node
     {
         // Проверяем, что операнд константный
         if (!$this->isConstant($node->expr)) {
@@ -204,7 +209,12 @@ class PreExecutionVisitor extends BaseVisitor
         }
 
         // Унарные операции с константными операндами
-        if ($node instanceof Node\Expr\UnaryOp) {
+        if (
+            $node instanceof Node\Expr\UnaryMinus
+            || $node instanceof Node\Expr\UnaryPlus
+            || $node instanceof Node\Expr\BitwiseNot
+            || $node instanceof Node\Expr\BooleanNot
+        ) {
             return $this->isConstant($node->expr);
         }
 
@@ -268,7 +278,7 @@ class PreExecutionVisitor extends BaseVisitor
     /**
      * Строит контекст выполнения из текущего scope
      *
-     * @return array<mixed>
+     * @return array<string, mixed>
      */
     private function buildContext(): array
     {
@@ -308,7 +318,7 @@ class PreExecutionVisitor extends BaseVisitor
     }
 
     #[\Override]
-    public function afterTraverse(array $nodes): void
+    public function afterTraverse(array $nodes): ?array
     {
         if ($this->executedCount > 0 || $this->failedCount > 0) {
             $total = $this->executedCount + $this->failedCount;
@@ -322,5 +332,7 @@ class PreExecutionVisitor extends BaseVisitor
             //     $successRate
             // );
         }
+
+        return null;
     }
 }

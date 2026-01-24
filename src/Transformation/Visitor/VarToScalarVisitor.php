@@ -14,7 +14,7 @@ class VarToScalarVisitor extends BaseVisitor
      * @var \Recombinator\Domain\ScopeStore
      */
     /**
-     * @var \Recombinator\Domain\ScopeStore 
+     * @var \Recombinator\Domain\ScopeStore
      */
     public $scopeStore;
 
@@ -27,7 +27,7 @@ class VarToScalarVisitor extends BaseVisitor
      * тут удалить скаляр нельзя
      */
     /**
-     * @var mixed 
+     * @var mixed
      */
     public $maybeRemove;
 
@@ -57,7 +57,7 @@ class VarToScalarVisitor extends BaseVisitor
                 $this->scopeStore->setVarToScope($varName, $varExprScalar);
 
                 $parent = $node->getAttribute('parent');
-                if ($parent !== null) {
+                if ($parent instanceof Node) {
                     $parent->setAttribute('remove', true);
 
 
@@ -107,8 +107,6 @@ class VarToScalarVisitor extends BaseVisitor
 
     /**
      * Проверяем, что это чтение переменной
-     *
-     * @param string $varName
      */
     protected function isVarRead(Node $node, string $varName): bool
     {

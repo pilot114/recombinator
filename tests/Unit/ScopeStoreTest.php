@@ -12,7 +12,8 @@ beforeEach(
 );
 
 it(
-    'can set and get variable from scope', function (): void {
+    'can set and get variable from scope',
+    function (): void {
         $this->store->setVarToScope('testVar', 'testValue');
 
         expect($this->store->getVarFromScope('testVar'))->toBe('testValue');
@@ -20,13 +21,15 @@ it(
 );
 
 it(
-    'returns null for non-existent variable', function (): void {
+    'returns null for non-existent variable',
+    function (): void {
         expect($this->store->getVarFromScope('nonExistent'))->toBeNull();
     }
 );
 
 it(
-    'can remove variable from scope', function (): void {
+    'can remove variable from scope',
+    function (): void {
         $this->store->setVarToScope('testVar', 'testValue');
         $this->store->removeVarFromScope('testVar');
 
@@ -35,7 +38,8 @@ it(
 );
 
 it(
-    'can set and get constant from scope', function (): void {
+    'can set and get constant from scope',
+    function (): void {
         $this->store->setConstToScope('TEST_CONST', 'constValue');
 
         expect($this->store->getConstFromScope('TEST_CONST'))->toBe('constValue');
@@ -43,7 +47,8 @@ it(
 );
 
 it(
-    'can set and get global constant', function (): void {
+    'can set and get global constant',
+    function (): void {
         $this->store->setConstToGlobal('GLOBAL_CONST', 'globalValue');
 
         expect($this->store->getConstFromGlobal('GLOBAL_CONST'))->toBe('globalValue');
@@ -51,7 +56,8 @@ it(
 );
 
 it(
-    'can set and get global function', function (): void {
+    'can set and get global function',
+    function (): void {
         $this->store->setFunctionToGlobal('testFunction', ['body' => 'test']);
 
         expect($this->store->getFunctionFromGlobal('testFunction'))->toBe(['body' => 'test']);
@@ -59,7 +65,8 @@ it(
 );
 
 it(
-    'can set and get global class', function (): void {
+    'can set and get global class',
+    function (): void {
         $this->store->setClassToGlobal('TestClass', ['methods' => []]);
 
         expect($this->store->getClassFromGlobal('TestClass'))->toBe(['methods' => []]);
@@ -67,9 +74,11 @@ it(
 );
 
 it(
-    'can find class name and instance', function (): void {
+    'can find class name and instance',
+    function (): void {
         $this->store->setClassToGlobal(
-            'TestClass', [
+            'TestClass',
+            [
             'instances' => [
             ['name' => 'instance1', 'data' => 'test']
             ]
@@ -85,7 +94,8 @@ it(
 );
 
 it(
-    'returns null when class instance not found', function (): void {
+    'returns null when class instance not found',
+    function (): void {
         expect($this->store->findClassNameAndInstance('nonExistent'))->toBeNull();
     }
 );

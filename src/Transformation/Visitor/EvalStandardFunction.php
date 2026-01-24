@@ -18,9 +18,9 @@ class EvalStandardFunction extends BaseVisitor
      * Гарантированно проходят со статичными аргументами
      */
     /**
-     * @var mixed 
+     * @var mixed
      */
-    protected $functionListNeedStatic= [
+    protected $functionListNeedStatic = [
         'in_array',
     ];
 
@@ -28,13 +28,13 @@ class EvalStandardFunction extends BaseVisitor
      * Требуют специальной проверки аргументов (например, на тип)
      */
     /**
-     * @var mixed 
+     * @var mixed
      */
-    protected $specialFunction= [
+    protected $specialFunction = [
         'is_array' => 'isArrayHandler'
     ];
 
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): int|Node|array|null
     {
         // In php-parser 5.x, use toString() method
         if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name) {
@@ -44,19 +44,22 @@ class EvalStandardFunction extends BaseVisitor
             if (!str_contains($funcName, '\\')) {
                 if (in_array($funcName, $this->functionListNeedStatic) && $this->staticArgs($node)) {
                     // eval
-
-
-                    return [];
+                    return null;
                 }
 
                 if (in_array($funcName, array_keys($this->specialFunction))) {
                     $handlerName = $this->specialFunction[$funcName];
-                    if (method_exists($this, $handlerName)) {
-                        return $this->{$handlerName}($node);
+                    if (is_string($handlerName) && method_exists($this, $handlerName)) {
+                        $result = $this->{$handlerName}($node);
+                        if ($result instanceof Node) {
+                            return $result;
+                        }
                     }
                 }
             }
         }
+
+        return null;
     }
 
     protected function isArrayHandler(Node\Expr\FuncCall $node): \PhpParser\Node\Name
@@ -74,7 +77,8 @@ class EvalStandardFunction extends BaseVisitor
     protected function staticArgs(Node $node): bool
     {
         foreach ($node->args as $arg) {
-            if (!$arg->value instanceof Node\Scalar
+            if (
+                !$arg->value instanceof Node\Scalar
                 && !$arg->value instanceof Node\Expr\ConstFetch
             ) {
                 if (!$arg->value instanceof Node\Expr\Array_) {
@@ -82,7 +86,8 @@ class EvalStandardFunction extends BaseVisitor
                 }
 
                 foreach ($arg->value->items as $item) {
-                    if (!$item->value instanceof Node\Scalar
+                    if (
+                        !$item->value instanceof Node\Scalar
                         && !$item->value instanceof Node\Expr\ConstFetch
                     ) {
                         return false;

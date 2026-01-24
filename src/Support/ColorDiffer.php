@@ -20,16 +20,16 @@ class ColorDiffer
     public bool $hasDiff = false;
 
     /**
-     * 
      *
-     * @var array<string, string> 
+     *
+     * @var array<string, string>
      */
     private array $foregroundColors = [];
 
     /**
-     * 
      *
-     * @var array<string, string> 
+     *
+     * @var array<string, string>
      */
     private array $backgroundColors = [];
 

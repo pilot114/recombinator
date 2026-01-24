@@ -5,7 +5,8 @@ declare(strict_types=1);
 use Recombinator\Domain\SideEffectType;
 
 it(
-    'has correct priority values', function (): void {
+    'has correct priority values',
+    function (): void {
         expect(SideEffectType::PURE->getPriority())->toBe(0)
         ->and(SideEffectType::NON_DETERMINISTIC->getPriority())->toBe(1)
         ->and(SideEffectType::EXTERNAL_STATE->getPriority())->toBe(2)
@@ -18,7 +19,8 @@ it(
 );
 
 it(
-    'correctly identifies pure code', function (): void {
+    'correctly identifies pure code',
+    function (): void {
         expect(SideEffectType::PURE->isPure())->toBeTrue()
         ->and(SideEffectType::IO->isPure())->toBeFalse()
         ->and(SideEffectType::DATABASE->isPure())->toBeFalse()
@@ -27,7 +29,8 @@ it(
 );
 
 it(
-    'correctly identifies compile-time evaluable code', function (): void {
+    'correctly identifies compile-time evaluable code',
+    function (): void {
         expect(SideEffectType::PURE->isCompileTimeEvaluable())->toBeTrue()
         ->and(SideEffectType::NON_DETERMINISTIC->isCompileTimeEvaluable())->toBeFalse()
         ->and(SideEffectType::IO->isCompileTimeEvaluable())->toBeFalse()
@@ -36,7 +39,8 @@ it(
 );
 
 it(
-    'correctly identifies cacheable code', function (): void {
+    'correctly identifies cacheable code',
+    function (): void {
         expect(SideEffectType::PURE->isCacheable())->toBeTrue()
         ->and(SideEffectType::EXTERNAL_STATE->isCacheable())->toBeTrue()
         ->and(SideEffectType::NON_DETERMINISTIC->isCacheable())->toBeFalse()
@@ -47,7 +51,8 @@ it(
 );
 
 it(
-    'returns correct descriptions', function (): void {
+    'returns correct descriptions',
+    function (): void {
         expect(SideEffectType::PURE->getDescription())
         ->toContain('Чистый код')
         ->and(SideEffectType::IO->getDescription())
@@ -58,35 +63,40 @@ it(
 );
 
 it(
-    'combines PURE with other type correctly', function (): void {
+    'combines PURE with other type correctly',
+    function (): void {
         $result = SideEffectType::PURE->combine(SideEffectType::IO);
         expect($result)->toBe(SideEffectType::IO);
     }
 );
 
 it(
-    'combines same types correctly', function (): void {
+    'combines same types correctly',
+    function (): void {
         $result = SideEffectType::IO->combine(SideEffectType::IO);
         expect($result)->toBe(SideEffectType::IO);
     }
 );
 
 it(
-    'combines different types to MIXED', function (): void {
+    'combines different types to MIXED',
+    function (): void {
         $result = SideEffectType::IO->combine(SideEffectType::DATABASE);
         expect($result)->toBe(SideEffectType::MIXED);
     }
 );
 
 it(
-    'combines MIXED with any type to MIXED', function (): void {
+    'combines MIXED with any type to MIXED',
+    function (): void {
         expect(SideEffectType::MIXED->combine(SideEffectType::PURE))->toBe(SideEffectType::MIXED)
         ->and(SideEffectType::IO->combine(SideEffectType::MIXED))->toBe(SideEffectType::MIXED);
     }
 );
 
 it(
-    'has all required enum cases', function (): void {
+    'has all required enum cases',
+    function (): void {
         $cases = SideEffectType::cases();
         $values = array_map(fn(\Recombinator\Domain\SideEffectType $case) => $case->value, $cases);
 
@@ -102,7 +112,8 @@ it(
 );
 
 it(
-    'can be created from string value', function (): void {
+    'can be created from string value',
+    function (): void {
         $pure = SideEffectType::from('pure');
         expect($pure)->toBe(SideEffectType::PURE);
 
@@ -112,7 +123,8 @@ it(
 );
 
 it(
-    'combines multiple effects correctly', function (): void {
+    'combines multiple effects correctly',
+    function (): void {
         // PURE + PURE = PURE
         $result = SideEffectType::PURE
         ->combine(SideEffectType::PURE);
@@ -137,7 +149,8 @@ it(
 );
 
 it(
-    'has correct priority ordering', function (): void {
+    'has correct priority ordering',
+    function (): void {
         $types = [
         SideEffectType::MIXED,
         SideEffectType::PURE,

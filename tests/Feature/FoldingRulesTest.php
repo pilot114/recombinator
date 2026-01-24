@@ -32,7 +32,8 @@ function markAst(array $ast): array
 }
 
 it(
-    'applies FOLD-FUNC-1: extracts pure computation into function', function (): void {
+    'applies FOLD-FUNC-1: extracts pure computation into function',
+    function (): void {
         $code = '<?php
     // Pure computation block (>= 5 lines)
     $x1 = 0;
@@ -68,7 +69,8 @@ it(
 );
 
 it(
-    'applies FOLD-FUNC-2: extracts IO operations into function', function (): void {
+    'applies FOLD-FUNC-2: extracts IO operations into function',
+    function (): void {
         $code = '<?php
     // IO block (>= 3 lines, same effect type)
     echo "=== Report ===\n";
@@ -93,7 +95,8 @@ it(
 );
 
 it(
-    'applies FOLD-VAR-1: creates intermediate variable for complex expression', function (): void {
+    'applies FOLD-VAR-1: creates intermediate variable for complex expression',
+    function (): void {
         $code = '<?php
     $result = sqrt($x * $x + $y * $y) + sqrt($z * $z + $w * $w);';
 
@@ -109,7 +112,8 @@ it(
 );
 
 it(
-    'applies FOLD-GROUP-3: groups related variable initialization', function (): void {
+    'applies FOLD-GROUP-3: groups related variable initialization',
+    function (): void {
         $code = '<?php
     $x = $_GET["x"];
     echo "Processing...";
@@ -130,7 +134,8 @@ it(
 );
 
 it(
-    'simplifies nested conditions', function (): void {
+    'simplifies nested conditions',
+    function (): void {
         $code = '<?php
     if ($a > 0) {
         if ($b > 0) {
@@ -151,7 +156,8 @@ it(
 );
 
 it(
-    'prioritizes pure blocks over effect blocks', function (): void {
+    'prioritizes pure blocks over effect blocks',
+    function (): void {
         $code = '<?php
     // Pure block
     $x = 1;
@@ -181,7 +187,8 @@ it(
 );
 
 it(
-    'handles mixed code with multiple folding opportunities', function (): void {
+    'handles mixed code with multiple folding opportunities',
+    function (): void {
         $code = '<?php
     // Pure computation
     $a = 10;
@@ -211,7 +218,8 @@ it(
 );
 
 it(
-    'separates code by effect type', function (): void {
+    'separates code by effect type',
+    function (): void {
         $code = '<?php
     $x = 1 + 2;
     echo "Hello";
@@ -232,7 +240,8 @@ it(
 );
 
 it(
-    'identifies pure computations for compile-time evaluation', function (): void {
+    'identifies pure computations for compile-time evaluation',
+    function (): void {
         $code = '<?php
     $pi = 3.14159;
     $radius = 5;
@@ -251,7 +260,8 @@ it(
 );
 
 it(
-    'handles real-world example from roadmap', function (): void {
+    'handles real-world example from roadmap',
+    function (): void {
         $code = '<?php
     class Auth {
         const HASH = "test_test";
@@ -293,7 +303,8 @@ it(
 );
 
 it(
-    'measures complexity reduction after folding', function (): void {
+    'measures complexity reduction after folding',
+    function (): void {
         $code = '<?php
     $distance = sqrt(($x2 - $x1) * ($x2 - $x1) + ($y2 - $y1) * ($y2 - $y1));';
 
@@ -314,7 +325,8 @@ it(
 );
 
 it(
-    'validates function extraction produces valid PHP', function (): void {
+    'validates function extraction produces valid PHP',
+    function (): void {
         $code = '<?php
     $a = 1;
     $b = 2;
@@ -345,7 +357,8 @@ it(
 );
 
 it(
-    'preserves behavior when extracting functions', function (): void {
+    'preserves behavior when extracting functions',
+    function (): void {
         // This is a conceptual test - actual behavior preservation
         // would require executing both versions and comparing results
 

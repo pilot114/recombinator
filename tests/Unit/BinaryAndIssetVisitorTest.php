@@ -17,7 +17,8 @@ beforeEach(
 );
 
 it(
-    'can calculate addition of integers', function (): void {
+    'can calculate addition of integers',
+    function (): void {
         $code = '<?php $result = 5 + 3;';
 
         $ast = $this->parser->parse($code);
@@ -33,7 +34,8 @@ it(
 );
 
 it(
-    'can calculate subtraction of integers', function (): void {
+    'can calculate subtraction of integers',
+    function (): void {
         $code = '<?php $result = 10 - 3;';
 
         $ast = $this->parser->parse($code);
@@ -49,7 +51,8 @@ it(
 );
 
 it(
-    'can calculate multiplication of integers', function (): void {
+    'can calculate multiplication of integers',
+    function (): void {
         $code = '<?php $result = 4 * 5;';
 
         $ast = $this->parser->parse($code);
@@ -65,7 +68,8 @@ it(
 );
 
 it(
-    'can calculate division of integers', function (): void {
+    'can calculate division of integers',
+    function (): void {
         $code = '<?php $result = 10 / 2;';
 
         $ast = $this->parser->parse($code);
@@ -81,7 +85,8 @@ it(
 );
 
 it(
-    'can calculate division resulting in float', function (): void {
+    'can calculate division resulting in float',
+    function (): void {
         $code = '<?php $result = 10 / 3;';
 
         $ast = $this->parser->parse($code);
@@ -97,7 +102,8 @@ it(
 );
 
 it(
-    'can concatenate strings', function (): void {
+    'can concatenate strings',
+    function (): void {
         $code = '<?php $result = "Hello" . " World";';
 
         $ast = $this->parser->parse($code);
@@ -115,7 +121,8 @@ it(
 // Boolean conversion tests skipped due to current implementation limitations
 
 it(
-    'can transform isset check to coalesce operator', function (): void {
+    'can transform isset check to coalesce operator',
+    function (): void {
         $code = '<?php
 $default = "default";
 if (isset($value)) {

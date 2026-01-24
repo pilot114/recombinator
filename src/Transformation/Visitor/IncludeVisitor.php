@@ -19,7 +19,8 @@ class IncludeVisitor extends BaseVisitor
 
     public function enterNode(Node $node): int|Node|array|null
     {
-        if ($node instanceof Node\Expr\Include_
+        if (
+            $node instanceof Node\Expr\Include_
         ) {
             $path = dirname((string) $this->entryPoint) . '/' . $node->expr->value;
             if (!file_exists($path)) {
@@ -27,7 +28,7 @@ class IncludeVisitor extends BaseVisitor
             }
 
             $scopeContent = file_get_contents($path);
-            $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7);
+            $parser = new ParserFactory()->create(ParserFactory::PREFER_PHP7);
             $nodes = $parser->parse($scopeContent);
 
             $node->getAttribute('parent')->setAttribute('replace', $nodes);

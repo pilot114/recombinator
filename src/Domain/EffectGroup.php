@@ -31,7 +31,7 @@ class EffectGroup
      * @param Node[]         $nodes    Узлы
      *                                 этого
      *                                 типа
-     * @param int            $priority Приоритет (из
+     * @param integer        $priority Приоритет (из
      *                                 SideEffectType::getPriority())
      */
     public function __construct(

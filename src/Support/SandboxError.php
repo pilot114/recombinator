@@ -16,8 +16,8 @@ use Throwable;
 readonly class SandboxError implements \Stringable
 {
     public function __construct(
-        private string     $message,
-        private int        $code = 0,
+        private string $message,
+        private int $code = 0,
         private ?Throwable $previous = null
     ) {
     }

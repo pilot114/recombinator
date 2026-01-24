@@ -193,7 +193,15 @@ class ScopeStore
         }
 
         foreach ($this->global['classes'] as $className => $class) {
-            if (!is_string($className) || !is_array($class) || !isset($class['instances'])) {
+            if (!is_string($className)) {
+                continue;
+            }
+
+            if (!is_array($class)) {
+                continue;
+            }
+
+            if (!isset($class['instances'])) {
                 continue;
             }
 
@@ -203,12 +211,18 @@ class ScopeStore
             }
 
             foreach ($instances as $instance) {
-                if (!is_array($instance) || !isset($instance['name'])) {
+                if (!is_array($instance)) {
+                    continue;
+                }
+
+                if (!isset($instance['name'])) {
                     continue;
                 }
 
                 if ($instance['name'] === $instanceName) {
-                    /** @var array<string, mixed> $instance */
+                    /**
+ * @var array<string, mixed> $instance
+*/
                     return [$className, $instance];
                 }
             }
@@ -238,7 +252,9 @@ class ScopeStore
             return [];
         }
 
-        /** @var array<string, mixed> $consts */
+        /**
+ * @var array<string, mixed> $consts
+*/
         $consts = $this->global['consts'];
         return $consts;
     }

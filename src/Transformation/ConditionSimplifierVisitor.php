@@ -10,7 +10,7 @@ use PhpParser\NodeVisitorAbstract;
  */
 class ConditionSimplifierVisitor extends NodeVisitorAbstract
 {
-    public function leaveNode(Node $node)
+    public function leaveNode(Node $node): ?Node
     {
         // Упрощаем вложенные if с одинаковыми условиями
         if ($node instanceof Node\Stmt\If_) {
@@ -54,4 +54,3 @@ class ConditionSimplifierVisitor extends NodeVisitorAbstract
         return null;
     }
 }
-

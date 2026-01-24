@@ -13,15 +13,23 @@ class ParametersToArgsVisitor extends BaseVisitor
     {
     }
 
-    public function enterNode(Node $var)
+    public function enterNode(Node $var): int|Node|array|null
     {
         if ($var instanceof Node\Expr\Variable) {
             $i = $var->getAttribute('arg_index');
-            if (isset($this->node->args[$i])) {
-                return $this->node->args[$i]->value;
+            if (is_int($i) && isset($this->node->args[$i])) {
+                $arg = $this->node->args[$i];
+                if ($arg instanceof Node\Arg) {
+                    return $arg->value;
+                }
             }
 
-            return $var->getAttribute('arg_default');
+            $default = $var->getAttribute('arg_default');
+            if ($default instanceof Node) {
+                return $default;
+            }
         }
+
+        return null;
     }
 }

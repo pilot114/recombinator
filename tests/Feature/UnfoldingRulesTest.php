@@ -23,7 +23,8 @@ beforeEach(
 );
 
 it(
-    'can unfold Auth class example from roadmap', function (): void {
+    'can unfold Auth class example from roadmap',
+    function (): void {
         $code = '<?php
 class Auth {
     const HASH = "test_test";
@@ -61,7 +62,8 @@ class Auth {
 );
 
 it(
-    'can optimize binary operations and isset pattern', function (): void {
+    'can optimize binary operations and isset pattern',
+    function (): void {
         $code = '<?php
 $default = "default_value";
 if (isset($_GET["value"])) {
@@ -90,7 +92,8 @@ $result = 2 + 3 + 5;';
 );
 
 it(
-    'can replace variables with scalar values', function (): void {
+    'can replace variables with scalar values',
+    function (): void {
         $code = '<?php
 $pi = 3.14;
 $radius = 5;
@@ -118,7 +121,8 @@ echo $area;';
 );
 
 it(
-    'can combine multiple optimizations', function (): void {
+    'can combine multiple optimizations',
+    function (): void {
         $code = '<?php
 class Config {
     const API_VERSION = 2;
@@ -147,12 +151,12 @@ echo "API v" . $version;';
 
         // String concatenation with scalar (accept both quote styles)
         expect($result)->toMatch('/["\']API v["\']/');
-
     }
 );
 
 it(
-    'can optimize complex isset patterns', function (): void {
+    'can optimize complex isset patterns',
+    function (): void {
         $code = '<?php
 $username = "default_username";
 if (isset($_GET["username"])) {
@@ -182,7 +186,8 @@ if (isset($_GET["password"])) {
 );
 
 it(
-    'can optimize mathematical expressions', function (): void {
+    'can optimize mathematical expressions',
+    function (): void {
         $code = '<?php
 $a = 10;
 $b = 20;
@@ -213,7 +218,8 @@ $division = $b / $a;';
 );
 
 it(
-    'can optimize string concatenation chain', function (): void {
+    'can optimize string concatenation chain',
+    function (): void {
         $code = '<?php
 $hello = "Hello";
 $world = "World";
@@ -239,7 +245,8 @@ $message = $hello . " " . $world . "!";';
 );
 
 it(
-    'preserves side effects and does not optimize non-pure code', function (): void {
+    'preserves side effects and does not optimize non-pure code',
+    function (): void {
         $code = '<?php
 $arr = [1, 2, 3];
 $x = array_sum($arr);

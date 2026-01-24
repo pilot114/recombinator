@@ -19,7 +19,7 @@ interface EffectClassifierInterface
     /**
      * Классифицирует узел по типу побочного эффекта
      *
-     * @param Node $node Узел для анализа
+     * @param  Node $node Узел для анализа
      * @return SideEffectType Тип побочного эффекта
      */
     public function classify(Node $node): SideEffectType;
@@ -27,8 +27,8 @@ interface EffectClassifierInterface
     /**
      * Проверяет, является ли функция чистой
      *
-     * @param string $functionName Имя функции
-     * @return bool True, если функция не имеет побочных эффектов
+     * @param  string $functionName Имя функции
+     * @return boolean True, если функция не имеет побочных эффектов
      */
     public function isPureFunction(string $functionName): bool;
 }

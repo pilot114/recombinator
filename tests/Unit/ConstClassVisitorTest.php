@@ -20,7 +20,8 @@ beforeEach(
 );
 
 it(
-    'can replace class constant with scalar value inside class', function (): void {
+    'can replace class constant with scalar value inside class',
+    function (): void {
         $code = '<?php
 class TestClass {
     const MY_CONST = 42;
@@ -46,7 +47,8 @@ class TestClass {
 );
 
 it(
-    'can replace class constant with string value', function (): void {
+    'can replace class constant with string value',
+    function (): void {
         $code = '<?php
 class Auth {
     const HASH = "test_hash";
@@ -73,7 +75,8 @@ class Auth {
 );
 
 it(
-    'can replace class constant accessed from outside class', function (): void {
+    'can replace class constant accessed from outside class',
+    function (): void {
         $code = '<?php
 class Config {
     const API_KEY = "secret_key";
@@ -93,12 +96,12 @@ $key = Config::API_KEY;';
 
         // Accept both single and double quotes (php-parser may use either)
         expect($result)->toMatch('/\$key = ["\']secret_key["\']/');
-
     }
 );
 
 it(
-    'can handle multiple constants in one class', function (): void {
+    'can handle multiple constants in one class',
+    function (): void {
         $code = '<?php
 class Constants {
     const FOO = 1;
@@ -128,7 +131,8 @@ class Constants {
 );
 
 it(
-    'stores constant in global scope', function (): void {
+    'stores constant in global scope',
+    function (): void {
         $code = '<?php
 class TestClass {
     const MY_CONST = 100;
@@ -149,7 +153,8 @@ class TestClass {
 );
 
 it(
-    'can handle boolean constants', function (): void {
+    'can handle boolean constants',
+    function (): void {
         $code = '<?php
 class Flags {
     const DEBUG = true;
@@ -175,7 +180,8 @@ class Flags {
 );
 
 it(
-    'can handle float constants', function (): void {
+    'can handle float constants',
+    function (): void {
         $code = '<?php
 class Math {
     const PI = 3.14159;

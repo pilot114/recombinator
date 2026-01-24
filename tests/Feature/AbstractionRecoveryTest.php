@@ -19,7 +19,8 @@ beforeEach(
 );
 
 it(
-    'can analyze and extract function candidates from pure code', function (): void {
+    'can analyze and extract function candidates from pure code',
+    function (): void {
         $code = '<?php
     // Pure computation block
     $dx = $x2 - $x1;
@@ -50,7 +51,8 @@ it(
 );
 
 it(
-    'can extract pure block into function', function (): void {
+    'can extract pure block into function',
+    function (): void {
         $code = '<?php
     $dx = $x2 - $x1;
     $dy = $y2 - $y1;
@@ -95,7 +97,8 @@ it(
 );
 
 it(
-    'can analyze IO operations for extraction', function (): void {
+    'can analyze IO operations for extraction',
+    function (): void {
         $code = '<?php
     echo "=== Report ===\n";
     echo "User: " . $username . "\n";
@@ -121,7 +124,8 @@ it(
 );
 
 it(
-    'can simplify nested conditions', function (): void {
+    'can simplify nested conditions',
+    function (): void {
         $code = '<?php
     if ($a) {
         if ($b) {
@@ -141,7 +145,8 @@ it(
 );
 
 it(
-    'can analyze nesting complexity', function (): void {
+    'can analyze nesting complexity',
+    function (): void {
         $code = '<?php
     if ($a) {
         if ($b) {
@@ -164,7 +169,8 @@ it(
 );
 
 it(
-    'can optimize variable declarations', function (): void {
+    'can optimize variable declarations',
+    function (): void {
         $code = '<?php
     $x = $point["x"];
     echo "Processing...";
@@ -190,7 +196,8 @@ it(
 );
 
 it(
-    'handles full pipeline for distance calculation', function (): void {
+    'handles full pipeline for distance calculation',
+    function (): void {
         $code = '<?php
     // Calculate distance between two points
     $dx = $x2 - $x1;
@@ -229,7 +236,8 @@ it(
 );
 
 it(
-    'prioritizes pure blocks over effect blocks', function (): void {
+    'prioritizes pure blocks over effect blocks',
+    function (): void {
         $code = '<?php
     // Pure block
     $dx = $x2 - $x1;

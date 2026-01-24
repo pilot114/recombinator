@@ -1,7 +1,8 @@
 <?php
 
 test(
-    'example', function (): void {
+    'example',
+    function (): void {
         expect(true)->toBeTrue();
     }
 );

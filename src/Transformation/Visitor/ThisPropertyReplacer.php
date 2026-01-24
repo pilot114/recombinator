@@ -17,7 +17,7 @@ class ThisPropertyReplacer extends BaseVisitor
     {
     }
 
-    public function enterNode(Node $node): int|Node|array|null
+    public function enterNode(Node $node): ?Node
     {
         // Замена $this->property на переменную инстанса
         if ($node instanceof Node\Expr\PropertyFetch && ($node->var instanceof Node\Expr\Variable && $node->var->name === 'this')) {
@@ -25,8 +25,9 @@ class ThisPropertyReplacer extends BaseVisitor
             if ($name instanceof Node\Identifier) {
                 $propertyName = $name->name;
                 // Если это обращение для чтения
-                if (isset($this->instance['properties'][$propertyName])) {
-                    $varName = $this->instance['properties'][$propertyName];
+                $properties = $this->instance['properties'] ?? [];
+                if (is_array($properties) && isset($properties[$propertyName])) {
+                    $varName = $properties[$propertyName];
                     if (is_string($varName)) {
                         return new Node\Expr\Variable($varName);
                     }
@@ -35,12 +36,18 @@ class ThisPropertyReplacer extends BaseVisitor
         }
 
         // Замена присваивания $this->property = value
-        if ($node instanceof Node\Expr\Assign && ($node->var instanceof Node\Expr\PropertyFetch && $node->var->var instanceof Node\Expr\Variable && $node->var->var->name === 'this')) {
+        if (
+            $node instanceof Node\Expr\Assign
+            && $node->var instanceof Node\Expr\PropertyFetch
+            && $node->var->var instanceof Node\Expr\Variable
+            && $node->var->var->name === 'this'
+        ) {
             $name = $node->var->name;
             if ($name instanceof Node\Identifier) {
                 $propertyName = $name->name;
-                if (isset($this->instance['properties'][$propertyName])) {
-                    $varName = $this->instance['properties'][$propertyName];
+                $properties = $this->instance['properties'] ?? [];
+                if (is_array($properties) && isset($properties[$propertyName])) {
+                    $varName = $properties[$propertyName];
                     if (is_string($varName)) {
                         return new Node\Expr\Assign(
                             new Node\Expr\Variable($varName),

@@ -19,7 +19,8 @@ beforeEach(
 );
 
 it(
-    'builds graph from marked AST', function (): void {
+    'builds graph from marked AST',
+    function (): void {
         $code = '<?php
         $x = 1 + 2;
         $y = $x * 3;
@@ -37,7 +38,8 @@ it(
 );
 
 it(
-    'creates dependency between variable usage and definition', function (): void {
+    'creates dependency between variable usage and definition',
+    function (): void {
         $code = '<?php
         $x = 5;
         $y = $x + 3;
@@ -55,7 +57,8 @@ it(
 );
 
 it(
-    'groups nodes by effect type', function (): void {
+    'groups nodes by effect type',
+    function (): void {
         $code = '<?php
         $x = 1 + 2;
         echo "test";
@@ -77,7 +80,8 @@ it(
 );
 
 it(
-    'returns empty groups for empty AST', function (): void {
+    'returns empty groups for empty AST',
+    function (): void {
         $ast = [];
 
         $this->graph->buildFromAST($ast);
@@ -91,7 +95,8 @@ it(
 );
 
 it(
-    'performs topological sort', function (): void {
+    'performs topological sort',
+    function (): void {
         $code = '<?php
         $a = 1;
         $b = $a + 2;
@@ -111,7 +116,8 @@ it(
 );
 
 it(
-    'detects that pure nodes can be reordered', function (): void {
+    'detects that pure nodes can be reordered',
+    function (): void {
         $code = '<?php $x = 1 + 2;';
 
         $ast = $this->parser->parse($code);
@@ -131,7 +137,8 @@ it(
 );
 
 it(
-    'detects that IO nodes cannot be reordered', function (): void {
+    'detects that IO nodes cannot be reordered',
+    function (): void {
         $code = '<?php echo "test";';
 
         $ast = $this->parser->parse($code);
@@ -160,7 +167,8 @@ it(
 );
 
 it(
-    'returns dependencies for a node', function (): void {
+    'returns dependencies for a node',
+    function (): void {
         $code = '<?php
         $x = 1;
         $y = $x + 2;
@@ -185,7 +193,8 @@ it(
 );
 
 it(
-    'returns dependents for a node', function (): void {
+    'returns dependents for a node',
+    function (): void {
         $code = '<?php
         $x = 1;
         $y = $x + 2;
@@ -207,7 +216,8 @@ it(
 );
 
 it(
-    'handles complex code with multiple effect types', function (): void {
+    'handles complex code with multiple effect types',
+    function (): void {
         $code = '<?php
         $x = 1 + 2;
         $name = $_GET["name"];
@@ -228,7 +238,8 @@ it(
 );
 
 it(
-    'handles empty edges correctly', function (): void {
+    'handles empty edges correctly',
+    function (): void {
         $code = '<?php $x = 1;';
 
         $ast = $this->parser->parse($code);
@@ -243,7 +254,8 @@ it(
 );
 
 it(
-    'rebuilds graph when buildFromAST is called multiple times', function (): void {
+    'rebuilds graph when buildFromAST is called multiple times',
+    function (): void {
         $code1 = '<?php $x = 1;';
         $ast1 = $this->parser->parse($code1);
         $ast1 = $this->traverser->traverse($ast1);
@@ -264,7 +276,8 @@ it(
 );
 
 it(
-    'returns false for canReorder with non-existent node', function (): void {
+    'returns false for canReorder with non-existent node',
+    function (): void {
         $this->graph->buildFromAST([]);
 
         $canReorder = $this->graph->canReorder('non_existent_id');
@@ -274,7 +287,8 @@ it(
 );
 
 it(
-    'adds edges correctly', function (): void {
+    'adds edges correctly',
+    function (): void {
         $code = '<?php $x = 1; $y = 2;';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -289,7 +303,8 @@ it(
 );
 
 it(
-    'handles nested function calls', function (): void {
+    'handles nested function calls',
+    function (): void {
         $code = '<?php $result = strtoupper(substr("hello", 0, 3));';
 
         $ast = $this->parser->parse($code);

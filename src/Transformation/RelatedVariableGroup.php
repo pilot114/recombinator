@@ -8,7 +8,7 @@ namespace Recombinator\Transformation;
 class RelatedVariableGroup
 {
     /**
-     * @param array $assignments Массив присваиваний
+     * @param array<int, array{var: string, index: int}> $assignments Массив присваиваний
      */
     public function __construct(
         public readonly array $assignments
@@ -28,7 +28,7 @@ class RelatedVariableGroup
      */
     public function getSignature(): string
     {
-        $vars = array_map(fn(array $a) => $a['var'], $this->assignments);
+        $vars = array_map(fn(array $a): string => $a['var'], $this->assignments);
         sort($vars);
         return implode('|', $vars);
     }
@@ -36,10 +36,10 @@ class RelatedVariableGroup
     /**
      * Возвращает индексы узлов в группе
      *
-     * @return int[]
+     * @return array<int>
      */
     public function getIndices(): array
     {
-        return array_map(fn(array $a) => $a['index'], $this->assignments);
+        return array_map(fn(array $a): int => $a['index'], $this->assignments);
     }
 }

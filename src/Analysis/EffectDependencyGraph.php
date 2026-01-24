@@ -110,7 +110,9 @@ class EffectDependencyGraph
                 if ($subNode instanceof Node) {
                     $this->collectNodes($subNode, $id);
                 } elseif (is_array($subNode)) {
-                    /** @var array<mixed> $subNode */
+                    /**
+ * @var array<mixed> $subNode
+*/
                     $validNodes = array_filter($subNode, fn($item): bool => $item instanceof Node);
                     if ($validNodes !== []) {
                         $this->collectNodes($validNodes, $id);
@@ -172,7 +174,7 @@ class EffectDependencyGraph
     {
         // Отслеживаем присваивания переменных
         /**
- * @var array<string, string> $varDefinitions 
+ * @var array<string, string> $varDefinitions
 */
         $varDefinitions = [];
 
@@ -315,7 +317,9 @@ class EffectDependencyGraph
      */
     public function getNodesByEffect(): array
     {
-        /** @var array<string, array<int, string>> $groups */
+        /**
+ * @var array<string, array<int, string>> $groups
+*/
         $groups = [];
 
         foreach ($this->nodes as $id => $nodeData) {

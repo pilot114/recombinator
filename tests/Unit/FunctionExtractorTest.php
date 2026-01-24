@@ -18,7 +18,8 @@ beforeEach(
 );
 
 it(
-    'extracts simple pure block into function', function (): void {
+    'extracts simple pure block into function',
+    function (): void {
         $code = '<?php
     $a = 1;
     $b = 2;
@@ -46,7 +47,8 @@ it(
 );
 
 it(
-    'extracts function with parameters', function (): void {
+    'extracts function with parameters',
+    function (): void {
         $code = '<?php
     $result = $x + $y;';
         $ast = $this->parser->parse($code);
@@ -71,7 +73,8 @@ it(
 );
 
 it(
-    'extracts function with custom name', function (): void {
+    'extracts function with custom name',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -88,7 +91,8 @@ it(
 );
 
 it(
-    'creates function with PHPDoc comment', function (): void {
+    'creates function with PHPDoc comment',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -116,7 +120,8 @@ it(
 );
 
 it(
-    'creates function for IO operations', function (): void {
+    'creates function for IO operations',
+    function (): void {
         $code = '<?php
     echo "Hello";
     echo "World";';
@@ -145,7 +150,8 @@ it(
 );
 
 it(
-    'creates function call with parameters', function (): void {
+    'creates function call with parameters',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -170,7 +176,8 @@ it(
 );
 
 it(
-    'creates function call without assignment for non-returning functions', function (): void {
+    'creates function call without assignment for non-returning functions',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::IO,
@@ -188,7 +195,8 @@ it(
 );
 
 it(
-    'generates valid PHP code for extracted function', function (): void {
+    'generates valid PHP code for extracted function',
+    function (): void {
         $code = '<?php
     $distance = sqrt($x * $x + $y * $y);';
         $ast = $this->parser->parse($code);
@@ -217,7 +225,8 @@ it(
 );
 
 it(
-    'handles external state operations', function (): void {
+    'handles external state operations',
+    function (): void {
         $code = '<?php
     $username = $_GET["username"];
     $password = $_GET["password"];';
@@ -243,7 +252,8 @@ it(
 );
 
 it(
-    'handles database operations', function (): void {
+    'handles database operations',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::DATABASE,
@@ -262,7 +272,8 @@ it(
 );
 
 it(
-    'handles HTTP operations', function (): void {
+    'handles HTTP operations',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::HTTP,
@@ -281,7 +292,8 @@ it(
 );
 
 it(
-    'handles non-deterministic operations', function (): void {
+    'handles non-deterministic operations',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::NON_DETERMINISTIC,
@@ -300,7 +312,8 @@ it(
 );
 
 it(
-    'excludes defined variables from function parameters', function (): void {
+    'excludes defined variables from function parameters',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -320,7 +333,8 @@ it(
 );
 
 it(
-    'creates return statement only when returnVariable is set', function (): void {
+    'creates return statement only when returnVariable is set',
+    function (): void {
         $code = '<?php $a = 1;';
         $ast = $this->parser->parse($code);
 
@@ -352,7 +366,8 @@ it(
 );
 
 it(
-    'preserves original line information in doc comment', function (): void {
+    'preserves original line information in doc comment',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,

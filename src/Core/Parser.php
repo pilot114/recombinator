@@ -47,23 +47,23 @@ use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 class Parser
 {
     /**
-     * 
      *
-     * @var array<string, string> Массив исходников 
+     *
+     * @var array<string, string> Массив исходников
      */
     protected array $scopes = [];
 
     /**
-     * 
      *
-     * @var array<string, array<int, Node>> Массив распарсенных исходников 
+     *
+     * @var array<string, array<int, Node>> Массив распарсенных исходников
      */
     protected array $ast = [];
 
     /**
-     * 
      *
-     * @var array<int, NodeVisitor> 
+     *
+     * @var array<int, NodeVisitor>
      */
     protected array $visitors = [];
 
@@ -77,6 +77,9 @@ class Parser
 
     protected string $entryPoint = '';
 
+    /**
+     * @throws \RuntimeException
+     */
     public function __construct(protected string $path, string $cachePath)
     {
         $this->cacheDir = realpath($cachePath) ?: $cachePath;
@@ -119,6 +122,8 @@ class Parser
 
     /**
      * Запускает парсинг
+     *
+     * @throws \RuntimeException
      */
     public function run(): void
     {
@@ -200,6 +205,9 @@ class Parser
         }
     }
 
+    /**
+     * @throws \RuntimeException
+     */
     protected function parseScopesWithVisitors(): void
     {
         // при первом запуске рекурсивно прогоняем IncludeVisitor и затем ScopeVisitor
@@ -242,7 +250,7 @@ class Parser
      */
     public function prettyPrint(string $name, bool $lined = false): ?string
     {
-        $output = (new StandardPrinter)->prettyPrint($this->ast[$name]);
+        $output = new StandardPrinter()->prettyPrint($this->ast[$name]);
         if ($output === '') {
             return null;
         }
@@ -280,14 +288,17 @@ class Parser
     }
 
     /**
-     * @return array<int, \PhpParser\Node>
+     * @return array<int, Node>
      */
     protected function buildAST(string $name, string $code): array
     {
-        $parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $parser = new ParserFactory()->createForNewestSupportedVersion();
         try {
             $ast = $parser->parse($code);
             if ($ast !== null) {
+                /**
+ * @var array<int, Node> $ast
+*/
                 $this->ast[$name] = $ast;
             }
         } catch (Error $error) {

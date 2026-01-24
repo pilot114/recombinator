@@ -20,7 +20,8 @@ beforeEach(
 );
 
 it(
-    'can inline simple function call', function (): void {
+    'can inline simple function call',
+    function (): void {
         $code = '<?php
 function getNumber() {
     return 42;
@@ -45,7 +46,8 @@ $result = getNumber();';
 );
 
 it(
-    'can inline function with expression', function (): void {
+    'can inline function with expression',
+    function (): void {
         $code = '<?php
 function double($x) {
     return $x * 2;
@@ -76,7 +78,8 @@ $result = double(5);';
 );
 
 it(
-    'can inline function returning string', function (): void {
+    'can inline function returning string',
+    function (): void {
         $code = '<?php
 function getMessage() {
     return "Hello World";
@@ -101,7 +104,8 @@ $msg = getMessage();';
 );
 
 it(
-    'should not inline unknown function', function (): void {
+    'should not inline unknown function',
+    function (): void {
         $code = '<?php $result = unknownFunction();';
 
         $ast = $this->parser->parse($code);
@@ -118,7 +122,8 @@ it(
 );
 
 it(
-    'can inline multiple function calls', function (): void {
+    'can inline multiple function calls',
+    function (): void {
         $code = '<?php
 function getOne() {
     return 1;
@@ -147,7 +152,8 @@ $sum = getOne() + getTwo();';
 );
 
 it(
-    'retrieves function from scope store', function (): void {
+    'retrieves function from scope store',
+    function (): void {
         $returnExpr = new Node\Scalar\LNumber(100);
         $this->store->setFunctionToGlobal('testFunc', $returnExpr);
 
@@ -159,7 +165,8 @@ it(
 );
 
 it(
-    'can inline function with boolean return', function (): void {
+    'can inline function with boolean return',
+    function (): void {
         $code = '<?php
 function isTrue() {
     return true;

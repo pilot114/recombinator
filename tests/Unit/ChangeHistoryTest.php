@@ -13,9 +13,11 @@ beforeEach(
 );
 
 describe(
-    'Adding Changes', function (): void {
+    'Adding Changes',
+    function (): void {
         it(
-            'adds a change to history', function (): void {
+            'adds a change to history',
+            function (): void {
                 $node = new Variable('x');
                 $change = new Change(
                     Change::TYPE_RENAME,
@@ -33,7 +35,8 @@ describe(
         );
 
         it(
-            'adds multiple changes', function (): void {
+            'adds multiple changes',
+            function (): void {
                 for ($i = 1; $i <= 5; $i++) {
                     $node = new Variable('x' . $i);
                     $change = new Change(
@@ -53,7 +56,8 @@ describe(
 );
 
 describe(
-    'Undo/Redo', function (): void {
+    'Undo/Redo',
+    function (): void {
         beforeEach(
             function (): void {
                 // Добавляем 3 изменения
@@ -72,7 +76,8 @@ describe(
         );
 
         it(
-            'can undo a change', function (): void {
+            'can undo a change',
+            function (): void {
                 expect($this->history->canUndo())->toBeTrue();
 
                 $change = $this->history->undo();
@@ -83,7 +88,8 @@ describe(
         );
 
         it(
-            'can undo multiple changes', function (): void {
+            'can undo multiple changes',
+            function (): void {
                 $this->history->undo();
                 $this->history->undo();
 
@@ -95,7 +101,8 @@ describe(
         );
 
         it(
-            'returns null when nothing to undo', function (): void {
+            'returns null when nothing to undo',
+            function (): void {
                 $this->history->undo();
                 $this->history->undo();
                 $this->history->undo();
@@ -107,7 +114,8 @@ describe(
         );
 
         it(
-            'can redo a change', function (): void {
+            'can redo a change',
+            function (): void {
                 $this->history->undo();
 
                 expect($this->history->canRedo())->toBeTrue();
@@ -120,7 +128,8 @@ describe(
         );
 
         it(
-            'can redo multiple changes', function (): void {
+            'can redo multiple changes',
+            function (): void {
                 $this->history->undo();
                 $this->history->undo();
                 $this->history->undo();
@@ -136,7 +145,8 @@ describe(
         );
 
         it(
-            'returns null when nothing to redo', function (): void {
+            'returns null when nothing to redo',
+            function (): void {
                 $result = $this->history->redo();
 
                 expect($result)->toBeNull();
@@ -146,7 +156,8 @@ describe(
 );
 
 describe(
-    'History Navigation', function (): void {
+    'History Navigation',
+    function (): void {
         beforeEach(
             function (): void {
                 for ($i = 1; $i <= 3; $i++) {
@@ -164,7 +175,8 @@ describe(
         );
 
         it(
-            'tracks current position correctly', function (): void {
+            'tracks current position correctly',
+            function (): void {
                 expect($this->history->getCurrentChange()->getDescription())->toBe('Change 3');
 
                 $this->history->undo();
@@ -176,7 +188,8 @@ describe(
         );
 
         it(
-            'clears future history on new change after undo', function (): void {
+            'clears future history on new change after undo',
+            function (): void {
                 $this->history->undo();
                 $this->history->undo();
 
@@ -199,9 +212,11 @@ describe(
 );
 
 describe(
-    'History Management', function (): void {
+    'History Management',
+    function (): void {
         it(
-            'can clear history', function (): void {
+            'can clear history',
+            function (): void {
                 $node = new Variable('x');
                 $change = new Change(Change::TYPE_RENAME, 'Test', $node, [], []);
                 $this->history->addChange($change);
@@ -217,7 +232,8 @@ describe(
         );
 
         it(
-            'returns all changes', function (): void {
+            'returns all changes',
+            function (): void {
                 for ($i = 1; $i <= 3; $i++) {
                     $node = new Variable('x' . $i);
                     $change = new Change(Change::TYPE_RENAME, 'Change ' . $i, $node, [], []);
@@ -233,7 +249,8 @@ describe(
         );
 
         it(
-            'generates summary', function (): void {
+            'generates summary',
+            function (): void {
                 $node = new Variable('x');
                 $change = new Change(Change::TYPE_RENAME, 'Test', $node, [], []);
                 $this->history->addChange($change);
@@ -250,9 +267,11 @@ describe(
 );
 
 describe(
-    'Change Object', function (): void {
+    'Change Object',
+    function (): void {
         it(
-            'creates change with all properties', function (): void {
+            'creates change with all properties',
+            function (): void {
                 $node = new Variable('x');
                 $timestamp = time();
 
@@ -275,7 +294,8 @@ describe(
         );
 
         it(
-            'auto-generates timestamp', function (): void {
+            'auto-generates timestamp',
+            function (): void {
                 $node = new Variable('x');
                 $before = time();
 
@@ -295,7 +315,8 @@ describe(
         );
 
         it(
-            'formats change correctly', function (): void {
+            'formats change correctly',
+            function (): void {
                 $node = new Variable('x');
                 $change = new Change(
                     Change::TYPE_RENAME,

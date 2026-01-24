@@ -19,7 +19,8 @@ beforeEach(
 );
 
 it(
-    'can process large number of binary operations efficiently', function (): void {
+    'can process large number of binary operations efficiently',
+    function (): void {
         // Generate code with 1000 binary operations
         $operations = [];
         for ($i = 1; $i <= 1000; $i++) {
@@ -45,7 +46,8 @@ it(
 )->group('performance');
 
 it(
-    'can process large number of constants efficiently', function (): void {
+    'can process large number of constants efficiently',
+    function (): void {
         // Generate code with 500 constants
         $constants = ["<?php\nclass BigConfig {"];
         for ($i = 1; $i <= 500; $i++) {
@@ -74,7 +76,8 @@ it(
 )->group('performance');
 
 it(
-    'can process large number of variable assignments efficiently', function (): void {
+    'can process large number of variable assignments efficiently',
+    function (): void {
         // Generate code with 1000 variable assignments
         $assignments = ["<?php"];
         for ($i = 1; $i <= 1000; $i++) {
@@ -102,7 +105,8 @@ it(
 )->group('performance');
 
 it(
-    'can process deeply nested expressions efficiently', function (): void {
+    'can process deeply nested expressions efficiently',
+    function (): void {
         // Generate deeply nested expression: 1 + (2 + (3 + (4 + ...)))
         $expression = "1";
         for ($i = 2; $i <= 100; $i++) {
@@ -127,7 +131,8 @@ it(
 )->group('performance');
 
 it(
-    'can process multiple visitors in pipeline efficiently', function (): void {
+    'can process multiple visitors in pipeline efficiently',
+    function (): void {
         // Generate complex code
         $code = "<?php\n";
         $code .= "class Config {\n";
@@ -162,7 +167,8 @@ it(
 )->group('performance');
 
 it(
-    'has linear time complexity for variable replacement', function (): void {
+    'has linear time complexity for variable replacement',
+    function (): void {
         $sizes = [100, 200, 400];
         $times = [];
 
@@ -195,7 +201,8 @@ it(
 )->group('performance');
 
 it(
-    'measures memory usage for large code processing', function (): void {
+    'measures memory usage for large code processing',
+    function (): void {
         $memoryBefore = memory_get_usage();
 
         // Generate large code
@@ -222,7 +229,8 @@ it(
 )->group('performance');
 
 it(
-    'can handle string concatenation performance', function (): void {
+    'can handle string concatenation performance',
+    function (): void {
         // Generate code with 500 string concatenations
         $parts = ["<?php\n\$result = "];
         for ($i = 1; $i <= 500; $i++) {

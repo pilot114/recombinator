@@ -16,6 +16,9 @@ use PhpParser\Node\Stmt\Return_;
  */
 class ExtractionResult
 {
+    /**
+     * @param array<string> $parameters
+     */
     public function __construct(
         public readonly Function_ $function,
         public readonly Expression|Return_|FuncCall $call,

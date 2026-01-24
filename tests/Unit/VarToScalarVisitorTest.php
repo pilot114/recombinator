@@ -21,7 +21,8 @@ beforeEach(
 );
 
 it(
-    'can replace scalar variable with its value', function (): void {
+    'can replace scalar variable with its value',
+    function (): void {
         $code = '<?php
 $test = 42;
 echo $test;';
@@ -43,7 +44,8 @@ echo $test;';
 );
 
 it(
-    'can replace string variable with its value', function (): void {
+    'can replace string variable with its value',
+    function (): void {
         $code = '<?php
 $name = "John";
 echo $name;';
@@ -64,7 +66,8 @@ echo $name;';
 );
 
 it(
-    'can replace boolean variable with its value', function (): void {
+    'can replace boolean variable with its value',
+    function (): void {
         $code = '<?php
 $flag = true;
 if ($flag) {
@@ -87,7 +90,8 @@ if ($flag) {
 );
 
 it(
-    'can replace float variable with its value', function (): void {
+    'can replace float variable with its value',
+    function (): void {
         $code = '<?php
 $pi = 3.14;
 echo $pi;';
@@ -108,7 +112,8 @@ echo $pi;';
 );
 
 it(
-    'should not replace non-scalar variable', function (): void {
+    'should not replace non-scalar variable',
+    function (): void {
         $code = '<?php
 $arr = [1, 2, 3];
 echo $arr[0];';
@@ -129,7 +134,8 @@ echo $arr[0];';
 );
 
 it(
-    'should clear variable from cache when reassigned with non-scalar', function (): void {
+    'should clear variable from cache when reassigned with non-scalar',
+    function (): void {
         $code = '<?php
 $val = 10;
 echo $val;
@@ -156,7 +162,8 @@ echo $val[0];';
 );
 
 it(
-    'can replace multiple variables', function (): void {
+    'can replace multiple variables',
+    function (): void {
         $code = '<?php
 $a = 5;
 $b = 10;
@@ -179,7 +186,8 @@ echo $a + $b + $c;';
 );
 
 it(
-    'should not replace variable in left side of assignment', function (): void {
+    'should not replace variable in left side of assignment',
+    function (): void {
         $code = '<?php
 $test = 10;
 $test = 20;
@@ -202,7 +210,8 @@ echo $test;';
 );
 
 it(
-    'stores scalar variable in scope', function (): void {
+    'stores scalar variable in scope',
+    function (): void {
         $code = '<?php $test = 100;';
 
         $ast = $this->parser->parse($code);
@@ -221,7 +230,8 @@ it(
 );
 
 it(
-    'can handle variable used in concatenation', function (): void {
+    'can handle variable used in concatenation',
+    function (): void {
         $code = '<?php
 $name = "World";
 echo "Hello, " . $name;';

@@ -17,7 +17,8 @@ beforeEach(
 );
 
 it(
-    'can convert if-return pattern to ternary operator', function (): void {
+    'can convert if-return pattern to ternary operator',
+    function (): void {
         $code = '<?php
 class Test {
     public function check($x) {
@@ -44,7 +45,8 @@ class Test {
 );
 
 it(
-    'can convert if-return with boolean condition', function (): void {
+    'can convert if-return with boolean condition',
+    function (): void {
         $code = '<?php
 class Test {
     public function isValid($flag) {
@@ -69,7 +71,8 @@ class Test {
 );
 
 it(
-    'can convert if-return with numeric values', function (): void {
+    'can convert if-return with numeric values',
+    function (): void {
         $code = '<?php
 class Math {
     public function sign($x) {
@@ -94,7 +97,8 @@ class Math {
 );
 
 it(
-    'can convert if-return with expressions', function (): void {
+    'can convert if-return with expressions',
+    function (): void {
         $code = '<?php
 class Calculator {
     public function calculate($x, $y) {
@@ -119,7 +123,8 @@ class Calculator {
 );
 
 it(
-    'should not convert method without if-return pattern', function (): void {
+    'should not convert method without if-return pattern',
+    function (): void {
         $code = '<?php
 class Test {
     public function normal($x) {
@@ -142,7 +147,8 @@ class Test {
 );
 
 it(
-    'should not convert if without return in body', function (): void {
+    'should not convert if without return in body',
+    function (): void {
         $code = '<?php
 class Test {
     public function test($x) {
@@ -168,7 +174,8 @@ class Test {
 );
 
 it(
-    'can handle complex conditions', function (): void {
+    'can handle complex conditions',
+    function (): void {
         $code = '<?php
 class Test {
     public function check($x, $y) {
@@ -194,7 +201,8 @@ class Test {
 );
 
 it(
-    'can convert if-return with variable returns', function (): void {
+    'can convert if-return with variable returns',
+    function (): void {
         $code = '<?php
 class Test {
     public function pick($choice, $a, $b) {

@@ -29,7 +29,7 @@ class ConstClassVisitor extends BaseVisitor
             return null;
         }
 
-        if ($node instanceof Node\Expr\ClassConstFetch) {
+        if ($node instanceof Node\Expr\ClassConstFetch && $node->name instanceof Node\Identifier) {
             // In php-parser 5.x, use toString() method
             $className = $node->class instanceof Node\Name ? $node->class->toString() : null;
 

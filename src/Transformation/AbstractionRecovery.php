@@ -48,8 +48,8 @@ use Recombinator\Domain\EffectGroup;
 class AbstractionRecovery
 {
     public function __construct(
-        private readonly ?SideEffectSeparator $separator = new SideEffectSeparator(),
-        private readonly ?CognitiveComplexityCalculator $complexityCalculator = new CognitiveComplexityCalculator(),
+        private readonly SideEffectSeparator $separator = new SideEffectSeparator(),
+        private readonly CognitiveComplexityCalculator $complexityCalculator = new CognitiveComplexityCalculator(),
         /**
          * Минимальный размер чистого блока для создания функции (FOLD-FUNC-1)
          */
@@ -191,6 +191,8 @@ class AbstractionRecovery
 
     /**
      * Определяет переменную-результат блока
+     *
+     * @param array<Node> $nodes
      */
     private function detectReturnVariable(array $nodes): ?string
     {
@@ -217,6 +219,8 @@ class AbstractionRecovery
 
     /**
      * Получает начальную строку блока
+     *
+     * @param array<Node> $nodes
      */
     private function getStartLine(array $nodes): int
     {
@@ -225,11 +229,17 @@ class AbstractionRecovery
         }
 
         $first = reset($nodes);
-        return $first->getStartLine() ?? 0;
+        if (!$first instanceof Node) {
+            return 0;
+        }
+
+        return $first->getStartLine();
     }
 
     /**
      * Получает конечную строку блока
+     *
+     * @param array<Node> $nodes
      */
     private function getEndLine(array $nodes): int
     {
@@ -238,6 +248,10 @@ class AbstractionRecovery
         }
 
         $last = end($nodes);
-        return $last->getEndLine() ?? 0;
+        if (!$last instanceof Node) {
+            return 0;
+        }
+
+        return $last->getEndLine();
     }
 }

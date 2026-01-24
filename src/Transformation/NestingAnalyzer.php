@@ -15,12 +15,12 @@ class NestingAnalyzer extends NodeVisitorAbstract
     private int $maxNesting = 0;
 
     /**
-     * @var array<int> 
+     * @var array<int>
      */
     private array $nestingLevels = [];
 
     /**
-     * @var array<array{node: Node, level: int, line: int}> 
+     * @var array<array{node: Node, level: int, line: int}>
      */
     private array $complexNodes = [];
 
@@ -37,7 +37,7 @@ class NestingAnalyzer extends NodeVisitorAbstract
                 $this->complexNodes[] = [
                     'node' => $node,
                     'level' => $this->currentNesting,
-                    'line' => $node->getStartLine() ?? 0,
+                    'line' => $node->getStartLine(),
                 ];
             }
         }
@@ -69,11 +69,20 @@ class NestingAnalyzer extends NodeVisitorAbstract
     }
 
     /**
-     * @return array<array{node: Node, level: int, line: int}>
+     * @return array<int, array{line: int, level: int, node?: Node}>
      */
     public function getComplexNodes(): array
     {
-        return $this->complexNodes;
+        $result = [];
+        foreach ($this->complexNodes as $data) {
+            $result[] = [
+                'line' => $data['line'],
+                'level' => $data['level'],
+                'node' => $data['node'],
+            ];
+        }
+
+        return $result;
     }
 
     private function isNestingNode(Node $node): bool

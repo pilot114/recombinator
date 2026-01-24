@@ -15,41 +15,15 @@ use PhpParser\Node;
 class FunctionCandidate
 {
     /**
-     * @param Node[]         $nodes            Узлы
-     *                                         AST,
-     *                                         составляющие
-     *                                         блок
-     * @param SideEffectType $effectType       Тип побочного
-     *                                         эффекта блока
-     * @param int            $size             Размер
-     *                                         блока
-     *                                         (количество
-     *                                         строк/узлов)
-     * @param int            $complexity       Когнитивная
-     *                                         сложность
-     *                                         блока
-     * @param array<string>  $usedVariables    Используемые
-     *                                         переменные
-     *                                         (параметры
-     *                                         функции)
-     * @param array<string>  $definedVariables Определенные
-     *                                         переменные
-     *                                         (внутренние)
-     * @param ?string        $returnVariable   Переменная-результат
-     *                                         (если есть)
-     * @param int            $startLine        Начальная
-     *                                         строка в
-     *                                         исходном
-     *                                         коде
-     * @param int            $endLine          Конечная
-     *                                         строка в
-     *                                         исходном
-     *                                         коде
-     */
-    /**
-     * @param array<Node> $nodes
-     * @param array<string> $usedVariables
-     * @param array<string> $definedVariables
+     * @param array<Node>   $nodes            Узлы AST, составляющие блок
+     * @param SideEffectType $effectType      Тип побочного эффекта блока
+     * @param int           $size             Размер блока (количество строк/узлов)
+     * @param int           $complexity       Когнитивная сложность блока
+     * @param array<string> $usedVariables    Используемые переменные (параметры функции)
+     * @param array<string> $definedVariables Определенные переменные (внутренние)
+     * @param ?string       $returnVariable   Переменная-результат (если есть)
+     * @param int           $startLine        Начальная строка в исходном коде
+     * @param int           $endLine          Конечная строка в исходном коде
      */
     public function __construct(
         public readonly array $nodes,

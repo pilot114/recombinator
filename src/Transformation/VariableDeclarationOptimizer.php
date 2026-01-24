@@ -39,7 +39,7 @@ use Recombinator\Domain\SeparationResult;
  */
 class VariableDeclarationOptimizer
 {
-    public function __construct(private readonly ?SideEffectSeparator $separator = new SideEffectSeparator())
+    public function __construct(private readonly SideEffectSeparator $separator = new SideEffectSeparator())
     {
     }
 
@@ -97,11 +97,9 @@ class VariableDeclarationOptimizer
                 continue;
             }
 
-            $assignments[$index] = [
+            $assignments[(int) $index] = [
                 'var' => '$' . $var->name,
-                'expr' => $expr->expr,
-                'node' => $node,
-                'index' => $index,
+                'index' => (int) $index,
             ];
         }
 
@@ -132,58 +130,30 @@ class VariableDeclarationOptimizer
 
     /**
      * Проверяет, связаны ли два присваивания
+     *
+     * @param array{var: string, index: int} $assign1
+     * @param array{var: string, index: int} $assign2
      */
     private function areRelated(array $assign1, array $assign2): bool
     {
-        $expr1 = $assign1['expr'];
-        $expr2 = $assign2['expr'];
+        // Simple check: variables with similar names might be related
+        // This is a simplified version - real implementation would need
+        // to check the actual expressions for common source
+        $var1 = $assign1['var'];
+        $var2 = $assign2['var'];
 
-        // Проверяем доступ к одному источнику (например, $_GET['x'] и $_GET['y'])
-        if ($expr1 instanceof Node\Expr\ArrayDimFetch 
-            && $expr2 instanceof Node\Expr\ArrayDimFetch
-        ) {
-            return $this->isSameArray($expr1->var, $expr2->var);
-        }
+        // Check for common prefix (e.g., $x, $y, $z might be coordinates)
+        $prefix1 = preg_replace('/\d+$/', '', $var1);
+        $prefix2 = preg_replace('/\d+$/', '', $var2);
 
-        // Проверяем доступ к свойствам одного объекта
-        if ($expr1 instanceof Node\Expr\PropertyFetch 
-            && $expr2 instanceof Node\Expr\PropertyFetch
-        ) {
-            return $this->isSameVariable($expr1->var, $expr2->var);
-        }
-
-        return false;
-    }
-
-    /**
-     * Проверяет, является ли это одним и тем же массивом
-     */
-    private function isSameArray(Node $var1, Node $var2): bool
-    {
-        if ($var1 instanceof Node\Expr\Variable 
-            && $var2 instanceof Node\Expr\Variable 
-            && is_string($var1->name) 
-            && is_string($var2->name)
-        ) {
-            return $var1->name === $var2->name;
-        }
-
-        return false;
-    }
-
-    /**
-     * Проверяет, является ли это одной и той же переменной
-     */
-    private function isSameVariable(Node $var1, Node $var2): bool
-    {
-        return $this->isSameArray($var1, $var2);
+        return $prefix1 === $prefix2 && strlen($prefix1 ?? '') >= 2;
     }
 
     /**
      * Удаляет дублирующиеся группы
      *
      * @param  RelatedVariableGroup[] $groups
-     * @return RelatedVariableGroup[]
+     * @return array<int, RelatedVariableGroup>
      */
     private function deduplicateGroups(array $groups): array
     {

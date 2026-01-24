@@ -143,10 +143,10 @@ class Sandbox
     /**
      * Выполняет код в безопасном окружении
      *
-     * @param  Node  $node    AST узел
-     *                        для
-     *                        выполнения
-     * @param  array $context Контекст выполнения (переменные, константы)
+     * @param  Node                 $node    AST узел для
+     *                                       выполнения
+     * @param  array<string, mixed> $context Контекст выполнения
+     *                                       (переменные, константы)
      * @return mixed Результат выполнения или null в случае ошибки
      */
     public function execute(Node $node, array $context = []): mixed
@@ -182,7 +182,8 @@ class Sandbox
     private function isSafe(Node $node): bool
     {
         // Блокируем опасные языковые конструкции
-        if ($node instanceof Node\Expr\Eval_
+        if (
+            $node instanceof Node\Expr\Eval_
             || $node instanceof Node\Expr\Include_
             || $node instanceof Node\Expr\Exit_
             || $node instanceof Node\Expr\ShellExec
@@ -236,6 +237,8 @@ class Sandbox
 
     /**
      * Генерирует исполняемый PHP код
+     *
+     * @param array<string, mixed> $context
      */
     private function generateExecutableCode(Node $node, array $context): string
     {
@@ -257,9 +260,9 @@ class Sandbox
      */
     private function executeInIsolation(string $code): mixed
     {
+        $oldTimeLimit = ini_get('max_execution_time');
         try {
             // Устанавливаем лимит времени выполнения
-            $oldTimeLimit = ini_get('max_execution_time');
             set_time_limit(self::MAX_EXECUTION_TIME);
 
             // Выполняем код
@@ -273,12 +276,15 @@ class Sandbox
             // Восстанавливаем лимит в случае ошибки
             set_time_limit((int)$oldTimeLimit);
 
-            return new SandboxError($throwable->getMessage(), $throwable->getCode(), $throwable);
+            $errorCode = $throwable->getCode();
+            return new SandboxError($throwable->getMessage(), is_int($errorCode) ? $errorCode : 0, $throwable);
         }
     }
 
     /**
      * Генерирует ключ кеша на основе узла и контекста
+     *
+     * @param array<string, mixed> $context
      */
     private function generateCacheKey(Node $node, array $context): string
     {

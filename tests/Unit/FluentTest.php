@@ -9,7 +9,8 @@ use PhpParser\NodeVisitor;
 use Recombinator\Core\Fluent;
 
 it(
-    'can create fluent instance with ast', function (): void {
+    'can create fluent instance with ast',
+    function (): void {
         $ast = [new Echo_([new String_('test')])];
         $fluent = new Fluent($ast);
 
@@ -18,7 +19,8 @@ it(
 );
 
 it(
-    'can add visitors', function (): void {
+    'can add visitors',
+    function (): void {
         $ast = [new Echo_([new String_('test')])];
         $fluent = new Fluent($ast);
 
@@ -31,7 +33,8 @@ it(
 );
 
 it(
-    'can modify ast with visitors', function (): void {
+    'can modify ast with visitors',
+    function (): void {
         $ast = [new Echo_([new String_('test')])];
         $fluent = new Fluent($ast);
 
@@ -42,7 +45,8 @@ it(
 );
 
 it(
-    'returns fluent instance from withVisitors for chaining', function (): void {
+    'returns fluent instance from withVisitors for chaining',
+    function (): void {
         $ast = [new Echo_([new String_('test')])];
         $visitor1 = new class extends \PhpParser\NodeVisitorAbstract {
         };

@@ -12,9 +12,9 @@ namespace Recombinator\Interactive;
 class ChangeHistory
 {
     /**
-     * 
      *
-     * @var array<Change> 
+     *
+     * @var array<Change>
      */
     private array $changes = [];
 

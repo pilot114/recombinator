@@ -18,15 +18,15 @@ interface ComplexityCalculatorInterface
     /**
      * Вычисляет сложность для заданных узлов
      *
-     * @param array<Node> $nodes Узлы для анализа
-     * @return int Значение сложности
+     * @param  array<Node> $nodes Узлы для анализа
+     * @return integer Значение сложности
      */
     public function calculate(array $nodes): int;
 
     /**
      * Определяет уровень сложности
      *
-     * @param int $value Значение сложности
+     * @param  integer $value Значение сложности
      * @return string Уровень (low, moderate, high, very high)
      */
     public function getComplexityLevel(int $value): string;

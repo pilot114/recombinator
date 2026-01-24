@@ -11,12 +11,13 @@ beforeEach(
     function (): void {
         $this->cache = new ExecutionCache();
         $this->sandbox = new Sandbox($this->cache);
-        $this->parser = (new ParserFactory)->createForNewestSupportedVersion();
+        $this->parser = new ParserFactory()->createForNewestSupportedVersion();
     }
 );
 
 it(
-    'can execute simple scalar values', function (): void {
+    'can execute simple scalar values',
+    function (): void {
         $code = '<?php 42;';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr; // Получаем выражение
@@ -28,7 +29,8 @@ it(
 );
 
 it(
-    'can execute string values', function (): void {
+    'can execute string values',
+    function (): void {
         $code = '<?php "hello";';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -40,7 +42,8 @@ it(
 );
 
 it(
-    'can execute pure functions with constant arguments', function (): void {
+    'can execute pure functions with constant arguments',
+    function (): void {
         $code = '<?php strlen("hello");';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -52,7 +55,8 @@ it(
 );
 
 it(
-    'can execute mathematical functions', function (): void {
+    'can execute mathematical functions',
+    function (): void {
         $code = '<?php abs(-42);';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -64,7 +68,8 @@ it(
 );
 
 it(
-    'can execute array functions', function (): void {
+    'can execute array functions',
+    function (): void {
         $code = '<?php count([1, 2, 3]);';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -76,7 +81,8 @@ it(
 );
 
 it(
-    'can execute string functions', function (): void {
+    'can execute string functions',
+    function (): void {
         $code = '<?php strtoupper("hello");';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -88,7 +94,8 @@ it(
 );
 
 it(
-    'can execute explode function', function (): void {
+    'can execute explode function',
+    function (): void {
         $code = '<?php explode(",", "a,b,c");';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -100,7 +107,8 @@ it(
 );
 
 it(
-    'blocks forbidden functions like eval', function (): void {
+    'blocks forbidden functions like eval',
+    function (): void {
         $code = '<?php eval("return 42;");';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -112,7 +120,8 @@ it(
 );
 
 it(
-    'blocks forbidden functions like exec', function (): void {
+    'blocks forbidden functions like exec',
+    function (): void {
         $code = '<?php exec("ls");';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -124,7 +133,8 @@ it(
 );
 
 it(
-    'blocks forbidden functions like file_get_contents', function (): void {
+    'blocks forbidden functions like file_get_contents',
+    function (): void {
         $code = '<?php file_get_contents("/etc/passwd");';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -136,7 +146,8 @@ it(
 );
 
 it(
-    'caches execution results', function (): void {
+    'caches execution results',
+    function (): void {
         $code = '<?php strlen("hello");';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -156,7 +167,8 @@ it(
 );
 
 it(
-    'can execute with context variables', function (): void {
+    'can execute with context variables',
+    function (): void {
         $code = '<?php strlen($str);';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -168,7 +180,8 @@ it(
 );
 
 it(
-    'can execute max function', function (): void {
+    'can execute max function',
+    function (): void {
         $code = '<?php max(1, 2, 3);';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -180,7 +193,8 @@ it(
 );
 
 it(
-    'can execute min function', function (): void {
+    'can execute min function',
+    function (): void {
         $code = '<?php min(1, 2, 3);';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -192,7 +206,8 @@ it(
 );
 
 it(
-    'can execute in_array function', function (): void {
+    'can execute in_array function',
+    function (): void {
         $code = '<?php in_array(2, [1, 2, 3]);';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -204,7 +219,8 @@ it(
 );
 
 it(
-    'can execute json_encode function', function (): void {
+    'can execute json_encode function',
+    function (): void {
         $code = '<?php json_encode(["a" => 1, "b" => 2]);';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -216,7 +232,8 @@ it(
 );
 
 it(
-    'can execute base64_encode function', function (): void {
+    'can execute base64_encode function',
+    function (): void {
         $code = '<?php base64_encode("hello");';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -228,7 +245,8 @@ it(
 );
 
 it(
-    'detects errors correctly', function (): void {
+    'detects errors correctly',
+    function (): void {
         $code = '<?php eval("return 42;");';
         $ast = $this->parser->parse($code);
         $node = $ast[0]->expr;
@@ -241,7 +259,8 @@ it(
 );
 
 it(
-    'blocks functions not in whitelist', function (): void {
+    'blocks functions not in whitelist',
+    function (): void {
         // rand() не в whitelist (не детерминирована)
         $code = '<?php rand();';
         $ast = $this->parser->parse($code);

@@ -12,18 +12,18 @@ use Recombinator\Core\PrettyDumper;
 class BaseVisitor extends NodeVisitorAbstract
 {
     /**
-     * @var mixed 
+     * @var mixed
      */
     public $scopeName;
 
     /**
-     * @var mixed 
+     * @var mixed
      */
 
     public $diff;
 
     /**
-     * @var mixed 
+     * @var mixed
      */
 
     protected $ast;
@@ -48,7 +48,18 @@ class BaseVisitor extends NodeVisitorAbstract
         }
 
         $replace = $node->getAttribute('replace');
-        if ($replace !== null) {
+        if ($replace instanceof Node) {
+            return $replace;
+        }
+
+        if (is_array($replace)) {
+            /**
+ * @var array<Node> $replace
+*/
+            return $replace;
+        }
+
+        if (is_int($replace)) {
             return $replace;
         }
 
@@ -65,8 +76,11 @@ class BaseVisitor extends NodeVisitorAbstract
             echo sprintf("%s\n", $stmt::class);
         } else {
             echo sprintf(
-                "%s %s:%s-%s\n", $stmt::class,
-                $stmt->getStartLine(), $stmt->getStartFilePos(), $stmt->getEndFilePos()
+                "%s %s:%s-%s\n",
+                $stmt::class,
+                $stmt->getStartLine(),
+                $stmt->getStartFilePos(),
+                $stmt->getEndFilePos()
             );
         }
 
@@ -75,7 +89,7 @@ class BaseVisitor extends NodeVisitorAbstract
         }
 
         echo new PrettyDumper()->dump($stmt) . "\n";
-        echo (new StandardPrinter)->prettyPrint([$stmt]) . "\n";
+        echo new StandardPrinter()->prettyPrint([$stmt]) . "\n";
     }
 
     /**
@@ -94,17 +108,22 @@ class BaseVisitor extends NodeVisitorAbstract
      * $assigns = $p->findNode(Assign::class);
      * $vars = array_map(function($x) { return $x->var->name; }, $assigns);
      *
-     * @param class-string<Node> $className
-     * @param Node|array<Node>|null $node
-     * @return array<Node>
+     * @template T of Node
+     * @param    class-string<T>       $className
+     * @param    Node|array<Node>|null $node
+     * @return   array<T>
      */
-    protected function findNode(string $className, $node = null): array
+    protected function findNode(string $className, Node|array|null $node = null): array
     {
         $nodeFinder = new NodeFinder();
         $searchIn = $node ?? $this->ast;
         if (!is_array($searchIn) && !($searchIn instanceof Node)) {
             return [];
         }
+
+        /**
+ * @var array<T>
+*/
         return $nodeFinder->findInstanceOf($searchIn, $className);
     }
 
@@ -117,7 +136,7 @@ class BaseVisitor extends NodeVisitorAbstract
 
         $maxLenToken = 0;
         foreach ($nodes as $node) {
-            $lenToken = strlen((new StandardPrinter)->prettyPrint([$node]));
+            $lenToken = strlen(new StandardPrinter()->prettyPrint([$node]));
             if ($maxLenToken < $lenToken) {
                 $maxLenToken = $lenToken;
             }
@@ -127,13 +146,17 @@ class BaseVisitor extends NodeVisitorAbstract
 
         echo $className . " count: " . count($nodes) . "\n";
         foreach ($nodes as $node) {
+            $lenToken = $node->getAttribute('lenToken');
+            $startLine = $node->getAttribute('startLine');
+            $startFilePos = $node->getAttribute('startFilePos');
+            $endFilePos = $node->getAttribute('endFilePos');
             echo sprintf(
                 "%s%s%s:%s-%s\n",
-                (new StandardPrinter)->prettyPrint([$node]),
-                str_repeat(' ', ($maxLenToken+3) - (int) ($node->getAttribute('lenToken') ?? 0)),
-                (string) ($node->getAttribute('startLine') ?? ''),
-                (string) ($node->getAttribute('startFilePos') ?? ''),
-                (string) ($node->getAttribute('endFilePos') ?? '')
+                new StandardPrinter()->prettyPrint([$node]),
+                str_repeat(' ', ($maxLenToken + 3) - (is_int($lenToken) ? $lenToken : 0)),
+                is_scalar($startLine) ? (string) $startLine : '',
+                is_scalar($startFilePos) ? (string) $startFilePos : '',
+                is_scalar($endFilePos) ? (string) $endFilePos : ''
             );
         }
 
@@ -157,17 +180,32 @@ class BaseVisitor extends NodeVisitorAbstract
             if (!($param instanceof Node\Param)) {
                 continue;
             }
+
             $var = $param->var;
-            if (!($var instanceof Node\Expr\Variable) || !is_string($var->name)) {
+            if (!($var instanceof Node\Expr\Variable)) {
                 continue;
             }
+
+            if (!is_string($var->name)) {
+                continue;
+            }
+
+            $default = null;
+            if (
+                $param->default instanceof Node\Scalar\LNumber
+                || $param->default instanceof Node\Scalar\DNumber
+                || $param->default instanceof Node\Scalar\String_
+            ) {
+                $default = $param->default->value;
+            }
+
             $params[$var->name] = [
                 'index' => $i,
-                'default' => ($param->default instanceof Node\Scalar ? $param->default->value : null) ?? null,
+                'default' => $default,
             ];
         }
 
-        if (!property_exists($return, 'expr')) {
+        if (!$return instanceof Node\Stmt\Return_ || !$return->expr instanceof \PhpParser\Node\Expr) {
             return $node;
         }
 

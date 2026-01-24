@@ -17,7 +17,8 @@ beforeEach(
 );
 
 it(
-    'marks pure nodes with PURE effect type', function (): void {
+    'marks pure nodes with PURE effect type',
+    function (): void {
         $code = '<?php $x = 1 + 2;';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -28,7 +29,8 @@ it(
 );
 
 it(
-    'marks echo nodes with IO effect type', function (): void {
+    'marks echo nodes with IO effect type',
+    function (): void {
         $code = '<?php echo "Hello";';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -39,7 +41,8 @@ it(
 );
 
 it(
-    'marks $_GET access with EXTERNAL_STATE effect type', function (): void {
+    'marks $_GET access with EXTERNAL_STATE effect type',
+    function (): void {
         $code = '<?php $x = $_GET["name"];';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -54,7 +57,8 @@ it(
 );
 
 it(
-    'marks rand() with NON_DETERMINISTIC effect type', function (): void {
+    'marks rand() with NON_DETERMINISTIC effect type',
+    function (): void {
         $code = '<?php $x = rand(1, 10);';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -65,7 +69,8 @@ it(
 );
 
 it(
-    'marks file operations with IO effect type', function (): void {
+    'marks file operations with IO effect type',
+    function (): void {
         $code = '<?php $content = file_get_contents("file.txt");';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -76,7 +81,8 @@ it(
 );
 
 it(
-    'collects statistics about effect types', function (): void {
+    'collects statistics about effect types',
+    function (): void {
         $code = '<?php
         $x = 1 + 2;          // PURE
         echo "test";         // IO
@@ -98,7 +104,8 @@ it(
 );
 
 it(
-    'calculates percentage statistics correctly', function (): void {
+    'calculates percentage statistics correctly',
+    function (): void {
         $code = '<?php
         $x = 1;
         $y = 2;
@@ -117,7 +124,8 @@ it(
 );
 
 it(
-    'resets statistics correctly', function (): void {
+    'resets statistics correctly',
+    function (): void {
         $code = '<?php $x = 1;';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -134,7 +142,8 @@ it(
 );
 
 it(
-    'finds nodes by effect type', function (): void {
+    'finds nodes by effect type',
+    function (): void {
         $code = '<?php
         $x = 1 + 2;
         echo "test";
@@ -154,7 +163,8 @@ it(
 );
 
 it(
-    'handles mixed code with multiple effect types', function (): void {
+    'handles mixed code with multiple effect types',
+    function (): void {
         $code = '<?php
         function test() {
             $a = 1 + 2;
@@ -176,7 +186,8 @@ it(
 );
 
 it(
-    'marks all nodes in the tree', function (): void {
+    'marks all nodes in the tree',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -194,7 +205,8 @@ it(
 );
 
 it(
-    'handles nested expressions correctly', function (): void {
+    'handles nested expressions correctly',
+    function (): void {
         $code = '<?php $x = strtoupper(substr("hello", 0, 2));';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -206,7 +218,8 @@ it(
 );
 
 it(
-    'marks database operations with DATABASE effect type', function (): void {
+    'marks database operations with DATABASE effect type',
+    function (): void {
         $code = '<?php mysqli_query($conn, "SELECT * FROM users");';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -217,7 +230,8 @@ it(
 );
 
 it(
-    'marks curl operations with HTTP effect type', function (): void {
+    'marks curl operations with HTTP effect type',
+    function (): void {
         $code = '<?php curl_exec($ch);';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -228,7 +242,8 @@ it(
 );
 
 it(
-    'marks global state operations with GLOBAL_STATE effect type', function (): void {
+    'marks global state operations with GLOBAL_STATE effect type',
+    function (): void {
         $code = '<?php ini_set("display_errors", "1");';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);
@@ -239,7 +254,8 @@ it(
 );
 
 it(
-    'returns empty array when finding nodes without matches', function (): void {
+    'returns empty array when finding nodes without matches',
+    function (): void {
         $code = '<?php $x = 1;';
         $ast = $this->parser->parse($code);
         $ast = $this->traverser->traverse($ast);

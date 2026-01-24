@@ -35,17 +35,17 @@ use Recombinator\Domain\StructureImprovement;
 class InteractiveEditVisitor extends NodeVisitorAbstract
 {
     /**
-     * @var EditCandidate[] 
+     * @var EditCandidate[]
      */
     private array $editCandidates = [];
 
     /**
-     * @var StructureImprovement[] 
+     * @var StructureImprovement[]
      */
     private array $structureImprovements = [];
 
     /**
-     * @var array<string, int> Статистика по типам проблем 
+     * @var array<string, int> Статистика по типам проблем
      */
     private array $issueStats = [];
 
@@ -174,7 +174,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
 
     private function analyzeFunction(Stmt\Function_|Expr\Closure $node): void
     {
-        if ($node instanceof Stmt\Function_ && property_exists($node, 'name') && $node->name !== null) {
+        if ($node instanceof Stmt\Function_) {
             $name = $node->name->toString();
             $quality = $this->namingSuggester->scoreNameQuality($name);
 
