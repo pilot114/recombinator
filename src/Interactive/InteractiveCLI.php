@@ -33,9 +33,7 @@ class InteractiveCLI
 
 
     /**
-     * 
-     *
-     * @var array<string, callable> 
+     * @var array<string, callable(array<string>): void>
      */
     private array $commands = [];
 
@@ -199,16 +197,18 @@ class InteractiveCLI
         }
 
         $this->output("\n=== Issues ({$type}) ===");
-        foreach ($candidates as $i => $candidate) {
+        $index = 1;
+        foreach ($candidates as $candidate) {
             $this->output(
                 sprintf(
                     "%d. [%s] Line %s: %s",
-                    $i + 1,
+                    $index,
                     $candidate->getPriorityLabel(),
-                    $candidate->getLine() ?? '?',
+                    (string) ($candidate->getLine() ?? '?'),
                     $candidate->getDescription()
                 )
             );
+            $index++;
         }
 
         $this->output("");
@@ -283,8 +283,10 @@ class InteractiveCLI
         }
 
         $this->output("\n=== Change History ===");
-        foreach ($changes as $i => $change) {
-            $this->output(sprintf("%d. %s", $i + 1, $change->format()));
+        $index = 1;
+        foreach ($changes as $change) {
+            $this->output(sprintf("%d. %s", $index, $change->format()));
+            $index++;
         }
 
         $this->output("");
@@ -298,11 +300,12 @@ class InteractiveCLI
             // Показать все предпочтения
             $this->output("\n=== User Preferences ===");
             foreach ($this->session->getAllPreferences() as $key => $value) {
+                $valueStr = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
                 $this->output(
                     sprintf(
                         "  %s = %s",
                         $key,
-                        is_bool($value) ? ($value ? 'true' : 'false') : $value
+                        $valueStr
                     )
                 );
             }
@@ -316,7 +319,8 @@ class InteractiveCLI
         if (!isset($parts[1])) {
             // Показать конкретное предпочтение
             $value = $this->session->getPreference($key);
-            $this->output($key . ' = ' . ($value ?? 'not set'));
+            $valueStr = $value !== null ? (string) $value : 'not set';
+            $this->output($key . ' = ' . $valueStr);
             return;
         }
 

@@ -38,7 +38,6 @@ parameters:
     # Ignore some paths if needed
     excludePaths:
         - vendor/*
-        - src/Core/PrettyDumper.php
 
     # Type aliases for better documentation
     typeAliases:

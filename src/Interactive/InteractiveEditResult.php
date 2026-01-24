@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Recombinator\Interactive;
 
+use Recombinator\Domain\StructureImprovement;
+
 /**
  * Результат интерактивного анализа кода
  *

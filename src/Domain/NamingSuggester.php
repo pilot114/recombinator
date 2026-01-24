@@ -20,7 +20,7 @@ class NamingSuggester
      * Генерирует предложения для имени переменной на основе её значения
      *
      * @param  Node $valueNode Узел, представляющий значение переменной
-     * @return array<string> Список предложенных имён
+     * @return array<int, string> Список предложенных имён
      */
     public function suggestVariableName(Node $valueNode): array
     {
@@ -43,17 +43,17 @@ class NamingSuggester
             $suggestions[] = 'list';
         }
 
-        return array_unique($suggestions);
+        return array_values(array_unique($suggestions));
     }
 
     /**
      * Генерирует предложения для имени функции на основе её тела
      *
-     * @param  Node[]         $body       Узлы
+     * @param  array<Node>    $body       Узлы
      *                                    тела
      *                                    функции
      * @param  SideEffectType $effectType Тип побочного эффекта
-     * @return array<string> Список предложенных имён
+     * @return array<int, string> Список предложенных имён
      */
     public function suggestFunctionName(array $body, SideEffectType $effectType): array
     {
@@ -78,7 +78,7 @@ class NamingSuggester
             }
         }
 
-        return array_unique($suggestions);
+        return array_values(array_unique($suggestions));
     }
 
     /**
@@ -140,7 +140,7 @@ class NamingSuggester
     }
 
     /**
-     * @return array<mixed>
+     * @return array<int, string>
      */
     private function suggestForBinaryOp(Expr\BinaryOp $node): array
     {
@@ -172,7 +172,7 @@ class NamingSuggester
     }
 
     /**
-     * @return array<mixed>
+     * @return array<int, string>
      */
     private function suggestForFunctionCall(Expr\FuncCall $node): array
     {
@@ -209,7 +209,7 @@ class NamingSuggester
     }
 
     /**
-     * @return array<mixed>
+     * @return array<int, string>
      */
     private function suggestForMethodCall(Expr\MethodCall $node): array
     {
@@ -235,7 +235,7 @@ class NamingSuggester
     }
 
     /**
-     * @return array<mixed>
+     * @return array<int, string>
      */
     private function suggestForArrayAccess(Expr\ArrayDimFetch $node): array
     {
@@ -269,7 +269,7 @@ class NamingSuggester
     }
 
     /**
-     * @return array<mixed>
+     * @return array<int, string>
      */
     private function suggestForTernary(): array
     {
@@ -277,7 +277,7 @@ class NamingSuggester
     }
 
     /**
-     * @return array<mixed>
+     * @return array<int, string>
      */
     private function suggestByEffectType(SideEffectType $effectType): array
     {

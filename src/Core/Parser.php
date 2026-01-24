@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Recombinator\Core;
 
-use PhpParser\Lexer;
 use PhpParser\Node;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
+use PhpParser\Parser as PhpParser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use PhpParser\Error;
@@ -75,7 +75,7 @@ class Parser
 
     protected bool $hasEdit = true;
 
-    protected string $entryPoint;
+    protected string $entryPoint = '';
 
     public function __construct(protected string $path, string $cachePath)
     {
@@ -83,11 +83,14 @@ class Parser
         $this->buildScopes();
     }
 
+    /**
+     * @throws \RuntimeException
+     */
     protected function buildScopes(): void
     {
         $entryPointName = 'index.php';
         $cacheFiles = glob($this->cacheDir . '/*');
-        if ($cacheFiles && $cacheFiles !== []) {
+        if ($cacheFiles !== false && $cacheFiles !== []) {
             foreach ($cacheFiles as $cacheFile) {
                 $basename = basename($cacheFile);
                 if ($basename === $entryPointName) {
@@ -153,8 +156,11 @@ class Parser
                 $visitor->scopeName = $scopeName;
             }
 
-            if (property_exists($visitor, 'scopeStore') && (property_exists($visitor, 'scopeStore') && $visitor->scopeStore !== null)) {
-                $visitor->scopeStore->setCurrentScope($scopeName);
+            if (property_exists($visitor, 'scopeStore')) {
+                $scopeStore = $visitor->scopeStore;
+                if ($scopeStore instanceof ScopeStore) {
+                    $scopeStore->setCurrentScope($scopeName);
+                }
             }
 
             $textBefore = $printer->prettyPrint($this->ast[$scopeName]);
@@ -171,7 +177,7 @@ class Parser
             if ($differ->hasDiff) {
                 $this->hasEdit = true;
                 echo sprintf("> EDIT %s\n", $visitor::class);
-                if (property_exists($visitor, 'diff')) {
+                if (property_exists($visitor, 'diff') && is_string($visitor->diff)) {
                     echo $visitor->diff;
                 }
 
@@ -278,28 +284,14 @@ class Parser
      */
     protected function buildAST(string $name, string $code): array
     {
-        // настраиваем лексер, чтобы узлы содержали информацию о своем положении
-        $lexer = new Lexer(
-            [
-            'usedAttributes' => [
-                'comments', 'startLine', 'endLine',
-                'startTokenPos', 'endTokenPos',
-                'startFilePos', 'endFilePos'
-            ]
-            ]
-        );
-        $parser = (new ParserFactory)->create(ParserFactory::PREFER_PHP7, $lexer);
+        $parser = (new ParserFactory())->createForNewestSupportedVersion();
         try {
             $ast = $parser->parse($code);
             if ($ast !== null) {
                 $this->ast[$name] = $ast;
             }
         } catch (Error $error) {
-            if ($error->hasColumnInfo()) {
-                echo $error->getMessageWithColumnInfo();
-            } else {
-                echo $error->getMessage();
-            }
+            echo $error->getMessage() . "\n";
         }
 
         return $this->ast[$name] ?? [];

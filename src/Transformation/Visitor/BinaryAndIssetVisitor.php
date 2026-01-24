@@ -22,11 +22,14 @@ class BinaryAndIssetVisitor extends BaseVisitor
          * var2 = var ?? var2;
          */
         if ($node instanceof Node\Stmt\If_ && ($node->cond instanceof Node\Expr\Isset_ && count($node->stmts) === 1)) {
-            $expr = $node->stmts[0]->expr;
-            if ($expr instanceof Assign) {
-                $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
-                $newAssign = new Assign($expr->var, $newExp);
-                $node->setAttribute('replace', new Expression($newAssign));
+            $firstStmt = $node->stmts[0];
+            if ($firstStmt instanceof Expression) {
+                $expr = $firstStmt->expr;
+                if ($expr instanceof Assign) {
+                    $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
+                    $newAssign = new Assign($expr->var, $newExp);
+                    $node->setAttribute('replace', new Expression($newAssign));
+                }
             }
         }
 
@@ -49,22 +52,31 @@ class BinaryAndIssetVisitor extends BaseVisitor
                 $node->left = $this->booleanBinaryTyping($node, $node->left);
             }
 
-            if ($node->left instanceof Node\Scalar && $node->right instanceof Node\Scalar) {
+            $left = $node->left;
+            $right = $node->right;
+
+            // Check if both operands are scalars with value property
+            if (($left instanceof Node\Scalar\LNumber || $left instanceof Node\Scalar\DNumber || $left instanceof Node\Scalar\String_) &&
+                ($right instanceof Node\Scalar\LNumber || $right instanceof Node\Scalar\DNumber || $right instanceof Node\Scalar\String_)) {
+
+                $leftValue = $left->value;
+                $rightValue = $right->value;
+
                 if ($node instanceof Node\Expr\BinaryOp\Plus) {
-                    $calc = $node->left->value + $node->right->value;
+                    $calc = $leftValue + $rightValue;
                 } elseif ($node instanceof Node\Expr\BinaryOp\Minus) {
-                    $calc = $node->left->value - $node->right->value;
+                    $calc = $leftValue - $rightValue;
                 } elseif ($node instanceof Node\Expr\BinaryOp\Mul) {
-                    $calc = $node->left->value * $node->right->value;
+                    $calc = $leftValue * $rightValue;
                 } elseif ($node instanceof Node\Expr\BinaryOp\Div) {
-                    $calc = $node->left->value / $node->right->value;
+                    $calc = $leftValue / $rightValue;
                 } elseif ($node instanceof Node\Expr\BinaryOp\Concat) {
-                    return new Node\Scalar\String_($node->left->value . $node->right->value);
+                    return new Node\Scalar\String_((string) $leftValue . (string) $rightValue);
                 } else {
                     throw new \Exception('New BinaryOp! : ' . $node::class);
                 }
 
-                return is_int($calc) ? new Node\Scalar\LNumber($calc) : new Node\Scalar\DNumber($calc);
+                return is_int($calc) ? new Node\Scalar\LNumber((int) $calc) : new Node\Scalar\DNumber((float) $calc);
             }
         }
 
@@ -72,14 +84,15 @@ class BinaryAndIssetVisitor extends BaseVisitor
         return parent::leaveNode($node);
     }
 
-    /**
-     * @param mixed $bool
-     * @param mixed $expression
-     */
-    protected function booleanBinaryTyping($expression, $bool)
+    protected function booleanBinaryTyping(Node\Expr\BinaryOp $expression, Node\Expr\ConstFetch $bool): Node\Expr
     {
+        if (!($bool->name instanceof Node\Name)) {
+            return $bool;
+        }
+
         // In php-parser 5.x, use toString() method
-        $name = strtolower((string) $bool->name->toString());
+        $name = strtolower($bool->name->toString());
+
         if ($expression instanceof Node\Expr\BinaryOp\Concat) {
             if ($name === 'true') {
                 return new Node\Scalar\String_('1');

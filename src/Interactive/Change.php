@@ -22,6 +22,10 @@ class Change
 
     public const TYPE_CUSTOM = 'custom';
 
+    /**
+     * @param array<string, mixed> $beforeState
+     * @param array<string, mixed> $afterState
+     */
     public function __construct(
         private readonly string $type,
         private readonly string $description,

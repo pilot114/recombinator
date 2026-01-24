@@ -25,12 +25,12 @@ namespace Recombinator\Domain;
 class ScopeStore
 {
     /**
-     * @var array<string, mixed> 
+     * @var array{vars?: array<string, mixed>, consts?: array<string, mixed>, functions?: array<string, mixed>, classes?: array<string, mixed>}
      */
     private array $global = [];
 
     /**
-     * @var array<string, mixed> 
+     * @var array<string, array{vars?: array<string, mixed>, consts?: array<string, mixed>}>
      */
     private array $scopes = [];
 
@@ -45,19 +45,29 @@ class ScopeStore
             ];
         }
 
+        if (!isset($this->scopes[$scope]['vars'])) {
+            $this->scopes[$scope]['vars'] = [];
+        }
+
         $this->scopes[$scope]['vars'][$name] = $value;
     }
 
     public function getVarFromScope(string $name): mixed
     {
         $scope = $this->currentScope ?? '';
+        if (!isset($this->scopes[$scope]['vars'])) {
+            return null;
+        }
+
         return $this->scopes[$scope]['vars'][$name] ?? null;
     }
 
     public function removeVarFromScope(string $name): void
     {
         $scope = $this->currentScope ?? '';
-        unset($this->scopes[$scope]['vars'][$name]);
+        if (isset($this->scopes[$scope]['vars'])) {
+            unset($this->scopes[$scope]['vars'][$name]);
+        }
     }
 
     public function setConstToScope(string $name, mixed $value): void
@@ -69,12 +79,20 @@ class ScopeStore
             ];
         }
 
+        if (!isset($this->scopes[$scope]['consts'])) {
+            $this->scopes[$scope]['consts'] = [];
+        }
+
         $this->scopes[$scope]['consts'][$name] = $value;
     }
 
     public function getConstFromScope(string $name): mixed
     {
         $scope = $this->currentScope ?? '';
+        if (!isset($this->scopes[$scope]['consts'])) {
+            return null;
+        }
+
         return $this->scopes[$scope]['consts'][$name] ?? null;
     }
 
@@ -89,6 +107,10 @@ class ScopeStore
 
     public function getConstFromGlobal(string $name): mixed
     {
+        if (!isset($this->global['consts'])) {
+            return null;
+        }
+
         return $this->global['consts'][$name] ?? null;
     }
 
@@ -103,6 +125,10 @@ class ScopeStore
 
     public function getFunctionFromGlobal(string $name): mixed
     {
+        if (!isset($this->global['functions'])) {
+            return null;
+        }
+
         return $this->global['functions'][$name] ?? null;
     }
 
@@ -117,9 +143,16 @@ class ScopeStore
 
     public function getClassFromGlobal(string $name): mixed
     {
+        if (!isset($this->global['classes'])) {
+            return null;
+        }
+
         return $this->global['classes'][$name] ?? null;
     }
 
+    /**
+     * @param array<string, mixed> $instanceData
+     */
     public function setInstanceToScope(string $instanceName, string $className, array $instanceData): void
     {
         if (!isset($this->global['classes'])) {
@@ -130,16 +163,28 @@ class ScopeStore
             $this->global['classes'][$className] = [];
         }
 
-        if (!isset($this->global['classes'][$className]['instances'])) {
-            $this->global['classes'][$className]['instances'] = [];
+        $classData = $this->global['classes'][$className];
+        if (!is_array($classData)) {
+            $classData = [];
+        }
+
+        if (!isset($classData['instances'])) {
+            $classData['instances'] = [];
+        }
+
+        $instances = $classData['instances'];
+        if (!is_array($instances)) {
+            $instances = [];
         }
 
         $instanceData['name'] = $instanceName;
-        $this->global['classes'][$className]['instances'][] = $instanceData;
+        $instances[] = $instanceData;
+        $classData['instances'] = $instances;
+        $this->global['classes'][$className] = $classData;
     }
 
     /**
-     * @return array{string, array<string, mixed>>|null
+     * @return array{0: string, 1: array<string, mixed>}|null
      */
     public function findClassNameAndInstance(string $instanceName): ?array
     {
@@ -148,12 +193,22 @@ class ScopeStore
         }
 
         foreach ($this->global['classes'] as $className => $class) {
-            if (!isset($class['instances'])) {
+            if (!is_string($className) || !is_array($class) || !isset($class['instances'])) {
                 continue;
             }
 
-            foreach ($class['instances'] as $instance) {
+            $instances = $class['instances'];
+            if (!is_array($instances)) {
+                continue;
+            }
+
+            foreach ($instances as $instance) {
+                if (!is_array($instance) || !isset($instance['name'])) {
+                    continue;
+                }
+
                 if ($instance['name'] === $instanceName) {
+                    /** @var array<string, mixed> $instance */
                     return [$className, $instance];
                 }
             }
@@ -179,13 +234,19 @@ class ScopeStore
      */
     public function getAllGlobalConsts(): array
     {
-        return $this->global['consts'] ?? [];
+        if (!isset($this->global['consts']) || !is_array($this->global['consts'])) {
+            return [];
+        }
+
+        /** @var array<string, mixed> $consts */
+        $consts = $this->global['consts'];
+        return $consts;
     }
 
     /**
      * Get all scopes
      *
-     * @return array<string, mixed>
+     * @return array<string, array<string, mixed>>
      */
     public function getAllScopes(): array
     {

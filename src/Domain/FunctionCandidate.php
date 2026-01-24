@@ -46,6 +46,11 @@ class FunctionCandidate
      *                                         исходном
      *                                         коде
      */
+    /**
+     * @param array<Node> $nodes
+     * @param array<string> $usedVariables
+     * @param array<string> $definedVariables
+     */
     public function __construct(
         public readonly array $nodes,
         public readonly SideEffectType $effectType,
@@ -145,7 +150,7 @@ class FunctionCandidate
     /**
      * Возвращает массив параметров функции
      *
-     * @return array<mixed>
+     * @return array<int, string>
      */
     public function getFunctionParameters(): array
     {

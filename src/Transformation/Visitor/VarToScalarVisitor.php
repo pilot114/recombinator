@@ -43,7 +43,7 @@ class VarToScalarVisitor extends BaseVisitor
          * Переменная "кэширует" значение, поэтому чтобы избежать сайд-эффектов
          * подменяем только переменные со скалярным значением
          */
-        if ($node instanceof Node\Expr\Assign) {
+        if ($node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
             $varName = $node->var->name;
             // Support both Scalar values and ConstFetch (true, false, null)
             $isScalar = $node->expr instanceof Node\Scalar;
@@ -70,12 +70,13 @@ class VarToScalarVisitor extends BaseVisitor
          * Замена переменных 2/3 - чтение переменной
          * Если переменная читается и есть в кеше скаляров - обновляем
          */
-        if ($node instanceof Node\Expr\Variable) {
+        if ($node instanceof Node\Expr\Variable && is_string($node->name)) {
             $varName = $node->name;
 
             $isRead = $this->isVarRead($node, $varName);
-            if ($isRead && $this->scopeStore->getVarFromScope($varName)) {
-                $node->setAttribute('replace', $this->scopeStore->getVarFromScope($varName));
+            $cachedValue = $this->scopeStore->getVarFromScope($varName);
+            if ($isRead && $cachedValue !== null) {
+                $node->setAttribute('replace', $cachedValue);
             }
         }
 
@@ -85,17 +86,19 @@ class VarToScalarVisitor extends BaseVisitor
          */
         if (property_exists($node, 'expr') && $node->expr !== null && $node->expr instanceof Node\Expr\Assign) {
             $assign = $node->expr;
-            $varName = $assign->var->name;
-            // Also check for ConstFetch like in the storing logic
-            $isScalar = $assign->expr instanceof Node\Scalar;
-            $isConstFetch = $assign->expr instanceof Node\Expr\ConstFetch &&
-                            in_array(strtolower($assign->expr->name->toString()), ['true', 'false', 'null']);
+            if ($assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)) {
+                $varName = $assign->var->name;
+                // Also check for ConstFetch like in the storing logic
+                $isScalar = $assign->expr instanceof Node\Scalar;
+                $isConstFetch = $assign->expr instanceof Node\Expr\ConstFetch &&
+                                in_array(strtolower($assign->expr->name->toString()), ['true', 'false', 'null']);
 
-            if (!$isScalar && !$isConstFetch && $this->scopeStore->getVarFromScope($varName)) {
-                // Don't try to replace inner variables - just clear from scope
-                // The inner variable replacement logic was causing the left-hand side
-                // variable to be incorrectly replaced with its value
-                $this->scopeStore->removeVarFromScope($varName);
+                if (!$isScalar && !$isConstFetch && $this->scopeStore->getVarFromScope($varName) !== null) {
+                    // Don't try to replace inner variables - just clear from scope
+                    // The inner variable replacement logic was causing the left-hand side
+                    // variable to be incorrectly replaced with its value
+                    $this->scopeStore->removeVarFromScope($varName);
+                }
             }
         }
 
@@ -105,11 +108,11 @@ class VarToScalarVisitor extends BaseVisitor
     /**
      * Проверяем, что это чтение переменной
      *
-     * @param mixed $varName
+     * @param string $varName
      */
-    protected function isVarRead(Node $node, $varName): bool
+    protected function isVarRead(Node $node, string $varName): bool
     {
         $parent = $node->getAttribute('parent');
-        return !($parent instanceof Node\Expr\Assign && $parent->var->name === $varName);
+        return !($parent instanceof Node\Expr\Assign && $parent->var instanceof Node\Expr\Variable && $parent->var->name === $varName);
     }
 }

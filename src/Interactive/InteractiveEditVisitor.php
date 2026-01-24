@@ -174,7 +174,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
 
     private function analyzeFunction(Stmt\Function_|Expr\Closure $node): void
     {
-        if ($node instanceof Stmt\Function_ && $node->name instanceof \PhpParser\Node\Identifier) {
+        if ($node instanceof Stmt\Function_ && property_exists($node, 'name') && $node->name !== null) {
             $name = $node->name->toString();
             $quality = $this->namingSuggester->scoreNameQuality($name);
 
@@ -313,6 +313,9 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
             || $node instanceof Stmt\Function_;
     }
 
+    /**
+     * @param array<string> $suggestions
+     */
     private function addEditCandidate(
         Node $node,
         string $issueType,
@@ -331,6 +334,9 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
         $this->issueStats[$issueType]++;
     }
 
+    /**
+     * @param array<string, mixed> $metadata
+     */
     private function addStructureImprovement(
         string $type,
         string $description,

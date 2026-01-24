@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Analysis;
 
 use PhpParser\Node;
+use Recombinator\Domain\SideEffectType;
 
 /**
  * Граф зависимостей побочных эффектов
@@ -23,9 +24,9 @@ class EffectDependencyGraph
 {
     /**
      * Узлы графа
-     * Каждый элемент: ['node' => Node, 'effect' => mixed, 'id' => string]
+     * Каждый элемент: ['node' => Node, 'effect' => SideEffectType, 'id' => string]
      *
-     * @var array<string, array{node: Node, effect: mixed, id: string}>
+     * @var array<string, array{node: Node, effect: SideEffectType, id: string}>
      */
     private array $nodes = [];
 
@@ -76,10 +77,6 @@ class EffectDependencyGraph
             $nodes = [$nodes];
         }
 
-        if (!is_array($nodes)) {
-            return;
-        }
-
         foreach ($nodes as $node) {
             if (!$node instanceof Node) {
                 continue;
@@ -87,7 +84,7 @@ class EffectDependencyGraph
 
             // Получаем тип эффекта из атрибута
             $effect = $node->getAttribute('side_effect');
-            if (!$effect) {
+            if (!$effect instanceof SideEffectType) {
                 // Если узел не помечен, пропускаем
                 continue;
             }
@@ -110,8 +107,14 @@ class EffectDependencyGraph
             // Рекурсивно обходим дочерние узлы
             foreach ($node->getSubNodeNames() as $name) {
                 $subNode = $node->$name;
-                if ($subNode !== null && ($subNode instanceof Node || is_array($subNode))) {
+                if ($subNode instanceof Node) {
                     $this->collectNodes($subNode, $id);
+                } elseif (is_array($subNode)) {
+                    /** @var array<mixed> $subNode */
+                    $validNodes = array_filter($subNode, fn($item): bool => $item instanceof Node);
+                    if ($validNodes !== []) {
+                        $this->collectNodes($validNodes, $id);
+                    }
                 }
             }
         }
@@ -123,11 +126,14 @@ class EffectDependencyGraph
     private function createNodeId(Node $node): string
     {
         // Используем позицию в файле как уникальный идентификатор
+        $startPos = $node->getStartFilePos();
+        $endPos = $node->getEndFilePos();
+
         return sprintf(
             '%s_%d_%d',
             $node->getType(),
-            $node->getStartFilePos() ?? 0,
-            $node->getEndFilePos() ?? 0
+            $startPos !== -1 ? $startPos : 0,
+            $endPos !== -1 ? $endPos : 0
         );
     }
 
@@ -285,7 +291,7 @@ class EffectDependencyGraph
     /**
      * Возвращает все узлы графа
      *
-     * @return array<string, array{node: Node, effect: mixed, id: string}>
+     * @return array<string, array{node: Node, effect: SideEffectType, id: string}>
      */
     public function getNodes(): array
     {
@@ -305,14 +311,16 @@ class EffectDependencyGraph
     /**
      * Возвращает узлы, сгруппированные по типу эффекта
      *
-     * @return array<string, array<string>>
+     * @return array<string, array<int, string>>
      */
     public function getNodesByEffect(): array
     {
+        /** @var array<string, array<int, string>> $groups */
         $groups = [];
 
         foreach ($this->nodes as $id => $nodeData) {
-            $effectName = $nodeData['effect']->value;
+            $effect = $nodeData['effect'];
+            $effectName = $effect->value;
 
             if (!isset($groups[$effectName])) {
                 $groups[$effectName] = [];
