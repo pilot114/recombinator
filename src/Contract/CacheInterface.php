@@ -5,32 +5,36 @@ declare(strict_types=1);
 namespace Recombinator\Contract;
 
 /**
- * Interface for cache management
+ * Интерфейс для управления кешем
+ *
+ * Определяет контракт для работы с кешем результатов выполнения.
+ * Используется для кеширования результатов чистых вычислений
+ * и оптимизации повторных вычислений одних и тех же выражений.
  */
 interface CacheInterface
 {
     /**
-     * Check if cache has key
+     * Проверяет наличие ключа в кеше
      */
     public function has(string $key): bool;
 
     /**
-     * Get value from cache
+     * Получает значение из кеша
      */
     public function get(string $key): mixed;
 
     /**
-     * Set value to cache
+     * Сохраняет значение в кеш
      */
     public function set(string $key, mixed $value): void;
 
     /**
-     * Remove key from cache
+     * Удаляет ключ из кеша
      */
     public function remove(string $key): void;
 
     /**
-     * Clear all cache
+     * Очищает весь кеш
      */
     public function clear(): void;
 }

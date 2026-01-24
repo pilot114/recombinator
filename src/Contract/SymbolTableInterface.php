@@ -5,37 +5,41 @@ declare(strict_types=1);
 namespace Recombinator\Contract;
 
 /**
- * Interface for symbol table (scope store)
+ * Интерфейс для таблицы символов (хранилища областей видимости)
+ *
+ * Определяет контракт для управления переменными и константами в различных
+ * областях видимости (scopes). Используется при выполнении и трансформации
+ * кода для отслеживания значений переменных и констант в разных контекстах.
  */
 interface SymbolTableInterface
 {
     /**
-     * Set variable in current scope
+     * Устанавливает значение переменной в текущей области видимости
      */
     public function setVarToScope(string $name, mixed $value): void;
 
     /**
-     * Get variable from current scope
+     * Получает значение переменной из текущей области видимости
      */
     public function getVarFromScope(string $name): mixed;
 
     /**
-     * Set constant to global scope
+     * Устанавливает константу в глобальную область видимости
      */
     public function setConstToGlobal(string $name, mixed $value): void;
 
     /**
-     * Get constant from global scope
+     * Получает константу из глобальной области видимости
      */
     public function getConstFromGlobal(string $name): mixed;
 
     /**
-     * Set current scope
+     * Устанавливает текущую область видимости
      */
     public function setCurrentScope(?string $scopeName): void;
 
     /**
-     * Get current scope name
+     * Получает имя текущей области видимости
      */
     public function getCurrentScope(): ?string;
 }

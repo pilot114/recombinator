@@ -8,7 +8,20 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor;
 
 /**
- * Класс для упрощения прохода по AST дереву
+ * Класс для упрощения работы с AST через цепочку visitor'ов
+ *
+ * Предоставляет fluent interface для применения множества visitor'ов
+ * к AST дереву за один проход, что упрощает трансформацию кода.
+ *
+ * Пример использования:
+ * ```php
+ * $ast = $parser->parse($code);
+ * $fluent = new Fluent($ast);
+ * $modifiedAst = $fluent
+ *     ->withVisitors([new RemoveCommentsVisitor()])
+ *     ->withVisitors([new OptimizeVisitor()])
+ *     ->modify();
+ * ```
  */
 class Fluent
 {

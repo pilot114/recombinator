@@ -28,6 +28,22 @@ use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 // TODO: https://github.com/rectorphp/rector
 // TODO: возможность указать входные параметры для выполнения
 
+/**
+ * Парсер и трансформатор PHP кода
+ *
+ * Основной класс для парсинга PHP файлов и применения различных трансформаций.
+ * Работает с кешем файлов, управляет областями видимости (scopes) и применяет
+ * последовательность visitor'ов для оптимизации и трансформации кода.
+ *
+ * Пример использования:
+ * ```php
+ * $parser = new Parser('/path/to/file.php', '/path/to/cache');
+ * $parser->run();
+ * echo $parser->prettyPrint('index.php');
+ * // или
+ * echo $parser->dumpAST('index.php');
+ * ```
+ */
 class Parser
 {
     /**
