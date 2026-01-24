@@ -52,7 +52,7 @@ class SideEffectSeparator
     private readonly PureBlockFinder $pureBlockFinder;
 
     public function __construct(
-        private readonly ?EffectDependencyGraph $dependencyGraph = new EffectDependencyGraph(),
+        private readonly EffectDependencyGraph $dependencyGraph = new EffectDependencyGraph(),
         ?PureBlockFinder $pureBlockFinder = null,
         int $minPureBlockSize = 1
     ) {
@@ -153,16 +153,19 @@ class SideEffectSeparator
             }
 
             // Переход от одного эффекта к другому
-            if ($prevEffect !== null && $prevEffect !== $effect) {
+            if ($prevEffect instanceof SideEffectType && $prevEffect !== $effect && $effect instanceof SideEffectType) {
                 $boundaries[] = new EffectBoundary(
                     fromEffect: $prevEffect,
                     toEffect: $effect,
-                    position: $index,
-                    prevPosition: $prevIndex
+                    position: (int) $index,
+                    prevPosition: (int) $prevIndex
                 );
             }
 
-            $prevEffect = $effect;
+            if ($effect instanceof SideEffectType) {
+                $prevEffect = $effect;
+            }
+
             $prevIndex = $index;
         }
 
@@ -226,9 +229,7 @@ class SideEffectSeparator
     /**
      * Выделяет чистые вычисления
      *
-     * @param  array $pureBlocks Чистые
-     *                           блоки из
-     *                           PureBlockFinder
+     * @param  array<int, array{start: int, end: int, nodes: Node[], size: int}> $pureBlocks Чистые блоки из PureBlockFinder
      * @return PureComputation[]
      */
     private function extractPureComputations(array $pureBlocks): array
@@ -273,7 +274,7 @@ class SideEffectSeparator
     {
         foreach ($nodes as $node) {
             $effect = $node->getAttribute('side_effect');
-            if (!$effect || !$effect->isCompileTimeEvaluable()) {
+            if (!$effect instanceof SideEffectType || !$effect->isCompileTimeEvaluable()) {
                 return false;
             }
 
@@ -297,11 +298,13 @@ class SideEffectSeparator
      */
     private function getNodeId(Node $node): string
     {
+        $startPos = $node->getStartFilePos();
+        $endPos = $node->getEndFilePos();
         return sprintf(
             '%s_%d_%d',
             $node->getType(),
-            $node->getStartFilePos() ?? 0,
-            $node->getEndFilePos() ?? 0
+            $startPos !== -1 ? $startPos : 0,
+            $endPos !== -1 ? $endPos : 0
         );
     }
 
@@ -310,7 +313,7 @@ class SideEffectSeparator
      *
      * @param  array<string, EffectGroup> $groups
      * @param  PureComputation[]          $pureComputations
-     * @return array<mixed>
+     * @return array<string, mixed>
      */
     private function calculateStats(array $groups, array $pureComputations): array
     {
@@ -332,7 +335,10 @@ class SideEffectSeparator
             'total_pure_computations' => count($pureComputations),
             'total_pure_nodes' => $totalPureNodes,
             'pure_percentage' => $totalNodes > 0 ? round(($totalPureNodes / $totalNodes) * 100, 2) : 0,
-            'compile_time_evaluable' => count(array_filter($pureComputations, fn(\Recombinator\Domain\PureComputation $c): bool => $c->isCompileTimeEvaluable)),
+            'compile_time_evaluable' => count(array_filter(
+                $pureComputations,
+                fn(PureComputation $c): bool => $c->isCompileTimeEvaluable
+            )),
         ];
     }
 }

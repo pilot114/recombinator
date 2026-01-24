@@ -10,6 +10,7 @@ namespace Cli;
 class WindowComposer
 {
     private array $windows = [];
+    private array $separators = [];
 
     public function __construct(
         private ?int $terminalWidth = null,
@@ -89,7 +90,36 @@ class WindowComposer
             }
         }
 
+        // Рисуем разделители поверх окон
+        foreach ($this->separators as $separator) {
+            $this->renderSeparator($output, $separator);
+        }
+
         return implode("\n", $output);
+    }
+
+    /**
+     * Рендерит разделитель в output
+     */
+    private function renderSeparator(array &$output, Separator $separator): void
+    {
+        if ($separator->orientation === 'vertical') {
+            for ($row = $separator->y; $row < $separator->y + $separator->height; $row++) {
+                if ($row >= 0 && $row < $this->terminalHeight && $separator->x < $this->terminalWidth) {
+                    $output[$row] = mb_substr($output[$row], 0, $separator->x)
+                        . $separator->char
+                        . mb_substr($output[$row], $separator->x + 1);
+                }
+            }
+        } else {
+            $row = $separator->y;
+            if ($row >= 0 && $row < $this->terminalHeight) {
+                $line = str_repeat($separator->char, $separator->width);
+                $output[$row] = mb_substr($output[$row], 0, $separator->x)
+                    . $line
+                    . mb_substr($output[$row], $separator->x + $separator->width);
+            }
+        }
     }
 
     /**
@@ -106,6 +136,7 @@ class WindowComposer
     public function clear(): void
     {
         $this->windows = [];
+        $this->separators = [];
     }
 
     /**
@@ -114,6 +145,263 @@ class WindowComposer
     public function remove(Window $window): void
     {
         $this->windows = array_filter($this->windows, static fn($w) => $w !== $window);
+    }
+
+    /**
+     * Разделяет терминал на N вертикальных колонок равной ширины
+     *
+     * @param int $count Количество колонок (по умолчанию 2)
+     * @param string $style Стиль границ (9 символов)
+     * @param BorderMode $borderMode Режим отрисовки границ
+     * @return Window[] Массив созданных окон
+     */
+    public function splitVertical(
+        int $count = 2,
+        string $style = '┌─┐│ │└─┘',
+        BorderMode $borderMode = BorderMode::PerWindow
+    ): array {
+        if ($count < 1) {
+            throw new \InvalidArgumentException('Количество колонок должно быть >= 1');
+        }
+
+        $windows = [];
+
+        // Для режима Between резервируем место под разделители
+        $separatorCount = $borderMode === BorderMode::Between ? $count - 1 : 0;
+        $availableWidth = $this->terminalWidth - $separatorCount;
+
+        $colWidth = (int) floor($availableWidth / $count);
+        $remainder = $availableWidth % $count;
+
+        $x = 0;
+        for ($i = 0; $i < $count; $i++) {
+            $width = $colWidth + ($i < $remainder ? 1 : 0);
+
+            $window = new Window(
+                style: $style,
+                content: '',
+                edge: EdgeAlignment::Absolute,
+                size: 0,
+                terminalWidth: $this->terminalWidth,
+                terminalHeight: $this->terminalHeight,
+                absoluteX: $x,
+                absoluteY: 0,
+            );
+            $window->setFixedDimensions($width, $this->terminalHeight);
+            $window->setBorderMode($borderMode);
+
+            $this->windows[] = $window;
+            $windows[] = $window;
+
+            $x += $width;
+
+            // Добавляем разделитель между колонками (кроме последней)
+            if ($borderMode === BorderMode::Between && $i < $count - 1) {
+                $this->addVerticalSeparator($x, 0, $this->terminalHeight, $style);
+                $x += 1;
+            }
+        }
+
+        return $windows;
+    }
+
+    /**
+     * Разделяет терминал на N горизонтальных строк равной высоты
+     *
+     * @param int $count Количество строк (по умолчанию 2)
+     * @param string $style Стиль границ (9 символов)
+     * @param BorderMode $borderMode Режим отрисовки границ
+     * @return Window[] Массив созданных окон
+     */
+    public function splitHorizontal(
+        int $count = 2,
+        string $style = '┌─┐│ │└─┘',
+        BorderMode $borderMode = BorderMode::PerWindow
+    ): array {
+        if ($count < 1) {
+            throw new \InvalidArgumentException('Количество строк должно быть >= 1');
+        }
+
+        $windows = [];
+
+        // Для режима Between резервируем место под разделители
+        $separatorCount = $borderMode === BorderMode::Between ? $count - 1 : 0;
+        $availableHeight = $this->terminalHeight - $separatorCount;
+
+        $rowHeight = (int) floor($availableHeight / $count);
+        $remainder = $availableHeight % $count;
+
+        $y = 0;
+        for ($i = 0; $i < $count; $i++) {
+            $height = $rowHeight + ($i < $remainder ? 1 : 0);
+
+            $window = new Window(
+                style: $style,
+                content: '',
+                edge: EdgeAlignment::Absolute,
+                size: 0,
+                terminalWidth: $this->terminalWidth,
+                terminalHeight: $this->terminalHeight,
+                absoluteX: 0,
+                absoluteY: $y,
+            );
+            $window->setFixedDimensions($this->terminalWidth, $height);
+            $window->setBorderMode($borderMode);
+
+            $this->windows[] = $window;
+            $windows[] = $window;
+
+            $y += $height;
+
+            // Добавляем разделитель между строками (кроме последней)
+            if ($borderMode === BorderMode::Between && $i < $count - 1) {
+                $this->addHorizontalSeparator(0, $y, $this->terminalWidth, $style);
+                $y += 1;
+            }
+        }
+
+        return $windows;
+    }
+
+    /**
+     * Добавляет вертикальный разделитель
+     */
+    private function addVerticalSeparator(int $x, int $y, int $height, string $style): void
+    {
+        $border = BorderStyle::fromString($style);
+        $separator = new Separator(
+            x: $x,
+            y: $y,
+            width: 1,
+            height: $height,
+            char: $border->left,
+            orientation: 'vertical'
+        );
+        $this->separators[] = $separator;
+    }
+
+    /**
+     * Добавляет горизонтальный разделитель
+     */
+    private function addHorizontalSeparator(int $x, int $y, int $width, string $style): void
+    {
+        $border = BorderStyle::fromString($style);
+        $separator = new Separator(
+            x: $x,
+            y: $y,
+            width: $width,
+            height: 1,
+            char: $border->top,
+            orientation: 'horizontal'
+        );
+        $this->separators[] = $separator;
+    }
+
+    /**
+     * Создаёт сетку окон NxM
+     *
+     * @param int $cols Количество колонок
+     * @param int $rows Количество строк
+     * @param string $style Стиль границ (9 символов)
+     * @param BorderMode $borderMode Режим отрисовки границ
+     * @return Window[][] Двумерный массив окон [row][col]
+     */
+    public function grid(
+        int $cols,
+        int $rows,
+        string $style = '┌─┐│ │└─┘',
+        BorderMode $borderMode = BorderMode::PerWindow
+    ): array {
+        if ($cols < 1 || $rows < 1) {
+            throw new \InvalidArgumentException('Количество колонок и строк должно быть >= 1');
+        }
+
+        $grid = [];
+
+        // Для режима Between резервируем место под разделители
+        $hSeparators = $borderMode === BorderMode::Between ? $rows - 1 : 0;
+        $vSeparators = $borderMode === BorderMode::Between ? $cols - 1 : 0;
+
+        $availableWidth = $this->terminalWidth - $vSeparators;
+        $availableHeight = $this->terminalHeight - $hSeparators;
+
+        $colWidth = (int) floor($availableWidth / $cols);
+        $rowHeight = (int) floor($availableHeight / $rows);
+        $colRemainder = $availableWidth % $cols;
+        $rowRemainder = $availableHeight % $rows;
+
+        // Предвычисляем позиции X для колонок
+        $colPositions = [];
+        $colWidths = [];
+        $x = 0;
+        for ($col = 0; $col < $cols; $col++) {
+            $colPositions[$col] = $x;
+            $colWidths[$col] = $colWidth + ($col < $colRemainder ? 1 : 0);
+            $x += $colWidths[$col];
+            if ($borderMode === BorderMode::Between && $col < $cols - 1) {
+                $x += 1; // место под разделитель
+            }
+        }
+
+        $y = 0;
+        for ($row = 0; $row < $rows; $row++) {
+            $height = $rowHeight + ($row < $rowRemainder ? 1 : 0);
+            $grid[$row] = [];
+
+            for ($col = 0; $col < $cols; $col++) {
+                $window = new Window(
+                    style: $style,
+                    content: '',
+                    edge: EdgeAlignment::Absolute,
+                    size: 0,
+                    terminalWidth: $this->terminalWidth,
+                    terminalHeight: $this->terminalHeight,
+                    absoluteX: $colPositions[$col],
+                    absoluteY: $y,
+                );
+                $window->setFixedDimensions($colWidths[$col], $height);
+                $window->setBorderMode($borderMode);
+
+                $this->windows[] = $window;
+                $grid[$row][$col] = $window;
+            }
+
+            $y += $height;
+
+            // Добавляем горизонтальный разделитель после строки (кроме последней)
+            if ($borderMode === BorderMode::Between && $row < $rows - 1) {
+                $this->addHorizontalSeparator(0, $y, $this->terminalWidth, $style);
+                $y += 1;
+            }
+        }
+
+        // Добавляем вертикальные разделители
+        if ($borderMode === BorderMode::Between) {
+            $sepX = 0;
+            for ($col = 0; $col < $cols - 1; $col++) {
+                $sepX += $colWidths[$col];
+                $this->addVerticalSeparator($sepX, 0, $this->terminalHeight, $style);
+                $sepX += 1;
+            }
+        }
+
+        return $grid;
+    }
+
+    /**
+     * Возвращает ширину терминала
+     */
+    public function getTerminalWidth(): int
+    {
+        return $this->terminalWidth;
+    }
+
+    /**
+     * Возвращает высоту терминала
+     */
+    public function getTerminalHeight(): int
+    {
+        return $this->terminalHeight;
     }
 }
 
@@ -131,6 +419,19 @@ enum EdgeAlignment
 }
 
 /**
+ * Режим отрисовки границ
+ */
+enum BorderMode
+{
+    /** Каждое окно имеет свою границу */
+    case PerWindow;
+    /** Граница между блоками (не принадлежит блокам) */
+    case Between;
+    /** Без границ */
+    case None;
+}
+
+/**
  * Класс представляющий отдельное окно
  */
 class Window
@@ -144,6 +445,8 @@ class Window
 
     private int $width;
     private int $height;
+    private bool $fixedDimensions = false;
+    private BorderMode $borderMode = BorderMode::PerWindow;
 
     public function __construct(
         string $style,
@@ -164,6 +467,11 @@ class Window
 
     private function calculateDimensions(): void
     {
+        // Не пересчитываем, если размеры зафиксированы
+        if ($this->fixedDimensions) {
+            return;
+        }
+
         $lines = explode("\n", $this->content);
         $maxContentWidth = max(array_map('mb_strlen', $lines));
 
@@ -224,6 +532,17 @@ class Window
      */
     public function getLines(): array
     {
+        return match ($this->borderMode) {
+            BorderMode::PerWindow => $this->getLinesWithBorder(),
+            BorderMode::Between, BorderMode::None => $this->getLinesWithoutBorder(),
+        };
+    }
+
+    /**
+     * Рендерит окно с границами (режим PerWindow)
+     */
+    private function getLinesWithBorder(): array
+    {
         $lines = [];
         $contentLines = explode("\n", $this->content);
         $innerWidth = $this->width - 2;
@@ -255,6 +574,29 @@ class Window
         $lines[] = $this->borderStyle->bottomLeft
             . str_repeat($this->borderStyle->bottom, $innerWidth)
             . $this->borderStyle->bottomRight;
+
+        return $lines;
+    }
+
+    /**
+     * Рендерит окно без границ (режимы Between и None)
+     */
+    private function getLinesWithoutBorder(): array
+    {
+        $lines = [];
+        $contentLines = explode("\n", $this->content);
+
+        // Контент занимает всю ширину
+        foreach ($contentLines as $line) {
+            $lines[] = mb_str_pad($line, $this->width, $this->borderStyle->background);
+        }
+
+        // Дополнительные пустые строки до полной высоты
+        $contentHeight = count($contentLines);
+
+        for ($i = $contentHeight; $i < $this->height; $i++) {
+            $lines[] = str_repeat($this->borderStyle->background, $this->width);
+        }
 
         return $lines;
     }
@@ -371,6 +713,81 @@ class Window
     {
         return ['width' => $this->width, 'height' => $this->height];
     }
+
+    /**
+     * Устанавливает фиксированные размеры окна
+     */
+    public function setFixedDimensions(int $width, int $height): self
+    {
+        $this->width = $width;
+        $this->height = $height;
+        $this->fixedDimensions = true;
+        return $this;
+    }
+
+    /**
+     * Сбрасывает фиксированные размеры (размеры будут вычисляться по контенту)
+     */
+    public function resetFixedDimensions(): self
+    {
+        $this->fixedDimensions = false;
+        $this->calculateDimensions();
+        return $this;
+    }
+
+    /**
+     * Возвращает внутреннюю ширину окна (без границ)
+     */
+    public function getInnerWidth(): int
+    {
+        return match ($this->borderMode) {
+            BorderMode::PerWindow => $this->width - 2,
+            BorderMode::Between, BorderMode::None => $this->width,
+        };
+    }
+
+    /**
+     * Возвращает внутреннюю высоту окна (без границ)
+     */
+    public function getInnerHeight(): int
+    {
+        return match ($this->borderMode) {
+            BorderMode::PerWindow => $this->height - 2,
+            BorderMode::Between, BorderMode::None => $this->height,
+        };
+    }
+
+    /**
+     * Устанавливает режим отрисовки границ
+     */
+    public function setBorderMode(BorderMode $mode): self
+    {
+        $this->borderMode = $mode;
+        return $this;
+    }
+
+    /**
+     * Возвращает режим отрисовки границ
+     */
+    public function getBorderMode(): BorderMode
+    {
+        return $this->borderMode;
+    }
+}
+
+/**
+ * Класс для разделителя между окнами
+ */
+readonly class Separator
+{
+    public function __construct(
+        public int $x,
+        public int $y,
+        public int $width,
+        public int $height,
+        public string $char,
+        public string $orientation, // 'vertical' или 'horizontal'
+    ) {}
 }
 
 /**

@@ -195,7 +195,14 @@ class SideEffectClassifier
             $node instanceof Node\Stmt\TryCatch,
             $node instanceof Node\Expr\Ternary,
             $node instanceof Node\Expr\BinaryOp,
-            $node instanceof Node\Expr\UnaryOp
+            $node instanceof Node\Expr\UnaryMinus,
+            $node instanceof Node\Expr\UnaryPlus,
+            $node instanceof Node\Expr\BitwiseNot,
+            $node instanceof Node\Expr\BooleanNot,
+            $node instanceof Node\Expr\PreInc,
+            $node instanceof Node\Expr\PreDec,
+            $node instanceof Node\Expr\PostInc,
+            $node instanceof Node\Expr\PostDec
                 => $this->classifyChildren($node),
 
             // По умолчанию считаем чистым
@@ -329,8 +336,9 @@ class SideEffectClassifier
      */
     private function classifyAssignment(Node\Expr $node): SideEffectType
     {
-        if (!($node instanceof Node\Expr\Assign 
-            || $node instanceof Node\Expr\AssignOp 
+        if (
+            !($node instanceof Node\Expr\Assign
+            || $node instanceof Node\Expr\AssignOp
             || $node instanceof Node\Expr\AssignRef)
         ) {
             return SideEffectType::PURE;
@@ -340,7 +348,8 @@ class SideEffectClassifier
         $leftEffect = $this->classify($node->var);
 
         // Если присваиваем в глобал или суперглобал
-        if ($leftEffect === SideEffectType::EXTERNAL_STATE 
+        if (
+            $leftEffect === SideEffectType::EXTERNAL_STATE
             || $leftEffect === SideEffectType::GLOBAL_STATE
         ) {
             return $leftEffect;

@@ -36,7 +36,8 @@ class VariableVisitor extends NodeVisitorAbstract
     public function enterNode(Node $node): int|Node|array|null
     {
         // Пропускаем вложенные функции и замыкания
-        if ($node instanceof Node\Stmt\Function_
+        if (
+            $node instanceof Node\Stmt\Function_
             || $node instanceof Node\Stmt\ClassMethod
             || $node instanceof Node\Expr\Closure
             || $node instanceof Node\Expr\ArrowFunction
@@ -77,7 +78,8 @@ class VariableVisitor extends NodeVisitorAbstract
     public function leaveNode(Node $node): int|Node|array|null
     {
         // Выходим из вложенной функции
-        if ($node instanceof Node\Stmt\Function_
+        if (
+            $node instanceof Node\Stmt\Function_
             || $node instanceof Node\Stmt\ClassMethod
             || $node instanceof Node\Expr\Closure
             || $node instanceof Node\Expr\ArrowFunction
@@ -110,7 +112,8 @@ class VariableVisitor extends NodeVisitorAbstract
     private function isSpecialVariable(string $name): bool
     {
         return in_array(
-            $name, [
+            $name,
+            [
             'this',
             'GLOBALS',
             '_SERVER',
@@ -121,7 +124,8 @@ class VariableVisitor extends NodeVisitorAbstract
             '_SESSION',
             '_REQUEST',
             '_ENV',
-            ], true
+            ],
+            true
         );
     }
 

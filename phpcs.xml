@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+<ruleset name="Recombinator">
+    <description>PHPCS rules for Recombinator project</description>
+
+    <!-- Paths to check -->
+    <file>src</file>
+    <file>tests</file>
+
+    <!-- Use PSR-12 as base -->
+    <rule ref="PSR12"/>
+
+    <!-- Line length - more lenient -->
+    <rule ref="Generic.Files.LineLength">
+        <properties>
+            <property name="lineLimit" value="150"/>
+            <property name="absoluteLineLimit" value="200"/>
+        </properties>
+    </rule>
+
+    <!-- Mixed line endings in tests are OK -->
+    <rule ref="Generic.Files.LineEndings">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+
+    <!-- Exclude test fixtures from most rules -->
+    <exclude-pattern>tests/Feature/fixtures/*</exclude-pattern>
+    <exclude-pattern>tests/Feature/snapshots/*</exclude-pattern>
+    <exclude-pattern>tests/code/*</exclude-pattern>
+
+    <!-- Pest tests have side effects by design -->
+    <rule ref="PSR1.Files.SideEffects">
+        <exclude-pattern>tests/*</exclude-pattern>
+    </rule>
+
+    <!-- Allow mixed line endings in some files -->
+    <rule ref="Generic.Files.LineEndings">
+        <exclude-pattern>src/Domain/FunctionCandidate.php</exclude-pattern>
+    </rule>
+</ruleset>

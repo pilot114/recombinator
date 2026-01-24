@@ -13,7 +13,8 @@ beforeEach(
 );
 
 it(
-    'detects used variables', function (): void {
+    'detects used variables',
+    function (): void {
         $code = '<?php $result = $x + $y;';
         $ast = $this->parser->parse($code);
 
@@ -24,7 +25,8 @@ it(
 );
 
 it(
-    'detects defined variables', function (): void {
+    'detects defined variables',
+    function (): void {
         $code = '<?php $result = $x + $y;';
         $ast = $this->parser->parse($code);
 
@@ -35,7 +37,8 @@ it(
 );
 
 it(
-    'excludes special variables from used', function (): void {
+    'excludes special variables from used',
+    function (): void {
         $code = '<?php $result = $_GET["key"];';
         $ast = $this->parser->parse($code);
 
@@ -46,7 +49,8 @@ it(
 );
 
 it(
-    'handles multiple assignments', function (): void {
+    'handles multiple assignments',
+    function (): void {
         $code = '<?php
     $a = 1;
     $b = 2;
@@ -61,7 +65,8 @@ it(
 );
 
 it(
-    'gets parameters correctly', function (): void {
+    'gets parameters correctly',
+    function (): void {
         $code = '<?php
     $result = $x + $y;
     $z = $result * 2;';
@@ -76,7 +81,8 @@ it(
 );
 
 it(
-    'gets local variables correctly', function (): void {
+    'gets local variables correctly',
+    function (): void {
         $code = '<?php
     $temp = $input * 2;
     $result = $temp + 1;';
@@ -91,7 +97,8 @@ it(
 );
 
 it(
-    'handles array access', function (): void {
+    'handles array access',
+    function (): void {
         $code = '<?php $value = $arr[$key];';
         $ast = $this->parser->parse($code);
 
@@ -103,7 +110,8 @@ it(
 );
 
 it(
-    'handles property access', function (): void {
+    'handles property access',
+    function (): void {
         $code = '<?php $value = $obj->property;';
         $ast = $this->parser->parse($code);
 
@@ -115,7 +123,8 @@ it(
 );
 
 it(
-    'handles nested expressions', function (): void {
+    'handles nested expressions',
+    function (): void {
         $code = '<?php $result = ($a + $b) * ($c - $d);';
         $ast = $this->parser->parse($code);
 
@@ -127,7 +136,8 @@ it(
 );
 
 it(
-    'ignores variables in nested functions', function (): void {
+    'ignores variables in nested functions',
+    function (): void {
         $code = '<?php
     $outer = 1;
     function inner() {
@@ -144,7 +154,8 @@ it(
 );
 
 it(
-    'handles closures', function (): void {
+    'handles closures',
+    function (): void {
         $code = '<?php
     $x = 10;
     $closure = function() use ($x) {
@@ -159,7 +170,8 @@ it(
 );
 
 it(
-    'handles empty code', function (): void {
+    'handles empty code',
+    function (): void {
         $result = $this->analyzer->analyze([]);
 
         expect($result['used'])->toBeEmpty();
@@ -168,7 +180,8 @@ it(
 );
 
 it(
-    'handles function calls with variables', function (): void {
+    'handles function calls with variables',
+    function (): void {
         $code = '<?php $result = strlen($str);';
         $ast = $this->parser->parse($code);
 
@@ -180,7 +193,8 @@ it(
 );
 
 it(
-    'handles ternary operator', function (): void {
+    'handles ternary operator',
+    function (): void {
         $code = '<?php $result = $condition ? $a : $b;';
         $ast = $this->parser->parse($code);
 

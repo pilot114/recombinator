@@ -25,9 +25,10 @@ class CyclomaticComplexityVisitor extends NodeVisitorAbstract
         }
 
         // Циклы
-        if ($node instanceof Node\Stmt\For_ 
-            || $node instanceof Node\Stmt\Foreach_ 
-            || $node instanceof Node\Stmt\While_ 
+        if (
+            $node instanceof Node\Stmt\For_
+            || $node instanceof Node\Stmt\Foreach_
+            || $node instanceof Node\Stmt\While_
             || $node instanceof Node\Stmt\Do_
         ) {
             $this->complexity++;
@@ -49,9 +50,10 @@ class CyclomaticComplexityVisitor extends NodeVisitorAbstract
         }
 
         // Логические операторы && и ||
-        if ($node instanceof Node\Expr\BinaryOp\BooleanAnd 
-            || $node instanceof Node\Expr\BinaryOp\BooleanOr 
-            || $node instanceof Node\Expr\BinaryOp\LogicalAnd 
+        if (
+            $node instanceof Node\Expr\BinaryOp\BooleanAnd
+            || $node instanceof Node\Expr\BinaryOp\BooleanOr
+            || $node instanceof Node\Expr\BinaryOp\LogicalAnd
             || $node instanceof Node\Expr\BinaryOp\LogicalOr
         ) {
             $this->complexity++;

@@ -27,7 +27,8 @@ function markSideEffects(array $ast): array
 }
 
 it(
-    'finds related variables from same array', function (): void {
+    'finds related variables from same array',
+    function (): void {
         $code = '<?php
     $x = $_GET["x"];
     $y = $_GET["y"];
@@ -44,7 +45,8 @@ it(
 );
 
 it(
-    'finds related variables from same object', function (): void {
+    'finds related variables from same object',
+    function (): void {
         $code = '<?php
     $x = $point->x;
     $y = $point->y;
@@ -60,7 +62,8 @@ it(
 );
 
 it(
-    'does not group unrelated variables', function (): void {
+    'does not group unrelated variables',
+    function (): void {
         $code = '<?php
     $x = $_GET["x"];
     $y = $_POST["y"];
@@ -77,7 +80,8 @@ it(
 );
 
 it(
-    'handles empty AST', function (): void {
+    'handles empty AST',
+    function (): void {
         $ast = [];
         $result = $this->optimizer->optimize($ast);
 
@@ -86,7 +90,8 @@ it(
 );
 
 it(
-    'handles AST with no variable assignments', function (): void {
+    'handles AST with no variable assignments',
+    function (): void {
         $code = '<?php
     echo "Hello";
     echo "World";';
@@ -101,7 +106,8 @@ it(
 );
 
 it(
-    'handles single variable assignment', function (): void {
+    'handles single variable assignment',
+    function (): void {
         $code = '<?php
     $x = $_GET["x"];';
 
@@ -115,7 +121,8 @@ it(
 );
 
 it(
-    'identifies variables from array access', function (): void {
+    'identifies variables from array access',
+    function (): void {
         $code = '<?php
     $username = $_GET["username"];
     $password = $_GET["password"];';
@@ -130,7 +137,8 @@ it(
 );
 
 it(
-    'creates RelatedVariableGroup with correct size', function (): void {
+    'creates RelatedVariableGroup with correct size',
+    function (): void {
         $assignments = [
         ['var' => '$x', 'expr' => null, 'index' => 0],
         ['var' => '$y', 'expr' => null, 'index' => 1],
@@ -144,7 +152,8 @@ it(
 );
 
 it(
-    'generates unique signature for variable group', function (): void {
+    'generates unique signature for variable group',
+    function (): void {
         $assignments1 = [
         ['var' => '$x', 'expr' => null, 'index' => 0],
         ['var' => '$y', 'expr' => null, 'index' => 1],
@@ -164,7 +173,8 @@ it(
 );
 
 it(
-    'gets correct indices from variable group', function (): void {
+    'gets correct indices from variable group',
+    function (): void {
         $assignments = [
         ['var' => '$x', 'expr' => null, 'index' => 5],
         ['var' => '$y', 'expr' => null, 'index' => 10],
@@ -178,7 +188,8 @@ it(
 );
 
 it(
-    'handles complex expressions in variable assignments', function (): void {
+    'handles complex expressions in variable assignments',
+    function (): void {
         $code = '<?php
     $x = $data["coords"]["x"];
     $y = $data["coords"]["y"];';
@@ -193,7 +204,8 @@ it(
 );
 
 it(
-    'preserves non-assignment statements', function (): void {
+    'preserves non-assignment statements',
+    function (): void {
         $code = '<?php
     $x = $_GET["x"];
     echo "Processing...";
@@ -210,7 +222,8 @@ it(
 );
 
 it(
-    'ignores dynamic variable assignments', function (): void {
+    'ignores dynamic variable assignments',
+    function (): void {
         $code = '<?php
     ${$varName} = "value";
     $normal = "test";';
@@ -226,7 +239,8 @@ it(
 );
 
 it(
-    'handles variables from different array keys', function (): void {
+    'handles variables from different array keys',
+    function (): void {
         $code = '<?php
     $a = $arr["first"];
     $b = $arr["second"];
@@ -243,7 +257,8 @@ it(
 );
 
 it(
-    'handles variables from different objects', function (): void {
+    'handles variables from different objects',
+    function (): void {
         $code = '<?php
     $x = $point1->x;
     $y = $point2->y;';
@@ -259,7 +274,8 @@ it(
 );
 
 it(
-    'deduplicates variable groups correctly', function (): void {
+    'deduplicates variable groups correctly',
+    function (): void {
         // When the same group of variables appears multiple times,
         // it should be deduplicated
         $group1 = new RelatedVariableGroup(
@@ -281,7 +297,8 @@ it(
 );
 
 it(
-    'handles mixed assignment types', function (): void {
+    'handles mixed assignment types',
+    function (): void {
         $code = '<?php
     $x = $_GET["x"];
     $obj = new stdClass();
@@ -298,7 +315,8 @@ it(
 );
 
 it(
-    'preserves statement order when no optimization is applied', function (): void {
+    'preserves statement order when no optimization is applied',
+    function (): void {
         $code = '<?php
     $a = 1;
     $b = 2;

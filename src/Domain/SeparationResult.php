@@ -16,19 +16,22 @@ use Recombinator\Analysis\EffectDependencyGraph;
 class SeparationResult
 {
     /**
-     * @param array<string, EffectGroup> $groups           Группы узлов по
-     *                                                     типу эффекта
-     * @param PureComputation[]          $pureComputations Чистые
-     *                                                     вычисления
-     * @param EffectBoundary[]           $boundaries       Границы
-     *                                                     между
-     *                                                     эффектами
-     * @param array<int, array{start: int, end: int, nodes: array<\PhpParser\Node>, size: int}>  $pureBlocks       Чистые
-     *                                                     блоки из
-     *                                                     PureBlockFinder
-     * @param EffectDependencyGraph      $dependencyGraph  Граф
-     *                                                     зависимостей
-     * @param array<string, mixed>       $stats            Статистика
+     * @param array<string, EffectGroup>                                                        $groups           Группы
+     *                                                                                                            узлов по
+     *                                                                                                            типу
+     *                                                                                                            эффекта
+     * @param PureComputation[]                                                                 $pureComputations Чистые
+     *                                                                                                            вычисления
+     * @param EffectBoundary[]                                                                  $boundaries       Границы
+     *                                                                                                            между
+     *                                                                                                            эффектами
+     * @param array<int, array{start: int, end: int, nodes: array<\PhpParser\Node>, size: int}> $pureBlocks       Чистые
+     *                                                                                                            блоки
+     *                                                                                                            из
+     *                                                                                                            PureBlockFinder
+     * @param EffectDependencyGraph                                                             $dependencyGraph  Граф
+     *                                                                                                            зависимостей
+     * @param array<string, mixed>                                                              $stats            Статистика
      */
     public function __construct(
         public readonly array $groups,

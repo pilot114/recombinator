@@ -27,7 +27,7 @@ class ScopeVisitor extends BaseVisitor
             $name = $node->name->name;
             if ($this->cacheDir !== null) {
                 $filename = sprintf("Function_%s_%s.php", $name, uniqid());
-                $code = "<?php\n\n" . (new StandardPrinter)->prettyPrint([$node]);
+                $code = "<?php\n\n" . new StandardPrinter()->prettyPrint([$node]);
                 file_put_contents($this->cacheDir . '/' . $filename, $code);
                 // Only mark for removal if we're caching
                 $node->setAttribute('remove', true);
@@ -41,7 +41,7 @@ class ScopeVisitor extends BaseVisitor
             $name = $node->name->name;
             if ($this->cacheDir !== null) {
                 $filename = sprintf("Class_%s_%s.php", $name, uniqid());
-                $code = "<?php\n\n" . (new StandardPrinter)->prettyPrint([$node]);
+                $code = "<?php\n\n" . new StandardPrinter()->prettyPrint([$node]);
                 file_put_contents($this->cacheDir . '/' . $filename, $code);
                 // Only mark for removal if we're caching
                 $node->setAttribute('remove', true);

@@ -20,14 +20,17 @@ beforeEach(
 );
 
 it(
-    'can replace property access with variable', function (): void {
+    'can replace property access with variable',
+    function (): void {
         $code = '<?php
 $obj = new TestClass();
 echo $obj->name;';
 
         // Manually set up instance data
         $this->store->setInstanceToScope(
-            'obj', 'TestClass', [
+            'obj',
+            'TestClass',
+            [
             'properties' => [
             'name' => 'var_name_123'
             ]
@@ -48,7 +51,8 @@ echo $obj->name;';
 );
 
 it(
-    'should not replace property if instance not found', function (): void {
+    'should not replace property if instance not found',
+    function (): void {
         $code = '<?php echo $obj->name;';
 
         $ast = $this->parser->parse($code);
@@ -65,12 +69,15 @@ it(
 );
 
 it(
-    'should not replace property if property not in instance', function (): void {
+    'should not replace property if property not in instance',
+    function (): void {
         $code = '<?php echo $obj->unknownProperty;';
 
         // Set up instance but without the property
         $this->store->setInstanceToScope(
-            'obj', 'TestClass', [
+            'obj',
+            'TestClass',
+            [
             'properties' => [
             'name' => 'var_name'
             ]
@@ -91,13 +98,16 @@ it(
 );
 
 it(
-    'can handle multiple property accesses', function (): void {
+    'can handle multiple property accesses',
+    function (): void {
         $code = '<?php
 $user = new User();
 echo $user->name . " " . $user->age;';
 
         $this->store->setInstanceToScope(
-            'user', 'User', [
+            'user',
+            'User',
+            [
             'properties' => [
             'name' => 'var_name',
             'age' => 'var_age'
@@ -120,7 +130,8 @@ echo $user->name . " " . $user->age;';
 );
 
 it(
-    'should preserve this property access for later processing', function (): void {
+    'should preserve this property access for later processing',
+    function (): void {
         $code = '<?php
 class Test {
     public function getValue() {
@@ -143,9 +154,12 @@ class Test {
 );
 
 it(
-    'can find class name and instance from store', function (): void {
+    'can find class name and instance from store',
+    function (): void {
         $this->store->setInstanceToScope(
-            'myObj', 'MyClass', [
+            'myObj',
+            'MyClass',
+            [
             'properties' => ['prop' => 'var_prop']
             ]
         );
@@ -159,7 +173,8 @@ it(
 );
 
 it(
-    'returns null when instance not found in store', function (): void {
+    'returns null when instance not found in store',
+    function (): void {
         $result = $this->store->findClassNameAndInstance('nonExistent');
 
         expect($result)->toBeNull();
@@ -167,13 +182,16 @@ it(
 );
 
 it(
-    'can replace nested property access', function (): void {
+    'can replace nested property access',
+    function (): void {
         $code = '<?php
 $calc = new Calculator();
 $result = $calc->value + 10;';
 
         $this->store->setInstanceToScope(
-            'calc', 'Calculator', [
+            'calc',
+            'Calculator',
+            [
             'properties' => [
             'value' => 'var_value'
             ]

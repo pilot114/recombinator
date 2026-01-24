@@ -11,7 +11,8 @@ beforeEach(
 );
 
 test(
-    'creates metrics from simple code', function (): void {
+    'creates metrics from simple code',
+    function (): void {
         $code = '<?php
         $x = 1 + 2;
     ';
@@ -25,7 +26,8 @@ test(
 );
 
 test(
-    'creates metrics with name', function (): void {
+    'creates metrics with name',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -40,7 +42,8 @@ test(
 );
 
 test(
-    'gets cognitive complexity', function (): void {
+    'gets cognitive complexity',
+    function (): void {
         $code = '<?php
         $result = $x + $y;
     ';
@@ -53,7 +56,8 @@ test(
 );
 
 test(
-    'gets cyclomatic complexity', function (): void {
+    'gets cyclomatic complexity',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -68,7 +72,8 @@ test(
 );
 
 test(
-    'gets lines of code', function (): void {
+    'gets lines of code',
+    function (): void {
         $code = '<?php
         $x = 1;
         $y = 2;
@@ -83,7 +88,8 @@ test(
 );
 
 test(
-    'gets nesting depth', function (): void {
+    'gets nesting depth',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             if ($y > 0) {
@@ -100,7 +106,8 @@ test(
 );
 
 test(
-    'compares metrics', function (): void {
+    'compares metrics',
+    function (): void {
         $code1 = '<?php $x = 1;';
         $code2 = '<?php if ($x > 0) { echo $x; }';
 
@@ -117,7 +124,8 @@ test(
 );
 
 test(
-    'checks if improved', function (): void {
+    'checks if improved',
+    function (): void {
         $code1 = '<?php
         if ($x > 0) {
             if ($y > 0) {
@@ -143,7 +151,8 @@ test(
 );
 
 test(
-    'checks if worse', function (): void {
+    'checks if worse',
+    function (): void {
         $simpleCode = '<?php $x = 1;';
         $complexCode = '<?php
         if ($x > 0) {
@@ -164,7 +173,8 @@ test(
 );
 
 test(
-    'calculates overall complexity', function (): void {
+    'calculates overall complexity',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -182,7 +192,8 @@ test(
 );
 
 test(
-    'gets cognitive complexity level', function (): void {
+    'gets cognitive complexity level',
+    function (): void {
         $simpleCode = '<?php $x = 1;';
         $ast = $this->parser->parse($simpleCode);
 
@@ -195,7 +206,8 @@ test(
 );
 
 test(
-    'gets cyclomatic complexity level', function (): void {
+    'gets cyclomatic complexity level',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -212,7 +224,8 @@ test(
 );
 
 test(
-    'formats metrics', function (): void {
+    'formats metrics',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -233,7 +246,8 @@ test(
 // ComplexityComparison tests
 
 test(
-    'gets cognitive delta', function (): void {
+    'gets cognitive delta',
+    function (): void {
         $code1 = '<?php $x = 1;';
         $code2 = '<?php if ($x > 0) { echo $x; }';
 
@@ -250,7 +264,8 @@ test(
 );
 
 test(
-    'gets cyclomatic delta', function (): void {
+    'gets cyclomatic delta',
+    function (): void {
         $code1 = '<?php $x = 1;';
         $code2 = '<?php if ($x > 0) { echo $x; }';
 
@@ -267,7 +282,8 @@ test(
 );
 
 test(
-    'calculates cognitive improvement percentage', function (): void {
+    'calculates cognitive improvement percentage',
+    function (): void {
         $complexCode = '<?php
         if ($x > 0) {
             if ($y > 0) {
@@ -293,7 +309,8 @@ test(
 );
 
 test(
-    'calculates cyclomatic improvement percentage', function (): void {
+    'calculates cyclomatic improvement percentage',
+    function (): void {
         $complexCode = '<?php
         if ($x > 0) {
             for ($i = 0; $i < 10; $i++) {
@@ -316,7 +333,8 @@ test(
 );
 
 test(
-    'comparison detects improvement', function (): void {
+    'comparison detects improvement',
+    function (): void {
         $complexCode = '<?php
         if ($x > 0) {
             echo "positive";
@@ -337,7 +355,8 @@ test(
 );
 
 test(
-    'comparison detects worsening', function (): void {
+    'comparison detects worsening',
+    function (): void {
         $simpleCode = '<?php echo "test";';
         $complexCode = '<?php
         if ($x > 0) {
@@ -360,7 +379,8 @@ test(
 );
 
 test(
-    'formats comparison', function (): void {
+    'formats comparison',
+    function (): void {
         $code1 = '<?php $x = 1;';
         $code2 = '<?php if ($x > 0) { echo $x; }';
 
@@ -380,7 +400,8 @@ test(
 );
 
 test(
-    'handles zero complexity improvement', function (): void {
+    'handles zero complexity improvement',
+    function (): void {
         $code = '<?php $x = 1;';
         $ast = $this->parser->parse($code);
 

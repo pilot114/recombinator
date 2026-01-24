@@ -11,7 +11,8 @@ beforeEach(
 );
 
 it(
-    'can set and get value from cache', function (): void {
+    'can set and get value from cache',
+    function (): void {
         $this->cache->set('key1', 'value1');
 
         expect($this->cache->get('key1'))->toBe('value1');
@@ -19,13 +20,15 @@ it(
 );
 
 it(
-    'returns null for non-existent key', function (): void {
+    'returns null for non-existent key',
+    function (): void {
         expect($this->cache->get('nonExistent'))->toBeNull();
     }
 );
 
 it(
-    'can check if key exists', function (): void {
+    'can check if key exists',
+    function (): void {
         $this->cache->set('key1', 'value1');
 
         expect($this->cache->has('key1'))->toBeTrue()
@@ -34,7 +37,8 @@ it(
 );
 
 it(
-    'can delete value from cache', function (): void {
+    'can delete value from cache',
+    function (): void {
         $this->cache->set('key1', 'value1');
         $this->cache->delete('key1');
 
@@ -43,7 +47,8 @@ it(
 );
 
 it(
-    'can clear all cache', function (): void {
+    'can clear all cache',
+    function (): void {
         $this->cache->set('key1', 'value1');
         $this->cache->set('key2', 'value2');
         $this->cache->clear();
@@ -53,7 +58,8 @@ it(
 );
 
 it(
-    'tracks cache size', function (): void {
+    'tracks cache size',
+    function (): void {
         $this->cache->set('key1', 'value1');
         $this->cache->set('key2', 'value2');
 
@@ -62,7 +68,8 @@ it(
 );
 
 it(
-    'implements LRU eviction when max size reached', function (): void {
+    'implements LRU eviction when max size reached',
+    function (): void {
         // Заполняем кеш до предела
         for ($i = 0; $i < 10; $i++) {
             $this->cache->set('key' . $i, 'value' . $i);
@@ -78,7 +85,8 @@ it(
 );
 
 it(
-    'updates access order on get', function (): void {
+    'updates access order on get',
+    function (): void {
         // Заполняем кеш
         for ($i = 0; $i < 10; $i++) {
             $this->cache->set('key' . $i, 'value' . $i);
@@ -96,7 +104,8 @@ it(
 );
 
 it(
-    'returns correct stats', function (): void {
+    'returns correct stats',
+    function (): void {
         $this->cache->set('key1', 'value1');
         $this->cache->get('key1'); // hit
         $this->cache->get('key2'); // miss
@@ -112,7 +121,8 @@ it(
 );
 
 it(
-    'can export and import cache', function (): void {
+    'can export and import cache',
+    function (): void {
         $this->cache->set('key1', 'value1');
         $this->cache->set('key2', 'value2');
         $this->cache->get('key1'); // для статистики
@@ -129,7 +139,8 @@ it(
 );
 
 it(
-    'can get all keys', function (): void {
+    'can get all keys',
+    function (): void {
         $this->cache->set('key1', 'value1');
         $this->cache->set('key2', 'value2');
 
@@ -142,7 +153,8 @@ it(
 );
 
 it(
-    'can get all values', function (): void {
+    'can get all values',
+    function (): void {
         $this->cache->set('key1', 'value1');
         $this->cache->set('key2', 'value2');
 
@@ -155,7 +167,8 @@ it(
 );
 
 it(
-    'can store complex values', function (): void {
+    'can store complex values',
+    function (): void {
         $complexValue = [
         'array' => [1, 2, 3],
         'string' => 'test',
@@ -169,7 +182,8 @@ it(
 );
 
 it(
-    'overwrites existing key without increasing size', function (): void {
+    'overwrites existing key without increasing size',
+    function (): void {
         $this->cache->set('key1', 'value1');
         expect($this->cache->size())->toBe(1);
 

@@ -12,7 +12,8 @@ beforeEach(
 );
 
 test(
-    'registers before metrics', function (): void {
+    'registers before metrics',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -28,7 +29,8 @@ test(
 );
 
 test(
-    'registers after metrics and checks changes', function (): void {
+    'registers after metrics and checks changes',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -46,7 +48,8 @@ test(
 );
 
 test(
-    'detects threshold exceeded for cognitive complexity', function (): void {
+    'detects threshold exceeded for cognitive complexity',
+    function (): void {
         $complexCode = '<?php
         function complex() {
             if ($a > 0) {
@@ -74,7 +77,8 @@ test(
 );
 
 test(
-    'detects threshold exceeded for cyclomatic complexity', function (): void {
+    'detects threshold exceeded for cyclomatic complexity',
+    function (): void {
         $complexCode = '<?php
         if ($a) {}
         if ($b) {}
@@ -101,7 +105,8 @@ test(
 );
 
 test(
-    'detects complexity increase', function (): void {
+    'detects complexity increase',
+    function (): void {
         $simpleCode = '<?php echo "test";';
         $complexCode = '<?php
         if ($x > 0) {
@@ -124,7 +129,8 @@ test(
 );
 
 test(
-    'detects improvement', function (): void {
+    'detects improvement',
+    function (): void {
         $complexCode = '<?php
         if ($x > 0) {
             echo "x positive";
@@ -154,7 +160,8 @@ test(
 );
 
 test(
-    'strict mode treats increase as error', function (): void {
+    'strict mode treats increase as error',
+    function (): void {
         $simpleCode = '<?php echo "test";';
         $complexCode = '<?php
         if ($x > 0) {
@@ -174,7 +181,8 @@ test(
 );
 
 test(
-    'gets warnings by level', function (): void {
+    'gets warnings by level',
+    function (): void {
         $simpleCode = '<?php echo "test";';
         $complexCode = '<?php
         if ($x > 0) {
@@ -197,7 +205,8 @@ test(
 );
 
 test(
-    'checks for errors', function (): void {
+    'checks for errors',
+    function (): void {
         $code = '<?php echo "test";';
         $ast = $this->parser->parse($code);
 
@@ -209,7 +218,8 @@ test(
 );
 
 test(
-    'checks for warnings', function (): void {
+    'checks for warnings',
+    function (): void {
         $simpleCode = '<?php echo "test";';
         $complexCode = '<?php
         if ($x > 0) {
@@ -228,7 +238,8 @@ test(
 );
 
 test(
-    'gets statistics', function (): void {
+    'gets statistics',
+    function (): void {
         $code1 = '<?php echo "test";';
         $code2 = '<?php if ($x) { echo "x"; }';
 
@@ -252,7 +263,8 @@ test(
 );
 
 test(
-    'gets comparison for identifier', function (): void {
+    'gets comparison for identifier',
+    function (): void {
         $code = '<?php echo "test";';
         $ast = $this->parser->parse($code);
 
@@ -266,7 +278,8 @@ test(
 );
 
 test(
-    'returns null for non-existent comparison', function (): void {
+    'returns null for non-existent comparison',
+    function (): void {
         $comparison = $this->controller->getComparison('nonExistent');
 
         expect($comparison)->toBeNull();
@@ -274,7 +287,8 @@ test(
 );
 
 test(
-    'clears all data', function (): void {
+    'clears all data',
+    function (): void {
         $code = '<?php echo "test";';
         $ast = $this->parser->parse($code);
 
@@ -289,7 +303,8 @@ test(
 );
 
 test(
-    'formats report', function (): void {
+    'formats report',
+    function (): void {
         $code = '<?php echo "test";';
         $ast = $this->parser->parse($code);
 
@@ -306,7 +321,8 @@ test(
 // ComplexityWarning tests
 
 test(
-    'creates threshold exceeded warning', function (): void {
+    'creates threshold exceeded warning',
+    function (): void {
         $warning = ComplexityWarning::thresholdExceeded('testFunc', 'cognitive', 20, 15);
 
         expect($warning->getType())->toBe('threshold_exceeded');
@@ -316,7 +332,8 @@ test(
 );
 
 test(
-    'creates increased complexity warning', function (): void {
+    'creates increased complexity warning',
+    function (): void {
         $warning = ComplexityWarning::increased('testFunc', 'cyclomatic', 5, 10);
 
         expect($warning->getType())->toBe('complexity_increased');
@@ -326,7 +343,8 @@ test(
 );
 
 test(
-    'creates improvement info', function (): void {
+    'creates improvement info',
+    function (): void {
         $warning = ComplexityWarning::improved('testFunc', 25.0, 33.3);
 
         expect($warning->getType())->toBe('complexity_improved');
@@ -336,7 +354,8 @@ test(
 );
 
 test(
-    'formats warning', function (): void {
+    'formats warning',
+    function (): void {
         $warning = ComplexityWarning::thresholdExceeded('testFunc', 'cognitive', 20, 15);
 
         $formatted = $warning->format();
@@ -347,7 +366,8 @@ test(
 );
 
 test(
-    'gets warning context', function (): void {
+    'gets warning context',
+    function (): void {
         $warning = ComplexityWarning::thresholdExceeded('testFunc', 'cognitive', 20, 15);
 
         $context = $warning->getContext();
@@ -359,7 +379,8 @@ test(
 );
 
 test(
-    'handles multiple functions', function (): void {
+    'handles multiple functions',
+    function (): void {
         $simpleCode = '<?php echo "test";';
         $complexCode = '<?php if ($x) { for ($i = 0; $i < 10; $i++) {} }';
 

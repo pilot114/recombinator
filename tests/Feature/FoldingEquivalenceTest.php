@@ -48,7 +48,8 @@ function executeCode(string $code): array
 }
 
 it(
-    'maintains output equivalence for simple pure function extraction', function (): void {
+    'maintains output equivalence for simple pure function extraction',
+    function (): void {
         $originalCode = '<?php
     $a = 5;
     $b = 10;
@@ -73,7 +74,8 @@ it(
 );
 
 it(
-    'maintains output equivalence for IO function extraction', function (): void {
+    'maintains output equivalence for IO function extraction',
+    function (): void {
         $originalCode = '<?php
     echo "Line 1\n";
     echo "Line 2\n";
@@ -95,7 +97,8 @@ it(
 );
 
 it(
-    'maintains calculation equivalence for complex expressions', function (): void {
+    'maintains calculation equivalence for complex expressions',
+    function (): void {
         $originalCode = '<?php
     $x = 3;
     $y = 4;
@@ -120,7 +123,8 @@ it(
 );
 
 it(
-    'maintains equivalence with multiple parameters', function (): void {
+    'maintains equivalence with multiple parameters',
+    function (): void {
         $originalCode = '<?php
     $a = 10;
     $b = 20;
@@ -147,7 +151,8 @@ it(
 );
 
 it(
-    'maintains equivalence for string operations', function (): void {
+    'maintains equivalence for string operations',
+    function (): void {
         $originalCode = '<?php
     $first = "Hello";
     $last = "World";
@@ -172,7 +177,8 @@ it(
 );
 
 it(
-    'maintains equivalence for array operations', function (): void {
+    'maintains equivalence for array operations',
+    function (): void {
         $originalCode = '<?php
     $arr = [1, 2, 3, 4, 5];
     $sum = array_sum($arr);
@@ -195,7 +201,8 @@ it(
 );
 
 it(
-    'maintains equivalence for conditional logic', function (): void {
+    'maintains equivalence for conditional logic',
+    function (): void {
         $originalCode = '<?php
     $x = 10;
     $y = 20;
@@ -220,7 +227,8 @@ it(
 );
 
 it(
-    'maintains equivalence for loop-based calculations', function (): void {
+    'maintains equivalence for loop-based calculations',
+    function (): void {
         $originalCode = '<?php
     $sum = 0;
     for ($i = 1; $i <= 10; $i++) {
@@ -247,7 +255,8 @@ it(
 );
 
 it(
-    'validates extracted function can be called multiple times', function (): void {
+    'validates extracted function can be called multiple times',
+    function (): void {
         $code = '<?php
     function add_test9($a, $b) {
         return $a + $b;
@@ -266,7 +275,8 @@ it(
 );
 
 it(
-    'maintains equivalence for nested calculations', function (): void {
+    'maintains equivalence for nested calculations',
+    function (): void {
         $originalCode = '<?php
     $a = 2;
     $b = 3;
@@ -293,7 +303,8 @@ it(
 );
 
 it(
-    'maintains equivalence for function calls within extracted function', function (): void {
+    'maintains equivalence for function calls within extracted function',
+    function (): void {
         $originalCode = '<?php
     function helper_test15($x) {
         return $x * 2;
@@ -327,7 +338,8 @@ it(
 );
 
 it(
-    'validates AST structure is valid after extraction', function (): void {
+    'validates AST structure is valid after extraction',
+    function (): void {
         $code = '<?php
     $a = 1;
     $b = 2;
@@ -358,7 +370,8 @@ it(
 );
 
 it(
-    'ensures extracted code is syntactically valid', function (): void {
+    'ensures extracted code is syntactically valid',
+    function (): void {
         $code = '<?php
     $x = 10;
     $y = 20;
@@ -389,7 +402,8 @@ it(
 );
 
 it(
-    'maintains equivalence for boolean operations', function (): void {
+    'maintains equivalence for boolean operations',
+    function (): void {
         $originalCode = '<?php
     $a = true;
     $b = false;
@@ -416,7 +430,8 @@ it(
 );
 
 it(
-    'maintains equivalence for type operations', function (): void {
+    'maintains equivalence for type operations',
+    function (): void {
         $originalCode = '<?php
     $value = "123";
     $number = (int)$value;

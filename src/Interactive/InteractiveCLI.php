@@ -33,7 +33,7 @@ class InteractiveCLI
 
 
     /**
-     * @var array<string, callable(array<string>): void>
+     * @var array<string, callable(string): void>
      */
     private array $commands = [];
 
@@ -300,7 +300,14 @@ class InteractiveCLI
             // Показать все предпочтения
             $this->output("\n=== User Preferences ===");
             foreach ($this->session->getAllPreferences() as $key => $value) {
-                $valueStr = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
+                if (is_bool($value)) {
+                    $valueStr = $value ? 'true' : 'false';
+                } elseif (is_scalar($value)) {
+                    $valueStr = (string) $value;
+                } else {
+                    $valueStr = json_encode($value) ?: 'unknown';
+                }
+
                 $this->output(
                     sprintf(
                         "  %s = %s",
@@ -319,24 +326,37 @@ class InteractiveCLI
         if (!isset($parts[1])) {
             // Показать конкретное предпочтение
             $value = $this->session->getPreference($key);
-            $valueStr = $value !== null ? (string) $value : 'not set';
+            if ($value === null) {
+                $valueStr = 'not set';
+            } elseif (is_bool($value)) {
+                $valueStr = $value ? 'true' : 'false';
+            } elseif (is_scalar($value)) {
+                $valueStr = (string) $value;
+            } else {
+                $valueStr = json_encode($value) ?: 'unknown';
+            }
+
             $this->output($key . ' = ' . $valueStr);
             return;
         }
 
         // Установить предпочтение
         $value = $parts[1];
-        if ($value === 'true') { $value = true;
+        if ($value === 'true') {
+            $value = true;
         }
 
-        if ($value === 'false') { $value = false;
+        if ($value === 'false') {
+            $value = false;
         }
 
-        if (is_numeric($value)) { $value = (int)$value;
+        if (is_numeric($value)) {
+            $value = (int)$value;
         }
 
         $this->session->setPreference($key, $value);
-        $this->output(sprintf('Preference set: %s = %s', $key, $value));
+        $displayValue = is_bool($value) ? ($value ? 'true' : 'false') : (string) $value;
+        $this->output(sprintf('Preference set: %s = %s', $key, $displayValue));
     }
 
     private function commandSave(string $args): void

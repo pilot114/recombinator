@@ -17,7 +17,8 @@ beforeEach(
 );
 
 it(
-    'finds pure blocks in simple code', function (): void {
+    'finds pure blocks in simple code',
+    function (): void {
         $code = '<?php
         $x = 1 + 2;
         $y = 3 + 4;
@@ -36,7 +37,8 @@ it(
 );
 
 it(
-    'finds multiple pure blocks separated by IO', function (): void {
+    'finds multiple pure blocks separated by IO',
+    function (): void {
         $code = '<?php
         $x = 1 + 2;
         $y = 3 + 4;
@@ -57,7 +59,8 @@ it(
 );
 
 it(
-    'respects minimum block size', function (): void {
+    'respects minimum block size',
+    function (): void {
         $code = '<?php
         $x = 1;
         echo "test";
@@ -80,7 +83,8 @@ it(
 );
 
 it(
-    'returns empty array for code without pure blocks', function (): void {
+    'returns empty array for code without pure blocks',
+    function (): void {
         $code = '<?php
         echo "1";
         echo "2";
@@ -101,7 +105,8 @@ it(
 );
 
 it(
-    'returns block count correctly', function (): void {
+    'returns block count correctly',
+    function (): void {
         $code = '<?php
         $x = 1;
         $y = 2;
@@ -120,7 +125,8 @@ it(
 );
 
 it(
-    'calculates total pure nodes correctly', function (): void {
+    'calculates total pure nodes correctly',
+    function (): void {
         $code = '<?php
         $x = 1;
         $y = 2;
@@ -140,7 +146,8 @@ it(
 );
 
 it(
-    'finds the largest pure block', function (): void {
+    'finds the largest pure block',
+    function (): void {
         $code = '<?php
         $x = 1;
         $y = 2;
@@ -169,7 +176,8 @@ it(
 );
 
 it(
-    'returns null for largest block when no blocks found', function (): void {
+    'returns null for largest block when no blocks found',
+    function (): void {
         $code = '<?php echo "test";';
 
         $ast = $this->parser->parse($code);
@@ -185,7 +193,8 @@ it(
 );
 
 it(
-    'sorts blocks by size', function (): void {
+    'sorts blocks by size',
+    function (): void {
         $code = '<?php
         $x = 1;
         $y = 2;
@@ -217,7 +226,8 @@ it(
 );
 
 it(
-    'returns statistics about pure blocks', function (): void {
+    'returns statistics about pure blocks',
+    function (): void {
         $code = '<?php
         $x = 1;
         $y = 2;
@@ -241,7 +251,8 @@ it(
 );
 
 it(
-    'returns zero stats for empty blocks', function (): void {
+    'returns zero stats for empty blocks',
+    function (): void {
         $code = '<?php echo "test";';
 
         $ast = $this->parser->parse($code);
@@ -259,7 +270,8 @@ it(
 );
 
 it(
-    'finds nested blocks in if statements', function (): void {
+    'finds nested blocks in if statements',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             $a = 1;
@@ -278,7 +290,8 @@ it(
 );
 
 it(
-    'finds nested blocks in while loops', function (): void {
+    'finds nested blocks in while loops',
+    function (): void {
         $code = '<?php
         while ($x < 10) {
             $x = $x + 1;
@@ -296,7 +309,8 @@ it(
 );
 
 it(
-    'finds nested blocks in functions', function (): void {
+    'finds nested blocks in functions',
+    function (): void {
         $code = '<?php
         function test() {
             $x = 1 + 2;
@@ -316,7 +330,8 @@ it(
 );
 
 it(
-    'handles empty AST', function (): void {
+    'handles empty AST',
+    function (): void {
         $ast = [];
 
         $finder = new PureBlockFinder(1);
@@ -328,7 +343,8 @@ it(
 );
 
 it(
-    'handles mixed pure and non-pure code', function (): void {
+    'handles mixed pure and non-pure code',
+    function (): void {
         $code = '<?php
         $x = 1 + 2;
         $name = $_GET["name"];
@@ -348,7 +364,8 @@ it(
 );
 
 it(
-    'correctly identifies block boundaries', function (): void {
+    'correctly identifies block boundaries',
+    function (): void {
         $code = '<?php
         $a = 1;
         $b = 2;

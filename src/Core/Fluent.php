@@ -26,9 +26,9 @@ use PhpParser\NodeVisitor;
 class Fluent
 {
     /**
-     * 
      *
-     * @var array<int, NodeVisitor> 
+     *
+     * @var array<int, NodeVisitor>
      */
     protected array $visitors = [];
 

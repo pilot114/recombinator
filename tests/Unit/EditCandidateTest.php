@@ -7,7 +7,8 @@ use PhpParser\Node\Expr\Variable;
 use Recombinator\Interactive\EditCandidate;
 
 it(
-    'creates edit candidate with all properties', function (): void {
+    'creates edit candidate with all properties',
+    function (): void {
         $node = new LNumber(42);
         $node->setAttribute('startLine', 10);
 
@@ -29,7 +30,8 @@ it(
 );
 
 it(
-    'can add suggestions dynamically', function (): void {
+    'can add suggestions dynamically',
+    function (): void {
         $node = new Variable('tmp');
         $candidate = new EditCandidate(
             $node,
@@ -48,7 +50,8 @@ it(
 );
 
 it(
-    'correctly identifies critical candidates', function (): void {
+    'correctly identifies critical candidates',
+    function (): void {
         $node = new Variable('x');
 
         $critical = new EditCandidate(
@@ -71,7 +74,8 @@ it(
 );
 
 it(
-    'provides correct priority labels', function (): void {
+    'provides correct priority labels',
+    function (): void {
         $node = new Variable('x');
 
         $labels = [
@@ -95,7 +99,8 @@ it(
 );
 
 it(
-    'formats output correctly', function (): void {
+    'formats output correctly',
+    function (): void {
         $node = new LNumber(123);
         $node->setAttribute('startLine', 5);
 
@@ -120,7 +125,8 @@ it(
 );
 
 it(
-    'handles node without line number', function (): void {
+    'handles node without line number',
+    function (): void {
         $node = new Variable('test');
 
         $candidate = new EditCandidate(
@@ -141,7 +147,8 @@ it(
 );
 
 it(
-    'formats without suggestions when empty', function (): void {
+    'formats without suggestions when empty',
+    function (): void {
         $node = new Variable('test');
 
         $candidate = new EditCandidate(

@@ -9,7 +9,7 @@ use Recombinator\Transformation\Visitor\PreExecutionVisitor;
 
 beforeEach(
     function (): void {
-        $this->parser = (new ParserFactory)->createForNewestSupportedVersion();
+        $this->parser = new ParserFactory()->createForNewestSupportedVersion();
         $this->printer = new StandardPrinter();
         $this->visitor = new PreExecutionVisitor();
         $this->traverser = new NodeTraverser();
@@ -18,7 +18,8 @@ beforeEach(
 );
 
 it(
-    'replaces strlen with constant result', function (): void {
+    'replaces strlen with constant result',
+    function (): void {
         $code = '<?php $x = strlen("hello");';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -29,19 +30,20 @@ it(
 );
 
 it(
-    'replaces abs with constant result', function (): void {
+    'replaces abs with constant result',
+    function (): void {
         $code = '<?php $x = abs(-42);';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
         $result = $this->printer->prettyPrintFile($transformedAst);
 
-        // abs работает, но -42 уже унарная операция
-        expect($result)->toContain('abs(-42)');
+        expect($result)->toContain('$x = 42');
     }
 );
 
 it(
-    'replaces max with constant result', function (): void {
+    'replaces max with constant result',
+    function (): void {
         $code = '<?php $x = max(1, 2, 3);';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -52,7 +54,8 @@ it(
 );
 
 it(
-    'replaces strtoupper with constant result', function (): void {
+    'replaces strtoupper with constant result',
+    function (): void {
         $code = '<?php $x = strtoupper("hello");';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -63,7 +66,8 @@ it(
 );
 
 it(
-    'replaces count with constant result', function (): void {
+    'replaces count with constant result',
+    function (): void {
         $code = '<?php $x = count([1, 2, 3]);';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -74,7 +78,8 @@ it(
 );
 
 it(
-    'replaces in_array with constant result', function (): void {
+    'replaces in_array with constant result',
+    function (): void {
         $code = '<?php $x = in_array(2, [1, 2, 3]);';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -85,7 +90,8 @@ it(
 );
 
 it(
-    'replaces json_encode with constant result', function (): void {
+    'replaces json_encode with constant result',
+    function (): void {
         $code = '<?php $x = json_encode(["a" => 1]);';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -96,7 +102,8 @@ it(
 );
 
 it(
-    'does not replace function calls with variable arguments', function (): void {
+    'does not replace function calls with variable arguments',
+    function (): void {
         $code = '<?php $x = strlen($y);';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -108,7 +115,8 @@ it(
 );
 
 it(
-    'does not replace forbidden functions', function (): void {
+    'does not replace forbidden functions',
+    function (): void {
         $code = '<?php $x = rand();';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -120,7 +128,8 @@ it(
 );
 
 it(
-    'executes binary operations with constants', function (): void {
+    'executes binary operations with constants',
+    function (): void {
         $code = '<?php $x = 1 + 2;';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -131,7 +140,8 @@ it(
 );
 
 it(
-    'executes multiplication with constants', function (): void {
+    'executes multiplication with constants',
+    function (): void {
         $code = '<?php $x = 3 * 4;';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -142,7 +152,8 @@ it(
 );
 
 it(
-    'executes string concatenation with constants', function (): void {
+    'executes string concatenation with constants',
+    function (): void {
         $code = '<?php $x = "hello" . " " . "world";';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -153,7 +164,8 @@ it(
 );
 
 it(
-    'executes unary operations with constants', function (): void {
+    'executes unary operations with constants',
+    function (): void {
         $code = '<?php $x = -42;';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -164,7 +176,8 @@ it(
 );
 
 it(
-    'executes ternary with constant condition - true branch', function (): void {
+    'executes ternary with constant condition - true branch',
+    function (): void {
         $code = '<?php $x = true ? "yes" : "no";';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -175,7 +188,8 @@ it(
 );
 
 it(
-    'executes ternary with constant condition - false branch', function (): void {
+    'executes ternary with constant condition - false branch',
+    function (): void {
         $code = '<?php $x = false ? "yes" : "no";';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -186,7 +200,8 @@ it(
 );
 
 it(
-    'does not execute ternary with variable condition', function (): void {
+    'does not execute ternary with variable condition',
+    function (): void {
         $code = '<?php $x = $cond ? "yes" : "no";';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -198,7 +213,8 @@ it(
 );
 
 it(
-    'tracks execution statistics', function (): void {
+    'tracks execution statistics',
+    function (): void {
         $code = '<?php
         $a = strlen("hello");
         $b = abs(-10);
@@ -215,7 +231,8 @@ it(
 );
 
 it(
-    'handles nested function calls', function (): void {
+    'handles nested function calls',
+    function (): void {
         $code = '<?php $x = strlen(strtoupper("hello"));';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -228,7 +245,8 @@ it(
 );
 
 it(
-    'handles array functions with constant arrays', function (): void {
+    'handles array functions with constant arrays',
+    function (): void {
         $code = '<?php $x = array_merge([1, 2], [3, 4]);';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -241,7 +259,8 @@ it(
 );
 
 it(
-    'replaces is_array with constant result for array', function (): void {
+    'replaces is_array with constant result for array',
+    function (): void {
         $code = '<?php $x = is_array([1, 2, 3]);';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);
@@ -252,7 +271,8 @@ it(
 );
 
 it(
-    'replaces is_array with constant result for non-array', function (): void {
+    'replaces is_array with constant result for non-array',
+    function (): void {
         $code = '<?php $x = is_array("test");';
         $ast = $this->parser->parse($code);
         $transformedAst = $this->traverser->traverse($ast);

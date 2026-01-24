@@ -29,9 +29,18 @@ class SideEffectMarkerVisitor extends BaseVisitor
 {
     /**
      * Статистика маркировки
-     */
-    /**
-     * @var array<mixed> 
+     *
+     * @var array{
+     *     total: int,
+     *     pure: int,
+     *     io: int,
+     *     external_state: int,
+     *     global_state: int,
+     *     database: int,
+     *     http: int,
+     *     non_deterministic: int,
+     *     mixed: int
+     * }
      */
     private array $stats = [
         'total' => 0,
@@ -114,20 +123,21 @@ class SideEffectMarkerVisitor extends BaseVisitor
      */
     public function getStatsPercentage(): array
     {
-        if ($this->stats['total'] === 0) {
+        $total = $this->stats['total'];
+        if ($total === 0) {
             return [];
         }
 
-        $percentage = [];
-        foreach ($this->stats as $type => $count) {
-            if ($type === 'total') {
-                continue;
-            }
-
-            $percentage[$type] = round(($count / $this->stats['total']) * 100, 2);
-        }
-
-        return $percentage;
+        return [
+            'pure' => round(($this->stats['pure'] / $total) * 100, 2),
+            'io' => round(($this->stats['io'] / $total) * 100, 2),
+            'external_state' => round(($this->stats['external_state'] / $total) * 100, 2),
+            'global_state' => round(($this->stats['global_state'] / $total) * 100, 2),
+            'database' => round(($this->stats['database'] / $total) * 100, 2),
+            'http' => round(($this->stats['http'] / $total) * 100, 2),
+            'non_deterministic' => round(($this->stats['non_deterministic'] / $total) * 100, 2),
+            'mixed' => round(($this->stats['mixed'] / $total) * 100, 2),
+        ];
     }
 
     /**
@@ -169,23 +179,15 @@ class SideEffectMarkerVisitor extends BaseVisitor
     /**
      * Рекурсивно обходит AST и собирает узлы с заданным типом эффекта
      *
-     * @param Node[]|Node    $nodes      Узлы
-     *                                   для
+     * @param Node[]|Node    $nodes      Узлы для
      *                                   обхода
      * @param SideEffectType $effectType Тип эффекта для поиска
-     * @param Node[]         $result     Результат
-     *                                   (передается
-     *                                   по
-     *                                   ссылке)
+     * @param Node[]         $result     Результат (передается по ссылке)
      */
-    private function traverseAndCollect($nodes, SideEffectType $effectType, array &$result): void
+    private function traverseAndCollect(array|Node $nodes, SideEffectType $effectType, array &$result): void
     {
         if ($nodes instanceof Node) {
             $nodes = [$nodes];
-        }
-
-        if (!is_array($nodes)) {
-            return;
         }
 
         foreach ($nodes as $node) {
@@ -202,7 +204,9 @@ class SideEffectMarkerVisitor extends BaseVisitor
             // Рекурсивно обходим дочерние узлы
             foreach ($node->getSubNodeNames() as $name) {
                 $subNode = $node->$name;
-                if ($subNode !== null) {
+                if ($subNode instanceof Node) {
+                    $this->traverseAndCollect($subNode, $effectType, $result);
+                } elseif (is_array($subNode)) {
                     $this->traverseAndCollect($subNode, $effectType, $result);
                 }
             }

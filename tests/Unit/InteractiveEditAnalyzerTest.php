@@ -15,9 +15,11 @@ beforeEach(
 );
 
 describe(
-    'Poor Naming Detection', function (): void {
+    'Poor Naming Detection',
+    function (): void {
         it(
-            'detects poor variable names', function (): void {
+            'detects poor variable names',
+            function (): void {
                 $code = '<?php $x = 123; $tmp = "test";';
                 $ast = $this->parser->parse($code);
 
@@ -31,7 +33,8 @@ describe(
         );
 
         it(
-            'does not flag good variable names', function (): void {
+            'does not flag good variable names',
+            function (): void {
                 $code = '<?php $username = "john"; $totalCount = 5;';
                 $ast = $this->parser->parse($code);
 
@@ -44,7 +47,8 @@ describe(
         );
 
         it(
-            'ignores special variables', function (): void {
+            'ignores special variables',
+            function (): void {
                 $code = '<?php $result = $_GET["id"]; $data = $_POST["name"];';
                 $ast = $this->parser->parse($code);
 
@@ -54,7 +58,8 @@ describe(
                 $candidates = $result->getEditCandidates();
                 $hasSpecialVars = false;
                 foreach ($candidates as $candidate) {
-                    if (str_contains((string) $candidate->getDescription(), '$_GET') 
+                    if (
+                        str_contains((string) $candidate->getDescription(), '$_GET')
                         || str_contains((string) $candidate->getDescription(), '$_POST')
                     ) {
                         $hasSpecialVars = true;
@@ -69,9 +74,11 @@ describe(
 );
 
 describe(
-    'Complex Expression Detection', function (): void {
+    'Complex Expression Detection',
+    function (): void {
         it(
-            'detects complex expressions', function (): void {
+            'detects complex expressions',
+            function (): void {
                 $code = '<?php
             $result = ($a + $b) * ($c - $d) / ($e + $f) - ($g * $h) + ($i / $j);
         ';
@@ -85,7 +92,8 @@ describe(
         );
 
         it(
-            'does not flag simple expressions', function (): void {
+            'does not flag simple expressions',
+            function (): void {
                 $code = '<?php $sum = $a + $b;';
                 $ast = $this->parser->parse($code);
 
@@ -99,9 +107,11 @@ describe(
 );
 
 describe(
-    'Magic Number Detection', function (): void {
+    'Magic Number Detection',
+    function (): void {
         it(
-            'detects magic numbers', function (): void {
+            'detects magic numbers',
+            function (): void {
                 $code = '<?php $timeout = 3600; $maxRetries = 42;';
                 $ast = $this->parser->parse($code);
 
@@ -113,7 +123,8 @@ describe(
         );
 
         it(
-            'ignores common constants', function (): void {
+            'ignores common constants',
+            function (): void {
                 $code = '<?php $zero = 0; $one = 1; $two = 2; $minusOne = -1;';
                 $ast = $this->parser->parse($code);
 
@@ -127,9 +138,11 @@ describe(
 );
 
 describe(
-    'Deep Nesting Detection', function (): void {
+    'Deep Nesting Detection',
+    function (): void {
         it(
-            'detects deep nesting', function (): void {
+            'detects deep nesting',
+            function (): void {
                 $code = '<?php
             if ($a) {
                 if ($b) {
@@ -153,7 +166,8 @@ describe(
         );
 
         it(
-            'does not flag shallow nesting', function (): void {
+            'does not flag shallow nesting',
+            function (): void {
                 $code = '<?php
             if ($a) {
                 if ($b) {
@@ -173,9 +187,11 @@ describe(
 );
 
 describe(
-    'Structure Improvements', function (): void {
+    'Structure Improvements',
+    function (): void {
         it(
-            'suggests extracting complex functions', function (): void {
+            'suggests extracting complex functions',
+            function (): void {
                 $code = '<?php
             function complexFunction($data) {
                 if ($data["type"] === "A") {
@@ -202,7 +218,8 @@ describe(
         );
 
         it(
-            'suggests simplifying complex conditions', function (): void {
+            'suggests simplifying complex conditions',
+            function (): void {
                 $code = '<?php
             if (($a && $b) || ($c && $d && $e) || ($f && !$g && $h)) {
                 echo "complex";
@@ -220,7 +237,8 @@ describe(
         );
 
         it(
-            'suggests introducing variables for complex expressions', function (): void {
+            'suggests introducing variables for complex expressions',
+            function (): void {
                 $code = '<?php
             $result = (($a + $b) * ($c - $d)) / (($e + $f) - ($g * $h));
         ';
@@ -238,9 +256,11 @@ describe(
 );
 
 describe(
-    'Result Analysis', function (): void {
+    'Result Analysis',
+    function (): void {
         it(
-            'provides correct statistics', function (): void {
+            'provides correct statistics',
+            function (): void {
                 $code = '<?php
             $x = 123;
             $tmp = "test";
@@ -265,7 +285,8 @@ describe(
         );
 
         it(
-            'sorts candidates by priority', function (): void {
+            'sorts candidates by priority',
+            function (): void {
                 $code = '<?php
             $x = 123;
             $result = (($a + $b) * ($c - $d)) / (($e + $f) - ($g * $h));
@@ -288,7 +309,8 @@ describe(
         );
 
         it(
-            'identifies critical issues', function (): void {
+            'identifies critical issues',
+            function (): void {
                 $code = '<?php
             $result = (($a + $b) * ($c - $d)) / (($e + $f) - ($g * $h)) +
                       (($i + $j) * ($k - $l)) / (($m + $n) - ($o * $p));
@@ -309,7 +331,8 @@ describe(
         );
 
         it(
-            'generates formatted report', function (): void {
+            'generates formatted report',
+            function (): void {
                 $code = '<?php $x = 123; $tmp = "test";';
                 $ast = $this->parser->parse($code);
 

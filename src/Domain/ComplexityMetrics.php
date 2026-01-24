@@ -18,14 +18,14 @@ use Recombinator\Analysis\NestingDepthVisitor;
 class ComplexityMetrics
 {
     /**
-     * @param int         $cognitiveComplexity  Когнитивная
+     * @param integer     $cognitiveComplexity  Когнитивная
      *                                          сложность
-     * @param int         $cyclomaticComplexity Цикломатическая
+     * @param integer     $cyclomaticComplexity Цикломатическая
      *                                          сложность
-     * @param int         $linesOfCode          Количество
+     * @param integer     $linesOfCode          Количество
      *                                          строк
      *                                          кода
-     * @param int         $nestingDepth         Максимальная
+     * @param integer     $nestingDepth         Максимальная
      *                                          глубина
      *                                          вложенности
      * @param string|null $name                 Имя

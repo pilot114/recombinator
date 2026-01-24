@@ -15,9 +15,11 @@ beforeEach(
 );
 
 describe(
-    'Variable Name Suggestions', function (): void {
+    'Variable Name Suggestions',
+    function (): void {
         it(
-            'suggests names for binary operations', function (): void {
+            'suggests names for binary operations',
+            function (): void {
                 $node = new Expr\BinaryOp\Plus(
                     new Scalar\LNumber(1),
                     new Scalar\LNumber(2)
@@ -32,7 +34,8 @@ describe(
         );
 
         it(
-            'suggests names for function calls', function (): void {
+            'suggests names for function calls',
+            function (): void {
                 $node = new Expr\FuncCall(
                     new Node\Name('count'),
                     []
@@ -47,7 +50,8 @@ describe(
         );
 
         it(
-            'suggests names for array access', function (): void {
+            'suggests names for array access',
+            function (): void {
                 $node = new Expr\ArrayDimFetch(
                     new Expr\Variable('_GET'),
                     new Scalar\String_('username')
@@ -61,7 +65,8 @@ describe(
         );
 
         it(
-            'suggests names for ternary operations', function (): void {
+            'suggests names for ternary operations',
+            function (): void {
                 $node = new Expr\Ternary(
                     new Expr\Variable('condition'),
                     new Scalar\String_('yes'),
@@ -76,7 +81,8 @@ describe(
         );
 
         it(
-            'suggests names for concat operations', function (): void {
+            'suggests names for concat operations',
+            function (): void {
                 $node = new Expr\BinaryOp\Concat(
                     new Scalar\String_('hello'),
                     new Scalar\String_('world')
@@ -92,9 +98,11 @@ describe(
 );
 
 describe(
-    'Function Name Suggestions', function (): void {
+    'Function Name Suggestions',
+    function (): void {
         it(
-            'suggests names based on effect type PURE', function (): void {
+            'suggests names based on effect type PURE',
+            function (): void {
                 $suggestions = $this->suggester->suggestFunctionName([], SideEffectType::PURE);
 
                 expect($suggestions)->toBeArray()
@@ -103,7 +111,8 @@ describe(
         );
 
         it(
-            'suggests names based on effect type IO', function (): void {
+            'suggests names based on effect type IO',
+            function (): void {
                 $suggestions = $this->suggester->suggestFunctionName([], SideEffectType::IO);
 
                 expect($suggestions)->toBeArray()
@@ -112,7 +121,8 @@ describe(
         );
 
         it(
-            'suggests names based on effect type DATABASE', function (): void {
+            'suggests names based on effect type DATABASE',
+            function (): void {
                 $suggestions = $this->suggester->suggestFunctionName([], SideEffectType::DATABASE);
 
                 expect($suggestions)->toBeArray()
@@ -123,9 +133,11 @@ describe(
 );
 
 describe(
-    'Name Quality Assessment', function (): void {
+    'Name Quality Assessment',
+    function (): void {
         it(
-            'detects poor names - too short', function (): void {
+            'detects poor names - too short',
+            function (): void {
                 expect($this->suggester->isPoorName('x'))->toBeTrue()
                 ->and($this->suggester->isPoorName('y'))->toBeTrue()
                 ->and($this->suggester->isPoorName('a'))->toBeTrue();
@@ -133,7 +145,8 @@ describe(
         );
 
         it(
-            'allows standard short names', function (): void {
+            'allows standard short names',
+            function (): void {
                 expect($this->suggester->isPoorName('i'))->toBeFalse()
                 ->and($this->suggester->isPoorName('j'))->toBeFalse()
                 ->and($this->suggester->isPoorName('id'))->toBeFalse();
@@ -141,7 +154,8 @@ describe(
         );
 
         it(
-            'detects poor names - common bad patterns', function (): void {
+            'detects poor names - common bad patterns',
+            function (): void {
                 expect($this->suggester->isPoorName('tmp'))->toBeTrue()
                 ->and($this->suggester->isPoorName('temp'))->toBeTrue()
                 ->and($this->suggester->isPoorName('foo'))->toBeTrue()
@@ -150,14 +164,16 @@ describe(
         );
 
         it(
-            'detects poor names - number suffixes', function (): void {
+            'detects poor names - number suffixes',
+            function (): void {
                 expect($this->suggester->isPoorName('a1'))->toBeTrue()
                 ->and($this->suggester->isPoorName('x2'))->toBeTrue();
             }
         );
 
         it(
-            'accepts good names', function (): void {
+            'accepts good names',
+            function (): void {
                 expect($this->suggester->isPoorName('username'))->toBeFalse()
                 ->and($this->suggester->isPoorName('totalCount'))->toBeFalse()
                 ->and($this->suggester->isPoorName('user_id'))->toBeFalse();
@@ -167,9 +183,11 @@ describe(
 );
 
 describe(
-    'Name Quality Scoring', function (): void {
+    'Name Quality Scoring',
+    function (): void {
         it(
-            'gives high scores to good names', function (): void {
+            'gives high scores to good names',
+            function (): void {
                 $score = $this->suggester->scoreNameQuality('username');
                 expect($score)->toBeGreaterThan(5);
 
@@ -179,7 +197,8 @@ describe(
         );
 
         it(
-            'gives low scores to poor names', function (): void {
+            'gives low scores to poor names',
+            function (): void {
                 $score = $this->suggester->scoreNameQuality('x');
                 expect($score)->toBeLessThan(5);
 
@@ -189,7 +208,8 @@ describe(
         );
 
         it(
-            'penalizes very long names', function (): void {
+            'penalizes very long names',
+            function (): void {
                 $longName = 'thisIsAVeryLongVariableNameThatIsProbablyTooLong';
                 $score = $this->suggester->scoreNameQuality($longName);
                 expect($score)->toBeLessThan(8);
@@ -197,7 +217,8 @@ describe(
         );
 
         it(
-            'scores are in valid range 0-10', function (): void {
+            'scores are in valid range 0-10',
+            function (): void {
                 $names = ['x', 'tmp', 'username', 'veryLongNameHere', 'id', 'foo'];
 
                 foreach ($names as $name) {

@@ -7,6 +7,9 @@ namespace Recombinator\Transformation;
  */
 class NestingAnalysis
 {
+    /**
+     * @param array<int, array{line: int, level: int, node?: \PhpParser\Node}> $complexNodes
+     */
     public function __construct(
         public readonly int $maxNesting,
         public readonly float $avgNesting,

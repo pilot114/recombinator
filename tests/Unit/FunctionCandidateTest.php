@@ -14,7 +14,8 @@ beforeEach(
 );
 
 it(
-    'matches pure block rule correctly', function (): void {
+    'matches pure block rule correctly',
+    function (): void {
         $code = '<?php
     $a = 1;
     $b = 2;
@@ -40,7 +41,8 @@ it(
 );
 
 it(
-    'does not match pure block rule for small blocks', function (): void {
+    'does not match pure block rule for small blocks',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -55,7 +57,8 @@ it(
 );
 
 it(
-    'matches effect block rule correctly', function (): void {
+    'matches effect block rule correctly',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::IO,
@@ -70,7 +73,8 @@ it(
 );
 
 it(
-    'does not match effect block rule for PURE type', function (): void {
+    'does not match effect block rule for PURE type',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -85,7 +89,8 @@ it(
 );
 
 it(
-    'does not match effect block rule for MIXED type', function (): void {
+    'does not match effect block rule for MIXED type',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::MIXED,
@@ -100,7 +105,8 @@ it(
 );
 
 it(
-    'is viable when matches pure block rule', function (): void {
+    'is viable when matches pure block rule',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -115,7 +121,8 @@ it(
 );
 
 it(
-    'is viable when matches effect block rule', function (): void {
+    'is viable when matches effect block rule',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::IO,
@@ -130,7 +137,8 @@ it(
 );
 
 it(
-    'calculates priority correctly for pure block', function (): void {
+    'calculates priority correctly for pure block',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -148,7 +156,8 @@ it(
 );
 
 it(
-    'calculates lower priority for IO block', function (): void {
+    'calculates lower priority for IO block',
+    function (): void {
         $candidatePure = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -172,7 +181,8 @@ it(
 );
 
 it(
-    'suggests function name for pure block', function (): void {
+    'suggests function name for pure block',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -192,7 +202,8 @@ it(
 );
 
 it(
-    'suggests function name for IO block', function (): void {
+    'suggests function name for IO block',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::IO,
@@ -211,7 +222,8 @@ it(
 );
 
 it(
-    'gets function parameters correctly', function (): void {
+    'gets function parameters correctly',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,
@@ -230,7 +242,8 @@ it(
 );
 
 it(
-    'handles empty parameters', function (): void {
+    'handles empty parameters',
+    function (): void {
         $candidate = new FunctionCandidate(
             nodes: [],
             effectType: SideEffectType::PURE,

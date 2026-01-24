@@ -34,15 +34,18 @@ beforeEach(
 );
 
 describe(
-    'CLI Initialization', function (): void {
+    'CLI Initialization',
+    function (): void {
         it(
-            'initializes with AST and result', function (): void {
+            'initializes with AST and result',
+            function (): void {
                 expect($this->cli->getSession())->toBeInstanceOf(EditSession::class);
             }
         );
 
         it(
-            'has access to session', function (): void {
+            'has access to session',
+            function (): void {
                 $session = $this->cli->getSession();
 
                 expect($session->getAnalysisResult())->toBeInstanceOf(InteractiveEditResult::class);
@@ -52,9 +55,11 @@ describe(
 );
 
 describe(
-    'Command Execution', function (): void {
+    'Command Execution',
+    function (): void {
         it(
-            'executes help command', function (): void {
+            'executes help command',
+            function (): void {
                 ob_start();
                 $result = $this->cli->executeCommand('help');
                 $output = ob_get_clean();
@@ -65,7 +70,8 @@ describe(
         );
 
         it(
-            'executes status command', function (): void {
+            'executes status command',
+            function (): void {
                 ob_start();
                 $result = $this->cli->executeCommand('status');
                 $output = ob_get_clean();
@@ -76,7 +82,8 @@ describe(
         );
 
         it(
-            'executes list command', function (): void {
+            'executes list command',
+            function (): void {
                 ob_start();
                 $result = $this->cli->executeCommand('list');
                 $output = ob_get_clean();
@@ -87,7 +94,8 @@ describe(
         );
 
         it(
-            'executes report command', function (): void {
+            'executes report command',
+            function (): void {
                 ob_start();
                 $result = $this->cli->executeCommand('report');
                 $output = ob_get_clean();
@@ -98,7 +106,8 @@ describe(
         );
 
         it(
-            'handles unknown command', function (): void {
+            'handles unknown command',
+            function (): void {
                 ob_start();
                 $result = $this->cli->executeCommand('unknown');
                 $output = ob_get_clean();
@@ -111,9 +120,11 @@ describe(
 );
 
 describe(
-    'Command Shortcuts', function (): void {
+    'Command Shortcuts',
+    function (): void {
         it(
-            'accepts h as help shortcut', function (): void {
+            'accepts h as help shortcut',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('h');
                 $output = ob_get_clean();
@@ -123,7 +134,8 @@ describe(
         );
 
         it(
-            'accepts s as status shortcut', function (): void {
+            'accepts s as status shortcut',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('s');
                 $output = ob_get_clean();
@@ -133,7 +145,8 @@ describe(
         );
 
         it(
-            'accepts l as list shortcut', function (): void {
+            'accepts l as list shortcut',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('l');
                 $output = ob_get_clean();
@@ -143,7 +156,8 @@ describe(
         );
 
         it(
-            'accepts q as quit shortcut', function (): void {
+            'accepts q as quit shortcut',
+            function (): void {
                 $this->cli->setRunning(true);
 
                 ob_start();
@@ -159,9 +173,11 @@ describe(
 );
 
 describe(
-    'List Command Filtering', function (): void {
+    'List Command Filtering',
+    function (): void {
         it(
-            'lists all issues', function (): void {
+            'lists all issues',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('list all');
                 $output = ob_get_clean();
@@ -171,7 +187,8 @@ describe(
         );
 
         it(
-            'lists critical issues', function (): void {
+            'lists critical issues',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('list critical');
                 $output = ob_get_clean();
@@ -181,7 +198,8 @@ describe(
         );
 
         it(
-            'lists high priority issues', function (): void {
+            'lists high priority issues',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('list high');
                 $output = ob_get_clean();
@@ -193,9 +211,11 @@ describe(
 );
 
 describe(
-    'History Commands', function (): void {
+    'History Commands',
+    function (): void {
         it(
-            'shows empty history initially', function (): void {
+            'shows empty history initially',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('history');
                 $output = ob_get_clean();
@@ -205,7 +225,8 @@ describe(
         );
 
         it(
-            'handles undo with empty history', function (): void {
+            'handles undo with empty history',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('undo');
                 $output = ob_get_clean();
@@ -215,7 +236,8 @@ describe(
         );
 
         it(
-            'handles redo with empty history', function (): void {
+            'handles redo with empty history',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('redo');
                 $output = ob_get_clean();
@@ -227,9 +249,11 @@ describe(
 );
 
 describe(
-    'Preferences Commands', function (): void {
+    'Preferences Commands',
+    function (): void {
         it(
-            'shows all preferences', function (): void {
+            'shows all preferences',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('pref');
                 $output = ob_get_clean();
@@ -240,7 +264,8 @@ describe(
         );
 
         it(
-            'shows specific preference', function (): void {
+            'shows specific preference',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('pref verbose');
                 $output = ob_get_clean();
@@ -250,7 +275,8 @@ describe(
         );
 
         it(
-            'sets preference', function (): void {
+            'sets preference',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('pref verbose true');
                 $output = ob_get_clean();
@@ -261,7 +287,8 @@ describe(
         );
 
         it(
-            'converts boolean string values', function (): void {
+            'converts boolean string values',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('pref test_bool false');
                 ob_get_clean();
@@ -271,7 +298,8 @@ describe(
         );
 
         it(
-            'converts numeric string values', function (): void {
+            'converts numeric string values',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('pref test_num 42');
                 ob_get_clean();
@@ -283,9 +311,11 @@ describe(
 );
 
 describe(
-    'Save Command', function (): void {
+    'Save Command',
+    function (): void {
         it(
-            'saves preferences to file', function (): void {
+            'saves preferences to file',
+            function (): void {
                 $tempFile = tempnam(sys_get_temp_dir(), 'cli_test_');
 
                 ob_start();
@@ -301,7 +331,8 @@ describe(
         );
 
         it(
-            'uses default path when not specified', function (): void {
+            'uses default path when not specified',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('save');
                 $output = ob_get_clean();
@@ -318,9 +349,11 @@ describe(
 );
 
 describe(
-    'Error Handling', function (): void {
+    'Error Handling',
+    function (): void {
         it(
-            'handles empty command', function (): void {
+            'handles empty command',
+            function (): void {
                 ob_start();
                 $result = $this->cli->executeCommand('');
                 $output = ob_get_clean();
@@ -330,7 +363,8 @@ describe(
         );
 
         it(
-            'handles invalid issue number in show', function (): void {
+            'handles invalid issue number in show',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('show 9999');
                 $output = ob_get_clean();
@@ -340,7 +374,8 @@ describe(
         );
 
         it(
-            'handles invalid issue number in apply', function (): void {
+            'handles invalid issue number in apply',
+            function (): void {
                 ob_start();
                 $this->cli->executeCommand('apply 9999');
                 $output = ob_get_clean();

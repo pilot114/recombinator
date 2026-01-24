@@ -21,7 +21,8 @@ beforeEach(
 );
 
 it(
-    'does not break when variable is reassigned with different type', function (): void {
+    'does not break when variable is reassigned with different type',
+    function (): void {
         $code = '<?php
 $val = 10;
 echo $val;
@@ -41,7 +42,8 @@ echo $val[0];';
 );
 
 it(
-    'preserves semantics when constant is used multiple times', function (): void {
+    'preserves semantics when constant is used multiple times',
+    function (): void {
         $code = '<?php
 class Test {
     const VALUE = 5;
@@ -68,7 +70,8 @@ class Test {
 );
 
 it(
-    'handles division by zero gracefully', function (): void {
+    'handles division by zero gracefully',
+    function (): void {
         $code = '<?php $result = 10 / 0;';
 
         $ast = $this->parser->parse($code);
@@ -82,7 +85,8 @@ it(
 );
 
 it(
-    'preserves boolean semantics in concatenation', function (): void {
+    'preserves boolean semantics in concatenation',
+    function (): void {
         $code = '<?php
 $result = "Value: " . true;
 $result2 = "Value: " . false;';
@@ -103,7 +107,8 @@ $result2 = "Value: " . false;';
 );
 
 it(
-    'preserves boolean semantics in math operations', function (): void {
+    'preserves boolean semantics in math operations',
+    function (): void {
         $code = '<?php
 $result = 10 + true;
 $result2 = 10 + false;';
@@ -124,7 +129,8 @@ $result2 = 10 + false;';
 );
 
 it(
-    'does not optimize variable used in assignment left side', function (): void {
+    'does not optimize variable used in assignment left side',
+    function (): void {
         $code = '<?php
 $x = 10;
 $x = $x + 5;
@@ -147,7 +153,8 @@ echo $x;';
 );
 
 it(
-    'handles nested binary operations correctly', function (): void {
+    'handles nested binary operations correctly',
+    function (): void {
         $code = '<?php $result = (1 + 2) * (3 + 4);';
 
         $ast = $this->parser->parse($code);
@@ -165,7 +172,8 @@ it(
 );
 
 it(
-    'preserves correct order of operations', function (): void {
+    'preserves correct order of operations',
+    function (): void {
         $code = '<?php $result = 2 + 3 * 4;';
 
         $ast = $this->parser->parse($code);
@@ -186,7 +194,8 @@ it(
 );
 
 it(
-    'does not replace non-scalar constants', function (): void {
+    'does not replace non-scalar constants',
+    function (): void {
         $code = '<?php
 class Test {
     const ARRAY_CONST = [1, 2, 3];
@@ -213,7 +222,8 @@ class Test {
 );
 
 it(
-    'handles empty string concatenation', function (): void {
+    'handles empty string concatenation',
+    function (): void {
         $code = '<?php $result = "" . "hello" . "";';
 
         $ast = $this->parser->parse($code);
@@ -230,7 +240,8 @@ it(
 );
 
 it(
-    'preserves float precision in division', function (): void {
+    'preserves float precision in division',
+    function (): void {
         $code = '<?php $result = 1 / 3;';
 
         $ast = $this->parser->parse($code);
@@ -248,7 +259,8 @@ it(
 );
 
 it(
-    'handles isset with non-existent array key', function (): void {
+    'handles isset with non-existent array key',
+    function (): void {
         $code = '<?php
 $default = "default";
 if (isset($arr["key"])) {

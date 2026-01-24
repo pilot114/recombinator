@@ -14,11 +14,7 @@ use PhpParser\NodeVisitorAbstract;
  */
 class ComplexityVisitor extends NodeVisitorAbstract
 {
-    public int $complexity = 0 {
-        get {
-            return $this->complexity;
-        }
-    }
+    public int $complexity = 0;
 
     private int $nestingLevel = 0;
 
@@ -36,15 +32,17 @@ class ComplexityVisitor extends NodeVisitorAbstract
         }
 
         // Вызовы функций: +2 балла
-        if ($node instanceof Node\Expr\FuncCall 
-            || $node instanceof Node\Expr\MethodCall 
+        if (
+            $node instanceof Node\Expr\FuncCall
+            || $node instanceof Node\Expr\MethodCall
             || $node instanceof Node\Expr\StaticCall
         ) {
             $this->complexity += 2;
         }
 
         // Доступ к массиву/свойству: +1 балл
-        if ($node instanceof Node\Expr\ArrayDimFetch 
+        if (
+            $node instanceof Node\Expr\ArrayDimFetch
             || $node instanceof Node\Expr\PropertyFetch
         ) {
             $this->complexity++;
@@ -56,9 +54,10 @@ class ComplexityVisitor extends NodeVisitorAbstract
         }
 
         // Логические операторы (&&, ||): +1 балл
-        if ($node instanceof Node\Expr\BinaryOp\BooleanAnd 
-            || $node instanceof Node\Expr\BinaryOp\BooleanOr 
-            || $node instanceof Node\Expr\BinaryOp\LogicalAnd 
+        if (
+            $node instanceof Node\Expr\BinaryOp\BooleanAnd
+            || $node instanceof Node\Expr\BinaryOp\BooleanOr
+            || $node instanceof Node\Expr\BinaryOp\LogicalAnd
             || $node instanceof Node\Expr\BinaryOp\LogicalOr
         ) {
             $this->complexity++;

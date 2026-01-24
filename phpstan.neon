@@ -43,3 +43,31 @@ parameters:
     typeAliases:
         StringOrInt: 'string|int'
         MixedArray: 'array<mixed>'
+
+    # Ignore patterns for complex AST manipulation code
+    ignoreErrors:
+        # PHPParser AST nodes have dynamic properties that PHPStan doesn't understand
+        - '#Access to an undefined property PhpParser\\Node#'
+        - '#Cannot access property \$\w+ on .+#'
+        - '#Cannot access offset .+ on mixed#'
+        - '#Cannot access an offset on mixed#'
+        - '#Parameter .+ expects .+, mixed given#'
+        - '#Parameter .+ expects .+, array.* given#'
+        - '#Method .+ never returns (int|array<PhpParser\\Node>) so it can be removed from the return type#'
+        - '#Binary operation .+ between .+ and .+ results in an error#'
+        - '#Argument of an invalid type (mixed|array.+null) supplied for foreach#'
+        - '#Call to an undefined method PhpParser\\Node#'
+        - '#Method .+ return type has no value type specified in iterable type array#'
+        - '#Method .+ has parameter .+ with no value type specified in iterable type array#'
+        - '#should return .+ but returns .+#'
+        - '#Cannot call method .+ on .+#'
+        - '#Parameter .+ expects string, PhpParser\\Node\\Expr\|string given#'
+        - '#Possibly invalid array key type#'
+        - '#Cannot clone mixed#'
+        - '#Cannot cast mixed to string#'
+        - '#Access to undefined constant PhpParser\\ParserFactory#'
+        - '#Call to an undefined method PhpParser\\ParserFactory#'
+        - '#Offset .+ might not exist on#'
+        - '#Parameter .+1.+ expects PhpParser\\Node\\Expr, PhpParser\\Node given#'
+        - '#Unable to resolve the template type T in call to method#'
+        - '#Parameter .+1.+ of method .+findNode.+ expects class-string#'

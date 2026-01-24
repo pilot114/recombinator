@@ -20,16 +20,16 @@ class EditSession
     private readonly ChangeHistory $history;
 
     /**
-     * 
      *
-     * @var array<string, mixed> 
+     *
+     * @var array<string, mixed>
      */
     private array $userPreferences = [];
 
     /**
-     * 
      *
-     * @var array<string, int> 
+     *
+     * @var array<string, int>
      */
     private array $appliedChangesStats = [];
 
@@ -183,7 +183,9 @@ class EditSession
             return false;
         }
 
-        /** @var array<string, mixed> $preferences */
+        /**
+ * @var array<string, mixed> $preferences
+*/
         $this->userPreferences = array_merge($this->userPreferences, $preferences);
         return true;
     }

@@ -38,7 +38,7 @@ class PureBlockFinder
     private readonly int $minBlockSize;
 
     /**
-     * @param int $minBlockSize Минимальный размер блока для поиска
+     * @param integer $minBlockSize Минимальный размер блока для поиска
      */
     public function __construct(int $minBlockSize = 1)
     {
@@ -205,7 +205,9 @@ class PureBlockFinder
      */
     public function findNestedBlocks(array $ast): array
     {
-        /** @var array<string, array<int, array<int, array{start: int, end: int, nodes: array<Node>, size: int, context: string}>>> $nestedBlocks */
+        /**
+ * @var array<string, array<int, array<int, array{start: int, end: int, nodes: array<Node>, size: int, context: string}>>> $nestedBlocks
+*/
         $nestedBlocks = [];
 
         foreach ($ast as $node) {
@@ -218,6 +220,7 @@ class PureBlockFinder
                 if (!isset($nestedBlocks['if'])) {
                     $nestedBlocks['if'] = [];
                 }
+
                 $nestedBlocks['if'][] = $this->findBlocksInContext($node->stmts, 'if_then');
                 if ($node->else instanceof \PhpParser\Node\Stmt\Else_) {
                     $nestedBlocks['if'][] = $this->findBlocksInContext($node->else->stmts, 'if_else');
@@ -230,31 +233,37 @@ class PureBlockFinder
                 if (!isset($nestedBlocks['while'])) {
                     $nestedBlocks['while'] = [];
                 }
+
                 $nestedBlocks['while'][] = $this->findBlocksInContext($node->stmts, 'while_body');
             } elseif ($node instanceof Node\Stmt\For_) {
                 if (!isset($nestedBlocks['for'])) {
                     $nestedBlocks['for'] = [];
                 }
+
                 $nestedBlocks['for'][] = $this->findBlocksInContext($node->stmts, 'for_body');
             } elseif ($node instanceof Node\Stmt\Foreach_) {
                 if (!isset($nestedBlocks['foreach'])) {
                     $nestedBlocks['foreach'] = [];
                 }
+
                 $nestedBlocks['foreach'][] = $this->findBlocksInContext($node->stmts, 'foreach_body');
             } elseif ($node instanceof Node\Stmt\Function_) {
                 if (!isset($nestedBlocks['function'])) {
                     $nestedBlocks['function'] = [];
                 }
+
                 $nestedBlocks['function'][] = $this->findBlocksInContext($node->stmts, 'function_' . ($node->name->name ?? 'anonymous'));
             } elseif ($node instanceof Node\Stmt\ClassMethod) {
                 if (!isset($nestedBlocks['method'])) {
                     $nestedBlocks['method'] = [];
                 }
+
                 $nestedBlocks['method'][] = $this->findBlocksInContext($node->stmts ?? [], 'method_' . $node->name->name);
             } elseif ($node instanceof Node\Stmt\TryCatch) {
                 if (!isset($nestedBlocks['try'])) {
                     $nestedBlocks['try'] = [];
                 }
+
                 $nestedBlocks['try'][] = $this->findBlocksInContext($node->stmts, 'try_block');
                 foreach ($node->catches as $catch) {
                     $nestedBlocks['try'][] = $this->findBlocksInContext($catch->stmts, 'catch_block');
@@ -267,7 +276,7 @@ class PureBlockFinder
         }
 
         // Фильтруем пустые результаты
-        return array_filter($nestedBlocks, fn($blocks): bool => !empty($blocks));
+        return array_filter($nestedBlocks, fn(array $blocks): bool => $blocks !== []);
     }
 
     /**

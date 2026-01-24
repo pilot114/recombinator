@@ -1,5 +1,15 @@
 <?php
 
+/**
+ * Snapshot tests demonstrating transformation of complex code to simplified code.
+ *
+ * These tests:
+ * 1. Load complex PHP code examples from fixtures
+ * 2. Apply various transformation visitors
+ * 3. Save results to snapshots directory
+ * 4. Compare against existing snapshots for regression testing
+ */
+
 declare(strict_types=1);
 
 use PhpParser\NodeTraverser;
@@ -11,16 +21,6 @@ use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 use Recombinator\Transformation\Visitor\TernarReturnVisitor;
-
-/**
- * Snapshot tests demonstrating transformation of complex code to simplified code.
- *
- * These tests:
- * 1. Load complex PHP code examples from fixtures
- * 2. Apply various transformation visitors
- * 3. Save results to snapshots directory
- * 4. Compare against existing snapshots for regression testing
- */
 
 const FIXTURES_DIR = __DIR__ . '/fixtures';
 const SNAPSHOTS_DIR = __DIR__ . '/snapshots';
@@ -117,7 +117,8 @@ function transformCode(string $code, array $visitors): string
 
 // Test: isset patterns should be simplified to null coalescing
 it(
-    'transforms isset patterns to null coalescing operator', function (): void {
+    'transforms isset patterns to null coalescing operator',
+    function (): void {
         $fixtureName = 'complex_isset_pattern';
         $code = file_get_contents(FIXTURES_DIR . '/complex_isset_pattern.php');
 
@@ -138,7 +139,8 @@ it(
 
 // Test: mathematical expressions should be pre-computed
 it(
-    'pre-computes mathematical expressions', function (): void {
+    'pre-computes mathematical expressions',
+    function (): void {
         $fixtureName = 'complex_math_expressions';
         $code = file_get_contents(FIXTURES_DIR . '/complex_math_expressions.php');
 
@@ -162,7 +164,8 @@ it(
 // Test: class constants should be inlined
 // Note: Skipped due to php-parser compatibility issue with $parts property
 it(
-    'inlines class constants', function (): void {
+    'inlines class constants',
+    function (): void {
         $fixtureName = 'class_with_constants';
         $code = file_get_contents(FIXTURES_DIR . '/class_with_constants.php');
 
@@ -176,7 +179,8 @@ it(
 
 // Test: if-return patterns should be converted to ternary
 it(
-    'converts if-return to ternary operator', function (): void {
+    'converts if-return to ternary operator',
+    function (): void {
         $fixtureName = 'if_return_pattern';
         $code = file_get_contents(FIXTURES_DIR . '/if_return_pattern.php');
 
@@ -195,7 +199,8 @@ it(
 
 // Test: string concatenations should be simplified
 it(
-    'simplifies string concatenations', function (): void {
+    'simplifies string concatenations',
+    function (): void {
         $fixtureName = 'string_concatenation';
         $code = file_get_contents(FIXTURES_DIR . '/string_concatenation.php');
 
@@ -220,7 +225,8 @@ it(
 
 // Test: mixed complexity with multiple patterns
 it(
-    'handles mixed complexity with multiple optimization patterns', function (): void {
+    'handles mixed complexity with multiple optimization patterns',
+    function (): void {
         $fixtureName = 'mixed_complexity';
         $code = file_get_contents(FIXTURES_DIR . '/mixed_complexity.php');
 
@@ -239,7 +245,8 @@ it(
 
 // Dataset-driven tests for snapshot regression and validation
 dataset(
-    'transformations', fn(): array => [
+    'transformations',
+    fn(): array => [
     'isset patterns' => ['complex_isset_pattern.php', ['binary_isset']],
     'math expressions' => ['complex_math_expressions.php', ['var_to_scalar', 'binary_isset']],
     'if-return ternary' => ['if_return_pattern.php', ['ternar_return']],
@@ -250,7 +257,8 @@ dataset(
 
 // Test: snapshot regression - compare with previously saved snapshots
 it(
-    'matches previously saved snapshot', function (string $fixture, array $visitorNames): void {
+    'matches previously saved snapshot',
+    function (string $fixture, array $visitorNames): void {
         $fixturePath = FIXTURES_DIR . '/' . $fixture;
         $fixtureName = pathinfo($fixture, PATHINFO_FILENAME);
         $snapshotPath = getSnapshotPath($fixtureName);
@@ -277,7 +285,8 @@ it(
 
 // Test: code remains syntactically valid after transformation
 it(
-    'produces valid PHP code after transformation', function (string $fixture, array $visitorNames): void {
+    'produces valid PHP code after transformation',
+    function (string $fixture, array $visitorNames): void {
         $fixturePath = FIXTURES_DIR . '/' . $fixture;
         $code = file_get_contents($fixturePath);
 

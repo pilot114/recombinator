@@ -32,9 +32,9 @@ class ComplexityController
     private array $afterMetrics = [];
 
     /**
-     * @param int  $cognitiveThreshold  Порог когнитивной сложности (по умолчанию 15)
-     * @param int  $cyclomaticThreshold Порог цикломатической сложности (по умолчанию 10)
-     * @param bool $strictMode          Строгий режим - любое увеличение считается ошибкой
+     * @param integer $cognitiveThreshold  Порог когнитивной сложности (по умолчанию 15)
+     * @param integer $cyclomaticThreshold Порог цикломатической сложности (по умолчанию 10)
+     * @param boolean $strictMode          Строгий режим - любое увеличение считается ошибкой
      */
     public function __construct(
         private readonly int $cognitiveThreshold = 15,

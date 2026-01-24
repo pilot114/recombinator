@@ -14,7 +14,8 @@ beforeEach(
 );
 
 it(
-    'classifies pure mathematical operations as PURE', function (): void {
+    'classifies pure mathematical operations as PURE',
+    function (): void {
         $code = '<?php $x = 1 + 2 * 3;';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -24,7 +25,8 @@ it(
 );
 
 it(
-    'classifies pure string operations as PURE', function (): void {
+    'classifies pure string operations as PURE',
+    function (): void {
         $code = '<?php $x = strtoupper("hello");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -34,7 +36,8 @@ it(
 );
 
 it(
-    'classifies pure array operations as PURE', function (): void {
+    'classifies pure array operations as PURE',
+    function (): void {
         $code = '<?php $x = array_merge([1, 2], [3, 4]);';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -44,7 +47,8 @@ it(
 );
 
 it(
-    'classifies echo as IO', function (): void {
+    'classifies echo as IO',
+    function (): void {
         $code = '<?php echo "Hello, World!";';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -54,7 +58,8 @@ it(
 );
 
 it(
-    'classifies print as IO', function (): void {
+    'classifies print as IO',
+    function (): void {
         $code = '<?php print("Test");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]->expr);
@@ -64,7 +69,8 @@ it(
 );
 
 it(
-    'classifies file_get_contents as IO', function (): void {
+    'classifies file_get_contents as IO',
+    function (): void {
         $code = '<?php $content = file_get_contents("/path/to/file.txt");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -74,7 +80,8 @@ it(
 );
 
 it(
-    'classifies file_put_contents as IO', function (): void {
+    'classifies file_put_contents as IO',
+    function (): void {
         $code = '<?php file_put_contents("/path/to/file.txt", "data");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -84,7 +91,8 @@ it(
 );
 
 it(
-    'classifies $_GET as EXTERNAL_STATE', function (): void {
+    'classifies $_GET as EXTERNAL_STATE',
+    function (): void {
         $code = '<?php $username = $_GET["username"];';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -94,7 +102,8 @@ it(
 );
 
 it(
-    'classifies $_POST as EXTERNAL_STATE', function (): void {
+    'classifies $_POST as EXTERNAL_STATE',
+    function (): void {
         $code = '<?php $data = $_POST["data"];';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -104,7 +113,8 @@ it(
 );
 
 it(
-    'classifies $_SESSION as EXTERNAL_STATE', function (): void {
+    'classifies $_SESSION as EXTERNAL_STATE',
+    function (): void {
         $code = '<?php $id = $_SESSION["user_id"];';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -114,7 +124,8 @@ it(
 );
 
 it(
-    'classifies global variable as GLOBAL_STATE', function (): void {
+    'classifies global variable as GLOBAL_STATE',
+    function (): void {
         $code = '<?php global $config;';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -124,7 +135,8 @@ it(
 );
 
 it(
-    'classifies ini_set as GLOBAL_STATE', function (): void {
+    'classifies ini_set as GLOBAL_STATE',
+    function (): void {
         $code = '<?php ini_set("display_errors", "1");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -134,7 +146,8 @@ it(
 );
 
 it(
-    'classifies session_start as GLOBAL_STATE', function (): void {
+    'classifies session_start as GLOBAL_STATE',
+    function (): void {
         $code = '<?php session_start();';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -144,7 +157,8 @@ it(
 );
 
 it(
-    'classifies header as GLOBAL_STATE', function (): void {
+    'classifies header as GLOBAL_STATE',
+    function (): void {
         $code = '<?php header("Content-Type: application/json");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -154,7 +168,8 @@ it(
 );
 
 it(
-    'classifies eval as GLOBAL_STATE', function (): void {
+    'classifies eval as GLOBAL_STATE',
+    function (): void {
         $code = '<?php eval("echo 1;");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -164,7 +179,8 @@ it(
 );
 
 it(
-    'classifies mysqli_query as DATABASE', function (): void {
+    'classifies mysqli_query as DATABASE',
+    function (): void {
         $code = '<?php mysqli_query($conn, "SELECT * FROM users");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -174,7 +190,8 @@ it(
 );
 
 it(
-    'classifies pg_query as DATABASE', function (): void {
+    'classifies pg_query as DATABASE',
+    function (): void {
         $code = '<?php pg_query($conn, "SELECT * FROM users");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -184,7 +201,8 @@ it(
 );
 
 it(
-    'classifies PDO query method as DATABASE', function (): void {
+    'classifies PDO query method as DATABASE',
+    function (): void {
         $code = '<?php $stmt = $pdo->query("SELECT * FROM users");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -194,7 +212,8 @@ it(
 );
 
 it(
-    'classifies curl_exec as HTTP', function (): void {
+    'classifies curl_exec as HTTP',
+    function (): void {
         $code = '<?php $response = curl_exec($ch);';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -204,7 +223,8 @@ it(
 );
 
 it(
-    'classifies fsockopen as HTTP', function (): void {
+    'classifies fsockopen as HTTP',
+    function (): void {
         $code = '<?php $socket = fsockopen("example.com", 80);';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -214,7 +234,8 @@ it(
 );
 
 it(
-    'classifies mail as HTTP', function (): void {
+    'classifies mail as HTTP',
+    function (): void {
         $code = '<?php mail("user@example.com", "Subject", "Message");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -224,7 +245,8 @@ it(
 );
 
 it(
-    'classifies rand as NON_DETERMINISTIC', function (): void {
+    'classifies rand as NON_DETERMINISTIC',
+    function (): void {
         $code = '<?php $random = rand(1, 100);';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -234,7 +256,8 @@ it(
 );
 
 it(
-    'classifies time as NON_DETERMINISTIC', function (): void {
+    'classifies time as NON_DETERMINISTIC',
+    function (): void {
         $code = '<?php $now = time();';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -244,7 +267,8 @@ it(
 );
 
 it(
-    'classifies uniqid as NON_DETERMINISTIC', function (): void {
+    'classifies uniqid as NON_DETERMINISTIC',
+    function (): void {
         $code = '<?php $id = uniqid();';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -254,7 +278,8 @@ it(
 );
 
 it(
-    'classifies date as NON_DETERMINISTIC', function (): void {
+    'classifies date as NON_DETERMINISTIC',
+    function (): void {
         $code = '<?php $today = date("Y-m-d");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -264,7 +289,8 @@ it(
 );
 
 it(
-    'classifies include as MIXED', function (): void {
+    'classifies include as MIXED',
+    function (): void {
         $code = '<?php include "file.php";';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -274,7 +300,8 @@ it(
 );
 
 it(
-    'classifies block with pure operations as PURE', function (): void {
+    'classifies block with pure operations as PURE',
+    function (): void {
         $code = '<?php
         $a = 1 + 2;
         $b = strtoupper("hello");
@@ -288,7 +315,8 @@ it(
 );
 
 it(
-    'classifies block with IO as IO', function (): void {
+    'classifies block with IO as IO',
+    function (): void {
         $code = '<?php
         $a = 1 + 2;
         echo $a;
@@ -301,7 +329,8 @@ it(
 );
 
 it(
-    'classifies block with mixed effects as MIXED', function (): void {
+    'classifies block with mixed effects as MIXED',
+    function (): void {
         $code = '<?php
         $username = $_GET["username"];
         echo "Hello, " . $username;
@@ -315,7 +344,8 @@ it(
 );
 
 it(
-    'classifies if statement by analyzing its body', function (): void {
+    'classifies if statement by analyzing its body',
+    function (): void {
         $code = '<?php
         if ($condition) {
             echo "test";
@@ -329,7 +359,8 @@ it(
 );
 
 it(
-    'classifies ternary operator by analyzing branches', function (): void {
+    'classifies ternary operator by analyzing branches',
+    function (): void {
         $code = '<?php $x = $cond ? 1 : 2;';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -339,7 +370,8 @@ it(
 );
 
 it(
-    'classifies while loop by analyzing body', function (): void {
+    'classifies while loop by analyzing body',
+    function (): void {
         $code = '<?php
         while ($i < 10) {
             echo $i;
@@ -354,7 +386,8 @@ it(
 );
 
 it(
-    'classifies foreach loop by analyzing body', function (): void {
+    'classifies foreach loop by analyzing body',
+    function (): void {
         $code = '<?php
         foreach ($arr as $item) {
             $sum += $item;
@@ -368,7 +401,8 @@ it(
 );
 
 it(
-    'classifies complex code with multiple effects', function (): void {
+    'classifies complex code with multiple effects',
+    function (): void {
         $code = '<?php
         // EXTERNAL_STATE
         $username = $_GET["username"];
@@ -390,7 +424,8 @@ it(
 );
 
 it(
-    'classifies assignment to local variable as PURE', function (): void {
+    'classifies assignment to local variable as PURE',
+    function (): void {
         $code = '<?php $x = 123;';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -400,7 +435,8 @@ it(
 );
 
 it(
-    'classifies assignment with IO on right side as IO', function (): void {
+    'classifies assignment with IO on right side as IO',
+    function (): void {
         $code = '<?php $content = file_get_contents("file.txt");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -410,7 +446,8 @@ it(
 );
 
 it(
-    'classifies assignment to superglobal as EXTERNAL_STATE', function (): void {
+    'classifies assignment to superglobal as EXTERNAL_STATE',
+    function (): void {
         $code = '<?php $_SESSION["user_id"] = 123;';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -420,7 +457,8 @@ it(
 );
 
 it(
-    'handles unknown user-defined functions as MIXED', function (): void {
+    'handles unknown user-defined functions as MIXED',
+    function (): void {
         $code = '<?php $result = unknownFunction();';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -430,7 +468,8 @@ it(
 );
 
 it(
-    'classifies exit/die as IO', function (): void {
+    'classifies exit/die as IO',
+    function (): void {
         $code = '<?php exit("Error");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -440,7 +479,8 @@ it(
 );
 
 it(
-    'classifies static method calls correctly', function (): void {
+    'classifies static method calls correctly',
+    function (): void {
         $code = '<?php $data = DB::query("SELECT * FROM users");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -450,7 +490,8 @@ it(
 );
 
 it(
-    'classifies HTTP method calls correctly', function (): void {
+    'classifies HTTP method calls correctly',
+    function (): void {
         $code = '<?php $response = $client->get("https://api.example.com");';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -460,7 +501,8 @@ it(
 );
 
 it(
-    'classifies nested operations correctly', function (): void {
+    'classifies nested operations correctly',
+    function (): void {
         $code = '<?php $result = strtoupper(substr("hello", 0, 2));';
         $ast = $this->parser->parse($code);
         $effect = $this->classifier->classify($ast[0]);
@@ -470,7 +512,8 @@ it(
 );
 
 it(
-    'stops analyzing when reaches MIXED', function (): void {
+    'stops analyzing when reaches MIXED',
+    function (): void {
         $code = '<?php
         echo "test";
         $x = 1 + 2;

@@ -28,16 +28,16 @@ class PureComputation
     public bool $isCompileTimeEvaluable = false;
 
     /**
-     * @param Node[] $nodes         Узлы чистого
-     *                              вычисления
-     * @param int    $startPosition Начальная
-     *                              позиция
-     * @param int    $endPosition   Конечная
-     *                              позиция
-     * @param int    $size          Количество
-     *                              узлов
-     * @param string $id            Уникальный
-     *                              идентификатор
+     * @param Node[]  $nodes         Узлы чистого
+     *                               вычисления
+     * @param integer $startPosition Начальная
+     *                               позиция
+     * @param integer $endPosition   Конечная
+     *                               позиция
+     * @param integer $size          Количество
+     *                               узлов
+     * @param string  $id            Уникальный
+     *                               идентификатор
      */
     public function __construct(
         public readonly array $nodes,

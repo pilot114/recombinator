@@ -14,7 +14,7 @@ use Recombinator\Domain\ScopeStore;
 class FunctionScopeVisitor extends BaseVisitor
 {
     /**
-     * @var mixed 
+     * @var mixed
      */
     protected $isGlobalScope;
 
@@ -27,15 +27,17 @@ class FunctionScopeVisitor extends BaseVisitor
     }
 
     #[\Override]
-    public function beforeTraverse(array $nodes): void
+    public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
         $this->isGlobalScope = count($nodes) !== 1;
+        return null;
     }
 
     public function enterNode(Node $node)
     {
-        if ($this->isGlobalScope) { return null;
+        if ($this->isGlobalScope) {
+            return null;
         }
 
         // скоп функции

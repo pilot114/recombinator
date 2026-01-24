@@ -14,17 +14,16 @@ use PhpParser\Node;
 class ConcatAssertVisitor extends BaseVisitor
 {
     /**
-     * @var mixed 
+     * @var array<Node\Expr>
      */
-    protected $echoStack= [];
+    protected array $echoStack = [];
 
     /**
-     * @var mixed 
+     * @var array<mixed>
      */
+    protected array $singleAsserts = [];
 
-    protected $singleAsserts= [];
-
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): ?Node
     {
         if ($node instanceof Node\Stmt\Echo_) {
             $this->echoStack = array_merge($this->echoStack, $node->exprs);
@@ -32,8 +31,15 @@ class ConcatAssertVisitor extends BaseVisitor
                 $node->setAttribute('remove', true);
             } else {
                 $commonEcho = array_shift($this->echoStack);
+                if (!$commonEcho instanceof Node\Expr) {
+                    $this->echoStack = [];
+                    return null;
+                }
+
                 foreach ($this->echoStack as $echo) {
-                    $commonEcho = new Node\Expr\BinaryOp\Concat($commonEcho, $echo);
+                    if ($echo instanceof Node\Expr) {
+                        $commonEcho = new Node\Expr\BinaryOp\Concat($commonEcho, $echo);
+                    }
                 }
 
                 $this->echoStack = [];

@@ -37,7 +37,7 @@ class BinaryAndIssetVisitor extends BaseVisitor
     }
 
     #[\Override]
-    public function leaveNode(Node $node)
+    public function leaveNode(Node $node): int|\PhpParser\Node|array|null
     {
         /**
          *  Бинарные операции (математика, логика, конкатенация)
@@ -55,11 +55,40 @@ class BinaryAndIssetVisitor extends BaseVisitor
             $left = $node->left;
             $right = $node->right;
 
-            // Check if both operands are scalars with value property
-            if (($left instanceof Node\Scalar\LNumber || $left instanceof Node\Scalar\DNumber || $left instanceof Node\Scalar\String_) &&
-                ($right instanceof Node\Scalar\LNumber || $right instanceof Node\Scalar\DNumber || $right instanceof Node\Scalar\String_)) {
+            // Check if both operands are numeric scalars for math operations
+            $leftIsNumeric = $left instanceof Node\Scalar\LNumber || $left instanceof Node\Scalar\DNumber;
+            $rightIsNumeric = $right instanceof Node\Scalar\LNumber || $right instanceof Node\Scalar\DNumber;
 
+            // For concatenation, we accept strings too
+            if ($node instanceof Node\Expr\BinaryOp\Concat) {
+                $leftIsScalar = $left instanceof Node\Scalar\LNumber
+                    || $left instanceof Node\Scalar\DNumber
+                    || $left instanceof Node\Scalar\String_;
+                $rightIsScalar = $right instanceof Node\Scalar\LNumber
+                    || $right instanceof Node\Scalar\DNumber
+                    || $right instanceof Node\Scalar\String_;
+                if ($leftIsScalar && $rightIsScalar) {
+                    /**
+ * @var int|float|string $leftValue
+*/
+                    $leftValue = $left->value;
+                    /**
+ * @var int|float|string $rightValue
+*/
+                    $rightValue = $right->value;
+                    return new Node\Scalar\String_($leftValue . $rightValue);
+                }
+            }
+
+            // For math operations, both must be numeric
+            if ($leftIsNumeric && $rightIsNumeric) {
+                /**
+ * @var int|float $leftValue
+*/
                 $leftValue = $left->value;
+                /**
+ * @var int|float $rightValue
+*/
                 $rightValue = $right->value;
 
                 if ($node instanceof Node\Expr\BinaryOp\Plus) {
@@ -70,13 +99,12 @@ class BinaryAndIssetVisitor extends BaseVisitor
                     $calc = $leftValue * $rightValue;
                 } elseif ($node instanceof Node\Expr\BinaryOp\Div) {
                     $calc = $leftValue / $rightValue;
-                } elseif ($node instanceof Node\Expr\BinaryOp\Concat) {
-                    return new Node\Scalar\String_((string) $leftValue . (string) $rightValue);
                 } else {
-                    throw new \Exception('New BinaryOp! : ' . $node::class);
+                    // Unknown operation, skip transformation
+                    return parent::leaveNode($node);
                 }
 
-                return is_int($calc) ? new Node\Scalar\LNumber((int) $calc) : new Node\Scalar\DNumber((float) $calc);
+                return is_int($calc) ? new Node\Scalar\LNumber($calc) : new Node\Scalar\DNumber((float) $calc);
             }
         }
 
@@ -86,10 +114,6 @@ class BinaryAndIssetVisitor extends BaseVisitor
 
     protected function booleanBinaryTyping(Node\Expr\BinaryOp $expression, Node\Expr\ConstFetch $bool): Node\Expr
     {
-        if (!($bool->name instanceof Node\Name)) {
-            return $bool;
-        }
-
         // In php-parser 5.x, use toString() method
         $name = strtolower($bool->name->toString());
 

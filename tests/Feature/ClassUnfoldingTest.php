@@ -18,7 +18,8 @@ beforeEach(
 );
 
 it(
-    'can unfold simple class instantiation and method call', function (): void {
+    'can unfold simple class instantiation and method call',
+    function (): void {
         $code = '<?php
 class Calculator {
     public $base = 10;
@@ -49,7 +50,8 @@ $result = $calc->add(5);
 );
 
 it(
-    'can unfold class with constructor', function (): void {
+    'can unfold class with constructor',
+    function (): void {
         $code = '<?php
 class Person {
     public $name = "";
@@ -80,7 +82,8 @@ class Person {
 );
 
 it(
-    'can unfold method chain calls', function (): void {
+    'can unfold method chain calls',
+    function (): void {
         $code = '<?php
 class Builder {
     public $value = 0;
@@ -111,7 +114,8 @@ class Builder {
 );
 
 it(
-    'can handle class inheritance', function (): void {
+    'can handle class inheritance',
+    function (): void {
         $code = '<?php
 class Animal {
     public function sound() {

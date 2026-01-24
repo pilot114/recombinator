@@ -17,7 +17,8 @@ beforeEach(
 );
 
 it(
-    'can process simple class with properties', function (): void {
+    'can process simple class with properties',
+    function (): void {
         $code = '<?php
 class TestClass {
     public $name = "test";
@@ -43,7 +44,8 @@ class TestClass {
 );
 
 it(
-    'can process class with constructor', function (): void {
+    'can process class with constructor',
+    function (): void {
         $code = '<?php
 class TestClass {
     public $value = 0;
@@ -71,7 +73,8 @@ class TestClass {
 );
 
 it(
-    'can process class with inheritance', function (): void {
+    'can process class with inheritance',
+    function (): void {
         $code = '<?php
 class ParentClass {
     public function parentMethod() {
@@ -102,7 +105,8 @@ class ChildClass extends ParentClass {
 );
 
 it(
-    'should not optimize class with complex methods', function (): void {
+    'should not optimize class with complex methods',
+    function (): void {
         $code = '<?php
 class ComplexClass {
     public function complexMethod($x) {

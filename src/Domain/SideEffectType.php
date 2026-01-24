@@ -152,7 +152,7 @@ enum SideEffectType: string
      * оптимизаций и группировки кода при свёртке.
      * Меньшее значение = выше приоритет.
      *
-     * @return int Приоритет эффекта (0-7)
+     * @return integer Приоритет эффекта (0-7)
      */
     public function getPriority(): int
     {

@@ -55,8 +55,16 @@ use PhpParser\NodeTraverser;
  */
 class NestedConditionSimplifier
 {
+    /**
+     * @param integer $maxNestingLevel Currently unused, reserved for future use
+     */
     public function __construct(private readonly int $maxNestingLevel = 3)
     {
+    }
+
+    public function getMaxNestingLevel(): int
+    {
+        return $this->maxNestingLevel;
     }
 
     /**
@@ -67,7 +75,7 @@ class NestedConditionSimplifier
      */
     public function simplify(array $ast): array
     {
-        $visitor = new ConditionSimplifierVisitor($this->maxNestingLevel);
+        $visitor = new ConditionSimplifierVisitor();
         $traverser = new NodeTraverser();
         $traverser->addVisitor($visitor);
 

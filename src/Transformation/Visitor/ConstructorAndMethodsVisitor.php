@@ -16,7 +16,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
     {
     }
 
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): ?Node
     {
         // если класс оптимизирован, выгружаем его в стор
         if ($node instanceof Node\Stmt\Class_) {
@@ -47,11 +47,12 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         $hasConstructor = false;
 
         foreach ($methods as $method) {
+            $stmts = $method->stmts;
             // Проверяем простоту методов (однострочные или конструктор)
             if ($method->name->name === '__construct') {
                 $hasConstructor = true;
                 $optimizeMethods['__construct'] = $method;
-            } elseif (count($method->stmts) === 1 && $method->stmts[0] instanceof Node\Stmt\Return_) {
+            } elseif ($stmts !== null && count($stmts) === 1 && $stmts[0] instanceof Node\Stmt\Return_) {
                 $optimizeMethods[$method->name->name] = $this->markupFunctionBody($method);
             } else {
                 $optimize = false;
@@ -62,7 +63,10 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $properties = $this->findNode(Node\Stmt\Property::class, $node);
             $optimizeProperties = [];
             foreach ($properties as $property) {
-                $optimizeProperties[$property->props[0]->name->name] = $property->props[0];
+                $prop = $property->props[0] ?? null;
+                if ($prop instanceof Node\PropertyItem) {
+                    $optimizeProperties[$prop->name->name] = $prop;
+                }
             }
 
             // Обработка наследования
@@ -72,7 +76,8 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             }
 
             $this->scopeStore->setClassToGlobal(
-                $node->name->name, [
+                $node->name->name,
+                [
                 'props' => $optimizeProperties,
                 'methods' => $optimizeMethods,
                 'instances' => [],

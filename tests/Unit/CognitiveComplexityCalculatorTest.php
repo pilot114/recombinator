@@ -14,7 +14,8 @@ beforeEach(
 );
 
 it(
-    'calculates complexity for simple binary operation', function (): void {
+    'calculates complexity for simple binary operation',
+    function (): void {
         $code = '<?php $x + $y;';
         $ast = $this->parser->parse($code);
 
@@ -25,7 +26,8 @@ it(
 );
 
 it(
-    'calculates complexity for function call', function (): void {
+    'calculates complexity for function call',
+    function (): void {
         $code = '<?php strlen($str);';
         $ast = $this->parser->parse($code);
 
@@ -36,7 +38,8 @@ it(
 );
 
 it(
-    'calculates complexity for array access', function (): void {
+    'calculates complexity for array access',
+    function (): void {
         $code = '<?php $arr[0];';
         $ast = $this->parser->parse($code);
 
@@ -47,7 +50,8 @@ it(
 );
 
 it(
-    'calculates complexity for nested expression', function (): void {
+    'calculates complexity for nested expression',
+    function (): void {
         $code = '<?php $x * $y + $z;';
         $ast = $this->parser->parse($code);
 
@@ -58,7 +62,8 @@ it(
 );
 
 it(
-    'calculates complexity for complex expression', function (): void {
+    'calculates complexity for complex expression',
+    function (): void {
         $code = '<?php sqrt($x * $x + $y * $y);';
         $ast = $this->parser->parse($code);
 
@@ -70,7 +75,8 @@ it(
 );
 
 it(
-    'calculates complexity for if statement with nesting', function (): void {
+    'calculates complexity for if statement with nesting',
+    function (): void {
         $code = '<?php
     if ($a) {
         if ($b) {
@@ -87,7 +93,8 @@ it(
 );
 
 it(
-    'calculates complexity for ternary operator', function (): void {
+    'calculates complexity for ternary operator',
+    function (): void {
         $code = '<?php $result = $a ? $b : $c;';
         $ast = $this->parser->parse($code);
 
@@ -98,7 +105,8 @@ it(
 );
 
 it(
-    'classifies simple expression correctly', function (): void {
+    'classifies simple expression correctly',
+    function (): void {
         $code = '<?php $x + $y;';
         $ast = $this->parser->parse($code);
 
@@ -110,7 +118,8 @@ it(
 );
 
 it(
-    'classifies medium expression correctly', function (): void {
+    'classifies medium expression correctly',
+    function (): void {
         $code = '<?php $x * $y + $z;';
         $ast = $this->parser->parse($code);
 
@@ -122,7 +131,8 @@ it(
 );
 
 it(
-    'classifies complex expression correctly', function (): void {
+    'classifies complex expression correctly',
+    function (): void {
         $code = '<?php sqrt($x * $x + $y * $y);';
         $ast = $this->parser->parse($code);
 
@@ -134,7 +144,8 @@ it(
 );
 
 it(
-    'handles empty AST', function (): void {
+    'handles empty AST',
+    function (): void {
         $complexity = $this->calculator->calculate([]);
 
         expect($complexity)->toBe(0);
@@ -142,7 +153,8 @@ it(
 );
 
 it(
-    'handles method calls', function (): void {
+    'handles method calls',
+    function (): void {
         $code = '<?php $obj->method($arg);';
         $ast = $this->parser->parse($code);
 
@@ -153,7 +165,8 @@ it(
 );
 
 it(
-    'handles static calls', function (): void {
+    'handles static calls',
+    function (): void {
         $code = '<?php MyClass::method($arg);';
         $ast = $this->parser->parse($code);
 
@@ -164,7 +177,8 @@ it(
 );
 
 it(
-    'handles property fetch', function (): void {
+    'handles property fetch',
+    function (): void {
         $code = '<?php $obj->property;';
         $ast = $this->parser->parse($code);
 
@@ -175,7 +189,8 @@ it(
 );
 
 it(
-    'handles logical operators', function (): void {
+    'handles logical operators',
+    function (): void {
         $code = '<?php $a && $b || $c;';
         $ast = $this->parser->parse($code);
 

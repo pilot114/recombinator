@@ -11,7 +11,8 @@ beforeEach(
 );
 
 it(
-    'can create colored string with foreground color', function (): void {
+    'can create colored string with foreground color',
+    function (): void {
         $result = $this->differ->getColoredString('test', 'red');
 
         expect($result)->toContain('test')
@@ -20,7 +21,8 @@ it(
 );
 
 it(
-    'can create colored string with background color', function (): void {
+    'can create colored string with background color',
+    function (): void {
         $result = $this->differ->getColoredString('test', null, 'red');
 
         expect($result)->toContain('test')
@@ -29,7 +31,8 @@ it(
 );
 
 it(
-    'returns foreground colors', function (): void {
+    'returns foreground colors',
+    function (): void {
         $colors = $this->differ->getForegroundColors();
 
         expect($colors)->toBeArray()
@@ -40,7 +43,8 @@ it(
 );
 
 it(
-    'returns background colors', function (): void {
+    'returns background colors',
+    function (): void {
         $colors = $this->differ->getBackgroundColors();
 
         expect($colors)->toBeArray()
@@ -51,7 +55,8 @@ it(
 );
 
 it(
-    'detects diff between strings', function (): void {
+    'detects diff between strings',
+    function (): void {
         $a = "hello world";
         $b = "hello universe";
 
@@ -63,7 +68,8 @@ it(
 );
 
 it(
-    'detects no diff for identical strings', function (): void {
+    'detects no diff for identical strings',
+    function (): void {
         $a = "hello world";
         $b = "hello world";
 
@@ -74,7 +80,8 @@ it(
 );
 
 it(
-    'can show not modified lines', function (): void {
+    'can show not modified lines',
+    function (): void {
         $a = "hello\nworld";
         $b = "hello\nuniverse";
 

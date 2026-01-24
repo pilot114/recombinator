@@ -34,9 +34,11 @@ function prepareAST(string $code): array
 }
 
 describe(
-    'Basic separation', function (): void {
+    'Basic separation',
+    function (): void {
         it(
-            'separates pure code into single group', function (): void {
+            'separates pure code into single group',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = 3 * 4;
@@ -54,7 +56,8 @@ describe(
         );
 
         it(
-            'separates mixed effects into different groups', function (): void {
+            'separates mixed effects into different groups',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;              // PURE
             echo "test";             // IO
@@ -72,7 +75,8 @@ describe(
         );
 
         it(
-            'returns empty groups for empty AST', function (): void {
+            'returns empty groups for empty AST',
+            function (): void {
                 $ast = [];
                 $result = $this->separator->separate($ast);
 
@@ -85,9 +89,11 @@ describe(
 );
 
 describe(
-    'Pure computations extraction', function (): void {
+    'Pure computations extraction',
+    function (): void {
         it(
-            'finds pure computation blocks', function (): void {
+            'finds pure computation blocks',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = 3 * 4;
@@ -104,7 +110,8 @@ describe(
         );
 
         it(
-            'identifies compile-time evaluable computations', function (): void {
+            'identifies compile-time evaluable computations',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = strtoupper("hello");
@@ -119,7 +126,8 @@ describe(
         );
 
         it(
-            'excludes non-pure code from pure computations', function (): void {
+            'excludes non-pure code from pure computations',
+            function (): void {
                 $code = '<?php
             echo "test";
             $x = rand(1, 10);
@@ -134,7 +142,8 @@ describe(
         );
 
         it(
-            'finds multiple separate pure blocks', function (): void {
+            'finds multiple separate pure blocks',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             echo "test";
@@ -153,9 +162,11 @@ describe(
 );
 
 describe(
-    'Boundary detection', function (): void {
+    'Boundary detection',
+    function (): void {
         it(
-            'finds boundaries between different effects', function (): void {
+            'finds boundaries between different effects',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;              // PURE
             echo "test";             // IO
@@ -172,7 +183,8 @@ describe(
         );
 
         it(
-            'detects pure to impure transitions', function (): void {
+            'detects pure to impure transitions',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             echo "test";
@@ -197,7 +209,8 @@ describe(
         );
 
         it(
-            'detects impure to pure transitions', function (): void {
+            'detects impure to pure transitions',
+            function (): void {
                 $code = '<?php
             echo "test";
             $x = 1 + 2;
@@ -222,7 +235,8 @@ describe(
         );
 
         it(
-            'has no boundaries for uniform effect code', function (): void {
+            'has no boundaries for uniform effect code',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = 3 * 4;
@@ -239,9 +253,11 @@ describe(
 );
 
 describe(
-    'Effect groups', function (): void {
+    'Effect groups',
+    function (): void {
         it(
-            'groups nodes by effect type', function (): void {
+            'groups nodes by effect type',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = 3 * 4;
@@ -259,7 +275,8 @@ describe(
         );
 
         it(
-            'sorts groups by priority (PURE first)', function (): void {
+            'sorts groups by priority (PURE first)',
+            function (): void {
                 $code = '<?php
             echo "test";
             $x = $_GET["key"];
@@ -278,7 +295,8 @@ describe(
         );
 
         it(
-            'provides group by effect type', function (): void {
+            'provides group by effect type',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             echo "test";
@@ -298,7 +316,8 @@ describe(
         );
 
         it(
-            'calculates reorderable percentage', function (): void {
+            'calculates reorderable percentage',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = 3 * 4;
@@ -319,9 +338,11 @@ describe(
 );
 
 describe(
-    'Statistics', function (): void {
+    'Statistics',
+    function (): void {
         it(
-            'provides comprehensive stats', function (): void {
+            'provides comprehensive stats',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             echo "test";
@@ -341,7 +362,8 @@ describe(
         );
 
         it(
-            'calculates pure percentage correctly', function (): void {
+            'calculates pure percentage correctly',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = 3 * 4;
@@ -356,7 +378,8 @@ describe(
         );
 
         it(
-            'tracks compile-time evaluable count', function (): void {
+            'tracks compile-time evaluable count',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = strtoupper("hello");
@@ -374,9 +397,11 @@ describe(
 );
 
 describe(
-    'Dependency graph integration', function (): void {
+    'Dependency graph integration',
+    function (): void {
         it(
-            'provides access to dependency graph', function (): void {
+            'provides access to dependency graph',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = $x * 3;
@@ -392,7 +417,8 @@ describe(
         );
 
         it(
-            'identifies dependencies in pure computations', function (): void {
+            'identifies dependencies in pure computations',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = $x * 3;
@@ -412,9 +438,11 @@ describe(
 );
 
 describe(
-    'Complex scenarios', function (): void {
+    'Complex scenarios',
+    function (): void {
         it(
-            'handles mixed pure and impure code', function (): void {
+            'handles mixed pure and impure code',
+            function (): void {
                 $code = '<?php
             $username = $_GET["username"] ?? "default";
             $hash = md5($username);
@@ -431,7 +459,8 @@ describe(
         );
 
         it(
-            'handles sequential operations of same type', function (): void {
+            'handles sequential operations of same type',
+            function (): void {
                 $code = '<?php
             echo "Line 1";
             echo "Line 2";
@@ -448,7 +477,8 @@ describe(
         );
 
         it(
-            'separates database operations', function (): void {
+            'separates database operations',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             mysqli_query($conn, "SELECT * FROM users");
@@ -464,7 +494,8 @@ describe(
         );
 
         it(
-            'separates HTTP operations', function (): void {
+            'separates HTTP operations',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             curl_exec($ch);
@@ -480,7 +511,8 @@ describe(
         );
 
         it(
-            'separates non-deterministic operations', function (): void {
+            'separates non-deterministic operations',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $random = rand(1, 100);
@@ -498,9 +530,11 @@ describe(
 );
 
 describe(
-    'Edge cases', function (): void {
+    'Edge cases',
+    function (): void {
         it(
-            'handles single statement', function (): void {
+            'handles single statement',
+            function (): void {
                 $code = '<?php $x = 1 + 2;';
 
                 $ast = prepareAST($code);
@@ -511,7 +545,8 @@ describe(
         );
 
         it(
-            'handles nested blocks', function (): void {
+            'handles nested blocks',
+            function (): void {
                 $code = '<?php
             if (true) {
                 $x = 1 + 2;
@@ -528,7 +563,8 @@ describe(
         );
 
         it(
-            'handles assignments with side effects', function (): void {
+            'handles assignments with side effects',
+            function (): void {
                 $code = '<?php
             $x = $_GET["key"];
             $y = rand(1, 100);
@@ -546,9 +582,11 @@ describe(
 );
 
 describe(
-    'EffectGroup methods', function (): void {
+    'EffectGroup methods',
+    function (): void {
         it(
-            'calculates group size correctly', function (): void {
+            'calculates group size correctly',
+            function (): void {
                 $code = '<?php
             echo "1";
             echo "2";
@@ -568,9 +606,11 @@ describe(
 );
 
 describe(
-    'EffectBoundary methods', function (): void {
+    'EffectBoundary methods',
+    function (): void {
         it(
-            'calculates boundary distance', function (): void {
+            'calculates boundary distance',
+            function (): void {
                 $code = '<?php
             $x = 1;
             echo "test";
@@ -589,9 +629,11 @@ describe(
 );
 
 describe(
-    'PureComputation methods', function (): void {
+    'PureComputation methods',
+    function (): void {
         it(
-            'detects dependencies in computations', function (): void {
+            'detects dependencies in computations',
+            function (): void {
                 $code = '<?php
             $x = 1 + 2;
             $y = $x * 3;

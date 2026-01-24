@@ -36,7 +36,8 @@ class PropertyAccessVisitor extends BaseVisitor
         }
 
         // Обработка $this->property внутри методов
-        if ($node instanceof Node\Expr\PropertyFetch
+        if (
+            $node instanceof Node\Expr\PropertyFetch
             && $node->var instanceof Node\Expr\Variable
             && $node->var->name === 'this'
         ) {

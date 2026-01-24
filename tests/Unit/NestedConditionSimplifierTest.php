@@ -15,7 +15,8 @@ beforeEach(
 );
 
 it(
-    'simplifies nested if conditions', function (): void {
+    'simplifies nested if conditions',
+    function (): void {
         $code = '<?php
     if ($a) {
         if ($b) {
@@ -33,7 +34,8 @@ it(
 );
 
 it(
-    'analyzes nesting complexity', function (): void {
+    'analyzes nesting complexity',
+    function (): void {
         $code = '<?php
     if ($a) {
         if ($b) {
@@ -51,7 +53,8 @@ it(
 );
 
 it(
-    'detects issues with deep nesting', function (): void {
+    'detects issues with deep nesting',
+    function (): void {
         $code = '<?php
     if ($a) {
         if ($b) {
@@ -71,7 +74,8 @@ it(
 );
 
 it(
-    'does not detect issues with shallow nesting', function (): void {
+    'does not detect issues with shallow nesting',
+    function (): void {
         $code = '<?php
     if ($a) {
         return true;
@@ -85,7 +89,8 @@ it(
 );
 
 it(
-    'counts complex nodes correctly', function (): void {
+    'counts complex nodes correctly',
+    function (): void {
         $code = '<?php
     if ($a) {
         if ($b) {
@@ -105,7 +110,8 @@ it(
 );
 
 it(
-    'generates nesting report', function (): void {
+    'generates nesting report',
+    function (): void {
         $code = '<?php
     if ($a) {
         if ($b) {
@@ -123,7 +129,8 @@ it(
 );
 
 it(
-    'handles code without nesting', function (): void {
+    'handles code without nesting',
+    function (): void {
         $code = '<?php
     $x = 1;
     $y = 2;
@@ -137,7 +144,8 @@ it(
 );
 
 it(
-    'handles multiple if statements at same level', function (): void {
+    'handles multiple if statements at same level',
+    function (): void {
         $code = '<?php
     if ($a) {
         echo "a";
@@ -154,7 +162,8 @@ it(
 );
 
 it(
-    'analyzes average nesting', function (): void {
+    'analyzes average nesting',
+    function (): void {
         $code = '<?php
     if ($a) {
         if ($b) {
@@ -173,7 +182,8 @@ it(
 );
 
 it(
-    'does not modify simple code', function (): void {
+    'does not modify simple code',
+    function (): void {
         $code = '<?php
     if ($a) {
         return true;

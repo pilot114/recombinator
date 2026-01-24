@@ -12,7 +12,8 @@ beforeEach(
 );
 
 test(
-    'calculates base complexity as 1 for empty code', function (): void {
+    'calculates base complexity as 1 for empty code',
+    function (): void {
         $code = '<?php ';
         $ast = $this->parser->parse($code);
 
@@ -23,7 +24,8 @@ test(
 );
 
 test(
-    'calculates complexity for if statement', function (): void {
+    'calculates complexity for if statement',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -39,7 +41,8 @@ test(
 );
 
 test(
-    'calculates complexity for if-elseif-else', function (): void {
+    'calculates complexity for if-elseif-else',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             echo "positive";
@@ -59,7 +62,8 @@ test(
 );
 
 test(
-    'calculates complexity for while loop', function (): void {
+    'calculates complexity for while loop',
+    function (): void {
         $code = '<?php
         while ($i < 10) {
             $i++;
@@ -75,7 +79,8 @@ test(
 );
 
 test(
-    'calculates complexity for for loop', function (): void {
+    'calculates complexity for for loop',
+    function (): void {
         $code = '<?php
         for ($i = 0; $i < 10; $i++) {
             echo $i;
@@ -91,7 +96,8 @@ test(
 );
 
 test(
-    'calculates complexity for foreach loop', function (): void {
+    'calculates complexity for foreach loop',
+    function (): void {
         $code = '<?php
         foreach ($arr as $item) {
             echo $item;
@@ -107,7 +113,8 @@ test(
 );
 
 test(
-    'calculates complexity for switch case', function (): void {
+    'calculates complexity for switch case',
+    function (): void {
         $code = '<?php
         switch ($x) {
             case 1:
@@ -131,7 +138,8 @@ test(
 );
 
 test(
-    'calculates complexity for try-catch', function (): void {
+    'calculates complexity for try-catch',
+    function (): void {
         $code = '<?php
         try {
             throw new Exception();
@@ -149,7 +157,8 @@ test(
 );
 
 test(
-    'calculates complexity for multiple catch blocks', function (): void {
+    'calculates complexity for multiple catch blocks',
+    function (): void {
         $code = '<?php
         try {
             throw new Exception();
@@ -169,7 +178,8 @@ test(
 );
 
 test(
-    'calculates complexity for ternary operator', function (): void {
+    'calculates complexity for ternary operator',
+    function (): void {
         $code = '<?php
         $result = $x > 0 ? "positive" : "non-positive";
     ';
@@ -183,7 +193,8 @@ test(
 );
 
 test(
-    'calculates complexity for boolean AND', function (): void {
+    'calculates complexity for boolean AND',
+    function (): void {
         $code = '<?php
         if ($x > 0 && $y > 0) {
             echo "both positive";
@@ -199,7 +210,8 @@ test(
 );
 
 test(
-    'calculates complexity for boolean OR', function (): void {
+    'calculates complexity for boolean OR',
+    function (): void {
         $code = '<?php
         if ($x > 0 || $y > 0) {
             echo "at least one positive";
@@ -215,7 +227,8 @@ test(
 );
 
 test(
-    'calculates complexity for null coalescing operator', function (): void {
+    'calculates complexity for null coalescing operator',
+    function (): void {
         $code = '<?php
         $result = $x ?? "default";
     ';
@@ -229,7 +242,8 @@ test(
 );
 
 test(
-    'calculates complexity for match expression', function (): void {
+    'calculates complexity for match expression',
+    function (): void {
         $code = '<?php
         $result = match($x) {
             1 => "one",
@@ -248,7 +262,8 @@ test(
 );
 
 test(
-    'calculates complexity for nested if statements', function (): void {
+    'calculates complexity for nested if statements',
+    function (): void {
         $code = '<?php
         if ($x > 0) {
             if ($y > 0) {
@@ -266,7 +281,8 @@ test(
 );
 
 test(
-    'calculates complexity for complex function', function (): void {
+    'calculates complexity for complex function',
+    function (): void {
         $code = '<?php
         function complexFunction($x, $y) {
             if ($x > 0) {
@@ -293,35 +309,40 @@ test(
 );
 
 test(
-    'determines complexity level as simple', function (): void {
+    'determines complexity level as simple',
+    function (): void {
         expect($this->calculator->getComplexityLevel(5))->toBe('simple');
         expect($this->calculator->getComplexityLevel(10))->toBe('simple');
     }
 );
 
 test(
-    'determines complexity level as moderate', function (): void {
+    'determines complexity level as moderate',
+    function (): void {
         expect($this->calculator->getComplexityLevel(11))->toBe('moderate');
         expect($this->calculator->getComplexityLevel(20))->toBe('moderate');
     }
 );
 
 test(
-    'determines complexity level as complex', function (): void {
+    'determines complexity level as complex',
+    function (): void {
         expect($this->calculator->getComplexityLevel(21))->toBe('complex');
         expect($this->calculator->getComplexityLevel(50))->toBe('complex');
     }
 );
 
 test(
-    'determines complexity level as very complex', function (): void {
+    'determines complexity level as very complex',
+    function (): void {
         expect($this->calculator->getComplexityLevel(51))->toBe('very_complex');
         expect($this->calculator->getComplexityLevel(100))->toBe('very_complex');
     }
 );
 
 test(
-    'checks if complexity is acceptable', function (): void {
+    'checks if complexity is acceptable',
+    function (): void {
         expect($this->calculator->isAcceptable(5))->toBeTrue();
         expect($this->calculator->isAcceptable(10))->toBeTrue();
         expect($this->calculator->isAcceptable(11))->toBeFalse();
@@ -329,14 +350,16 @@ test(
 );
 
 test(
-    'checks if complexity is acceptable with custom threshold', function (): void {
+    'checks if complexity is acceptable with custom threshold',
+    function (): void {
         expect($this->calculator->isAcceptable(15, 20))->toBeTrue();
         expect($this->calculator->isAcceptable(25, 20))->toBeFalse();
     }
 );
 
 test(
-    'calculates average complexity', function (): void {
+    'calculates average complexity',
+    function (): void {
         $code = '<?php
         function simple() {
             return 1;
@@ -369,7 +392,8 @@ test(
 );
 
 test(
-    'calculates zero average for empty array', function (): void {
+    'calculates zero average for empty array',
+    function (): void {
         $average = $this->calculator->calculateAverage([]);
         expect($average)->toBe(0.0);
     }

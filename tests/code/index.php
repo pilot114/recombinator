@@ -28,7 +28,12 @@ echo $result . "\n";
 
 $result = $auth->login('test', 'test');
 echo $result . "\n";
-;;;;;;
+;
+;
+;
+;
+;
+;
 ?>
 
 <div>test html</div>
