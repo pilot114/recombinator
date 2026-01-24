@@ -12,6 +12,13 @@ use PhpParser\Node\Stmt\Use_;
 use PhpParser\Node\Stmt\UseUse;
 use PhpParser\NodeDumper;
 
+/**
+ * Цветной вывод AST дерева
+ *
+ * Расширяет стандартный NodeDumper из PhpParser, добавляя цветное форматирование
+ * для улучшения читаемости при отладке и анализе AST. Использует ANSI escape коды
+ * для подсветки различных элементов дерева (типы узлов, свойства, значения).
+ */
 class PrettyDumper extends NodeDumper
 {
     protected bool $dumpPositions = false;

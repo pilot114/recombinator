@@ -11,7 +11,26 @@ use Recombinator\Domain\NamingSuggester;
 use Recombinator\Domain\StructureImprovement;
 
 /**
- * Visitor для поиска кандидатов на интерактивную правку
+ * Visitor для поиска мест в коде, требующих улучшения
+ *
+ * Анализирует AST и выявляет потенциальные проблемы: плохие имена переменных,
+ * сложные выражения, глубокую вложенность, магические числа. Создает список
+ * кандидатов для интерактивного редактирования с приоритетами и рекомендациями.
+ *
+ * Пример использования:
+ * ```php
+ * $visitor = new InteractiveEditVisitor(
+ *     new NamingSuggester(),
+ *     new CognitiveComplexityCalculator(),
+ *     complexityThreshold: 5,
+ *     maxNestingDepth: 3,
+ *     minNameQuality: 5
+ * );
+ * $traverser = new NodeTraverser();
+ * $traverser->addVisitor($visitor);
+ * $traverser->traverse($ast);
+ * $result = $visitor->getResult();
+ * ```
  */
 class InteractiveEditVisitor extends NodeVisitorAbstract
 {

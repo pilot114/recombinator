@@ -8,17 +8,27 @@ use PhpParser\Node;
 use Recombinator\Domain\SideEffectType;
 
 /**
- * Interface for side effect classifiers
+ * Интерфейс для классификации побочных эффектов
+ *
+ * Определяет контракт для анализа и классификации узлов AST
+ * по типам побочных эффектов (PURE, IO, DATABASE и т.д.).
+ * Используется для разделения кода на группы по типу эффектов.
  */
 interface EffectClassifierInterface
 {
     /**
-     * Classify node for side effects
+     * Классифицирует узел по типу побочного эффекта
+     *
+     * @param Node $node Узел для анализа
+     * @return SideEffectType Тип побочного эффекта
      */
     public function classify(Node $node): SideEffectType;
 
     /**
-     * Check if function is pure
+     * Проверяет, является ли функция чистой
+     *
+     * @param string $functionName Имя функции
+     * @return bool True, если функция не имеет побочных эффектов
      */
     public function isPureFunction(string $functionName): bool;
 }
