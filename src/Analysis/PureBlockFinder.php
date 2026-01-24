@@ -72,7 +72,7 @@ class PureBlockFinder
             if ($this->isPureNode($stmt)) {
                 // Узел чистый - добавляем в текущий блок
                 if ($currentBlock === []) {
-                    $currentStart = $index;
+                    $currentStart = (int) $index;
                 }
 
                 $currentBlock[] = $stmt;
@@ -81,7 +81,7 @@ class PureBlockFinder
                 if (count($currentBlock) >= $this->minBlockSize) {
                     $this->blocks[] = [
                         'start' => $currentStart,
-                        'end' => $index - 1,
+                        'end' => (int) $index - 1,
                         'nodes' => $currentBlock,
                         'size' => count($currentBlock),
                     ];
@@ -201,10 +201,11 @@ class PureBlockFinder
      * Находит чистые блоки внутри составных узлов (if, while, etc.)
      *
      * @param  Node[] $ast AST с помеченными узлами
-     * @return array<string, array<int, array{start: int, end: int, nodes: Node[], size: int, context: string}>>
+     * @return array<string, array<int, array<int, array{start: int, end: int, nodes: array<Node>, size: int, context: string}>>>
      */
     public function findNestedBlocks(array $ast): array
     {
+        /** @var array<string, array<int, array<int, array{start: int, end: int, nodes: array<Node>, size: int, context: string}>>> $nestedBlocks */
         $nestedBlocks = [];
 
         foreach ($ast as $node) {
@@ -214,6 +215,9 @@ class PureBlockFinder
 
             // Ищем составные statement'ы
             if ($node instanceof Node\Stmt\If_) {
+                if (!isset($nestedBlocks['if'])) {
+                    $nestedBlocks['if'] = [];
+                }
                 $nestedBlocks['if'][] = $this->findBlocksInContext($node->stmts, 'if_then');
                 if ($node->else instanceof \PhpParser\Node\Stmt\Else_) {
                     $nestedBlocks['if'][] = $this->findBlocksInContext($node->else->stmts, 'if_else');
@@ -223,16 +227,34 @@ class PureBlockFinder
                     $nestedBlocks['if'][] = $this->findBlocksInContext($elseif->stmts, 'if_elseif');
                 }
             } elseif ($node instanceof Node\Stmt\While_) {
+                if (!isset($nestedBlocks['while'])) {
+                    $nestedBlocks['while'] = [];
+                }
                 $nestedBlocks['while'][] = $this->findBlocksInContext($node->stmts, 'while_body');
             } elseif ($node instanceof Node\Stmt\For_) {
+                if (!isset($nestedBlocks['for'])) {
+                    $nestedBlocks['for'] = [];
+                }
                 $nestedBlocks['for'][] = $this->findBlocksInContext($node->stmts, 'for_body');
             } elseif ($node instanceof Node\Stmt\Foreach_) {
+                if (!isset($nestedBlocks['foreach'])) {
+                    $nestedBlocks['foreach'] = [];
+                }
                 $nestedBlocks['foreach'][] = $this->findBlocksInContext($node->stmts, 'foreach_body');
             } elseif ($node instanceof Node\Stmt\Function_) {
+                if (!isset($nestedBlocks['function'])) {
+                    $nestedBlocks['function'] = [];
+                }
                 $nestedBlocks['function'][] = $this->findBlocksInContext($node->stmts, 'function_' . ($node->name->name ?? 'anonymous'));
             } elseif ($node instanceof Node\Stmt\ClassMethod) {
+                if (!isset($nestedBlocks['method'])) {
+                    $nestedBlocks['method'] = [];
+                }
                 $nestedBlocks['method'][] = $this->findBlocksInContext($node->stmts ?? [], 'method_' . $node->name->name);
             } elseif ($node instanceof Node\Stmt\TryCatch) {
+                if (!isset($nestedBlocks['try'])) {
+                    $nestedBlocks['try'] = [];
+                }
                 $nestedBlocks['try'][] = $this->findBlocksInContext($node->stmts, 'try_block');
                 foreach ($node->catches as $catch) {
                     $nestedBlocks['try'][] = $this->findBlocksInContext($catch->stmts, 'catch_block');
@@ -254,7 +276,7 @@ class PureBlockFinder
      * @param  Node[] $stmts   Statement'ы для
      *                         анализа
      * @param  string $context Контекст (например, 'if_then', 'while_body')
-     * @return array{start: int, end: int, nodes: Node[], size: int, context: string}[]
+     * @return array<int, array{start: int, end: int, nodes: array<Node>, size: int, context: string}>
      */
     private function findBlocksInContext(array $stmts, string $context): array
     {
@@ -265,7 +287,7 @@ class PureBlockFinder
         foreach ($stmts as $index => $stmt) {
             if ($this->isPureNode($stmt)) {
                 if ($currentBlock === []) {
-                    $currentStart = $index;
+                    $currentStart = (int) $index;
                 }
 
                 $currentBlock[] = $stmt;
@@ -273,7 +295,7 @@ class PureBlockFinder
                 if (count($currentBlock) >= $this->minBlockSize) {
                     $blocks[] = [
                         'start' => $currentStart,
-                        'end' => $index - 1,
+                        'end' => (int) $index - 1,
                         'nodes' => $currentBlock,
                         'size' => count($currentBlock),
                         'context' => $context,

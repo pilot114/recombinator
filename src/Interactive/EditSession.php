@@ -183,6 +183,7 @@ class EditSession
             return false;
         }
 
+        /** @var array<string, mixed> $preferences */
         $this->userPreferences = array_merge($this->userPreferences, $preferences);
         return true;
     }

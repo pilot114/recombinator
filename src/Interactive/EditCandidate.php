@@ -48,6 +48,9 @@ class EditCandidate
        // Средний (желательно исправить)
     public const PRIORITY_LOW = 0;      // Низкий (опционально)
 
+    /**
+     * @param array<string> $suggestions
+     */
     public function __construct(
         private readonly Node $node,
         private readonly string $issueType,
@@ -134,8 +137,10 @@ class EditCandidate
 
         if ($this->suggestions !== []) {
             $output .= "Suggestions:\n";
-            foreach ($this->suggestions as $i => $suggestion) {
-                $output .= sprintf("  %d) %s\n", $i + 1, $suggestion);
+            $index = 1;
+            foreach ($this->suggestions as $suggestion) {
+                $output .= sprintf("  %d) %s\n", $index, (string) $suggestion);
+                $index++;
             }
         }
 

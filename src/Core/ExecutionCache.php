@@ -18,17 +18,15 @@ class ExecutionCache
 {
     /**
      * Хранилище кеша
-     */
-    /**
-     * @var array<mixed> 
+     *
+     * @var array<string, mixed>
      */
     private array $cache = [];
 
     /**
      * Статистика кеша
-     */
-    /**
-     * @var array<mixed> 
+     *
+     * @var array{hits: int, misses: int, sets: int}
      */
     private array $stats = [
         'hits' => 0,
@@ -38,9 +36,8 @@ class ExecutionCache
 
     /**
      * Порядок доступа к элементам (для LRU)
-     */
-    /**
-     * @var array<mixed> 
+     *
+     * @var array<int, string>
      */
     private array $accessOrder = [];
 
@@ -119,7 +116,7 @@ class ExecutionCache
     /**
      * Возвращает статистику кеша
      *
-     * @return array<mixed>
+     * @return array{hits: int, misses: int, sets: int, size: int, max_size: int, hit_rate: float}
      */
     public function getStats(): array
     {
@@ -174,13 +171,15 @@ class ExecutionCache
         }
 
         $lruKey = array_shift($this->accessOrder);
-        unset($this->cache[$lruKey]);
+        if ($lruKey !== null) {
+            unset($this->cache[$lruKey]);
+        }
     }
 
     /**
      * Экспортирует кеш для сохранения
      *
-     * @return array<mixed>
+     * @return array{cache: array<string, mixed>, accessOrder: array<int, string>, stats: array{hits: int, misses: int, sets: int}}
      */
     public function export(): array
     {
@@ -193,6 +192,8 @@ class ExecutionCache
 
     /**
      * Импортирует кеш из ранее сохраненных данных
+     *
+     * @param array{cache?: array<string, mixed>, accessOrder?: array<int, string>, stats?: array{hits: int, misses: int, sets: int}} $data
      */
     public function import(array $data): void
     {
@@ -208,7 +209,7 @@ class ExecutionCache
     /**
      * Возвращает все ключи в кеше
      *
-     * @return array<mixed>
+     * @return array<int, string>
      */
     public function keys(): array
     {
@@ -218,7 +219,7 @@ class ExecutionCache
     /**
      * Возвращает все значения в кеше
      *
-     * @return array<mixed>
+     * @return array<int, mixed>
      */
     public function values(): array
     {

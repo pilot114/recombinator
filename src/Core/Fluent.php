@@ -59,6 +59,7 @@ class Fluent
             $traverser->addVisitor($visitor);
         }
 
-        return $traverser->traverse($this->ast);
+        $result = $traverser->traverse($this->ast);
+        return array_values($result);
     }
 }

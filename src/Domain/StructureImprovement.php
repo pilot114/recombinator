@@ -32,6 +32,9 @@ class StructureImprovement
 
     public const TYPE_MERGE_OPERATIONS = 'merge_operations';
 
+    /**
+     * @param array<string, mixed> $metadata
+     */
     public function __construct(
         private readonly string $type,
         private readonly string $description,
@@ -73,10 +76,13 @@ class StructureImprovement
      */
     public function getExpectedBenefit(): string
     {
+        $complexityReduction = $this->metadata['complexity_reduction'] ?? 'N/A';
+        $depthReduction = $this->metadata['depth_reduction'] ?? 'N/A';
+
         return match ($this->type) {
-            self::TYPE_EXTRACT_FUNCTION => 'Reduce complexity by ' . ($this->metadata['complexity_reduction'] ?? 'N/A'),
+            self::TYPE_EXTRACT_FUNCTION => 'Reduce complexity by ' . (is_scalar($complexityReduction) ? (string) $complexityReduction : 'N/A'),
             self::TYPE_SIMPLIFY_CONDITION => 'Simplify logic, improve readability',
-            self::TYPE_REDUCE_NESTING => 'Reduce nesting depth by ' . ($this->metadata['depth_reduction'] ?? 'N/A'),
+            self::TYPE_REDUCE_NESTING => 'Reduce nesting depth by ' . (is_scalar($depthReduction) ? (string) $depthReduction : 'N/A'),
             self::TYPE_SPLIT_LOGIC => 'Separate concerns, improve maintainability',
             self::TYPE_INTRODUCE_VARIABLE => 'Improve readability, reduce expression complexity',
             self::TYPE_MERGE_OPERATIONS => 'Reduce redundancy, improve performance',
@@ -89,7 +95,8 @@ class StructureImprovement
      */
     public function getPriority(): int
     {
-        return $this->metadata['priority'] ?? 5;
+        $priority = $this->metadata['priority'] ?? 5;
+        return is_int($priority) ? $priority : (is_numeric($priority) ? (int) $priority : 5);
     }
 
     /**
@@ -98,7 +105,7 @@ class StructureImprovement
     public function format(): string
     {
         $line = $this->targetNode->getStartLine();
-        $location = $line !== null ? 'Line ' . $line : "Unknown location";
+        $location = 'Line ' . $line;
 
         return sprintf(
             "[%s] %s\n  %s\n  Expected benefit: %s\n",

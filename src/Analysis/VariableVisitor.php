@@ -89,19 +89,19 @@ class VariableVisitor extends NodeVisitorAbstract
     }
 
     /**
-     * @return array<mixed>
+     * @return array<string>
      */
     public function getUsedVariables(): array
     {
-        return array_unique($this->used);
+        return array_values(array_unique($this->used));
     }
 
     /**
-     * @return array<mixed>
+     * @return array<string>
      */
     public function getDefinedVariables(): array
     {
-        return array_unique($this->defined);
+        return array_values(array_unique($this->defined));
     }
 
     /**

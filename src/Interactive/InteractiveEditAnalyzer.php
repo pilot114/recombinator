@@ -61,8 +61,8 @@ class InteractiveEditAnalyzer
     public function analyze(array $ast): InteractiveEditResult
     {
         $visitor = new InteractiveEditVisitor(
-            $this->namingSuggester,
-            $this->complexityCalculator,
+            $this->namingSuggester ?? new NamingSuggester(),
+            $this->complexityCalculator ?? new CognitiveComplexityCalculator(),
             $this->complexityThreshold,
             $this->maxNestingDepth,
             $this->minNameQuality

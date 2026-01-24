@@ -27,7 +27,7 @@ class PrettyDumper extends NodeDumper
      * @param Node|array<int, Node> $node
      */
     #[\Override]
-    public function dump($node, ?string $code = null): string
+    public function dump(mixed $node, ?string $code = null): string
     {
         return $this->dumpRecursive($node);
     }
@@ -36,7 +36,7 @@ class PrettyDumper extends NodeDumper
      * @param  Node|array<int, Node>|Comment|mixed $node
      * @return string
      */
-    protected function dumpRecursive($node, bool $isChild = false)
+    protected function dumpRecursive(mixed $node, bool $isChild = false): string
     {
         if ($node instanceof Node) {
             // TODO: можно выводить кастомные аттрибуты
