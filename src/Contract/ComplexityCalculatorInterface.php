@@ -7,19 +7,27 @@ namespace Recombinator\Contract;
 use PhpParser\Node;
 
 /**
- * Interface for complexity calculators
+ * Интерфейс для калькуляторов сложности кода
+ *
+ * Определяет контракт для вычисления различных метрик сложности
+ * (когнитивной, цикломатической и т.д.). Используется для оценки
+ * сложности блоков кода и принятия решений об их рефакторинге.
  */
 interface ComplexityCalculatorInterface
 {
     /**
-     * Calculate complexity for given nodes
+     * Вычисляет сложность для заданных узлов
      *
-     * @param array<Node> $nodes
+     * @param array<Node> $nodes Узлы для анализа
+     * @return int Значение сложности
      */
     public function calculate(array $nodes): int;
 
     /**
-     * Get complexity level (low, moderate, high, very high) for given value
+     * Определяет уровень сложности
+     *
+     * @param int $value Значение сложности
+     * @return string Уровень (low, moderate, high, very high)
      */
     public function getComplexityLevel(int $value): string;
 }
