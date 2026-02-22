@@ -9,7 +9,6 @@ use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Domain\ScopeStore;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
-use Recombinator\Transformation\Visitor\RemoveVisitor;
 
 beforeEach(
     function (): void {
@@ -32,7 +31,6 @@ echo $test;';
         $traverser->addVisitor(new ParentConnectingVisitor());
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -55,7 +53,6 @@ echo $name;';
         $traverser->addVisitor(new ParentConnectingVisitor());
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -79,7 +76,6 @@ if ($flag) {
         $traverser->addVisitor(new ParentConnectingVisitor());
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -101,7 +97,6 @@ echo $pi;';
         $traverser->addVisitor(new ParentConnectingVisitor());
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -147,7 +142,6 @@ echo $val[0];';
         $traverser->addVisitor(new ParentConnectingVisitor());
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -175,7 +169,6 @@ echo $a + $b + $c;';
         $traverser->addVisitor(new ParentConnectingVisitor());
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -198,7 +191,6 @@ echo $test;';
         $traverser->addVisitor(new ParentConnectingVisitor());
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -241,7 +233,6 @@ echo "Hello, " . $name;';
         $traverser->addVisitor(new ParentConnectingVisitor());
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 

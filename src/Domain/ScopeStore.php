@@ -24,6 +24,18 @@ namespace Recombinator\Domain;
  */
 class ScopeStore
 {
+    private static ?self $default = null;
+
+    public static function default(): self
+    {
+        return self::$default ??= new self();
+    }
+
+    public static function reset(): void
+    {
+        self::$default = null;
+    }
+
     /**
      * @var array{vars?: array<string, mixed>, consts?: array<string, mixed>, functions?: array<string, mixed>, classes?: array<string, mixed>}
      */

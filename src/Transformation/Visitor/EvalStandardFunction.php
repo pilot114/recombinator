@@ -12,6 +12,7 @@ use PhpParser\Node\Name;
  * Выжный момент - некоторые функции дают детерминированный результат даже
  * на переменных (например, is_array)
  */
+#[VisitorMeta('Вычисление детерминированных функций (is_array([]) → true)')]
 class EvalStandardFunction extends BaseVisitor
 {
     /**
@@ -62,13 +63,13 @@ class EvalStandardFunction extends BaseVisitor
         return null;
     }
 
-    protected function isArrayHandler(Node\Expr\FuncCall $node): \PhpParser\Node\Name
+    protected function isArrayHandler(Node\Expr\FuncCall $node): Node\Expr\ConstFetch
     {
         if ($node->args[0]->value instanceof Node\Expr\Array_) {
-            return new Name('true');
+            return new Node\Expr\ConstFetch(new Name('true'));
         }
 
-        return new Name('false');
+        return new Node\Expr\ConstFetch(new Name('false'));
     }
 
     /**

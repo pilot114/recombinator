@@ -6,7 +6,6 @@ use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
-use Recombinator\Transformation\Visitor\RemoveVisitor;
 
 beforeEach(
     function (): void {
@@ -132,7 +131,6 @@ if (isset($value)) {
         $ast = $this->parser->parse($code);
         $traverser = new NodeTraverser();
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 

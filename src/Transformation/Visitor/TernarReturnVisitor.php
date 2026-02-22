@@ -14,6 +14,7 @@ use Recombinator\Domain\ScopeStore;
  * на
  * return x ? a : b;
  */
+#[VisitorMeta('if(x){return a;} return b; → return x ? a : b')]
 class TernarReturnVisitor extends BaseVisitor
 {
     public function enterNode(Node $node): int|Node|array|null

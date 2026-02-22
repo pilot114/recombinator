@@ -10,6 +10,7 @@ use PhpParser\Node\Stmt\Expression;
  * - Бинарные операции (математика, логика, конкатенация)
  * - if (isset(var)) var2 = var;    =>    var2 = var ?? var2;
  */
+#[VisitorMeta('Вычисление константных выражений; if(isset($x)){$y=$x} → $y = $x ?? $y ?? null')]
 class BinaryAndIssetVisitor extends BaseVisitor
 {
     public function enterNode(Node $node): int|Node|array|null
@@ -26,8 +27,19 @@ class BinaryAndIssetVisitor extends BaseVisitor
             if ($firstStmt instanceof Expression) {
                 $expr = $firstStmt->expr;
                 if ($expr instanceof Assign) {
-                    $newExp = new Node\Expr\BinaryOp\Coalesce($expr->expr, $expr->var);
-                    $newAssign = new Assign($expr->var, $newExp);
+                    // Safe default: var ?? null prevents "Undefined variable" warning
+                    // when $var had no prior assignment, while still preserving an
+                    // existing value when $source is absent.
+                    //
+                    // IMPORTANT: clone $expr->var for the RHS fallback so that LHS and
+                    // RHS are distinct AST node objects. If the same object appears in
+                    // both positions, NodeConnectingVisitor overwrites the 'parent'
+                    // attribute with the RHS parent (Coalesce), causing VarToScalarVisitor
+                    // to misidentify the LHS as a read and incorrectly substitute it.
+                    $null       = new Node\Expr\ConstFetch(new Node\Name('null'));
+                    $safeVar    = new Node\Expr\BinaryOp\Coalesce(clone $expr->var, $null);
+                    $newExp     = new Node\Expr\BinaryOp\Coalesce($expr->expr, $safeVar);
+                    $newAssign  = new Assign($expr->var, $newExp);
                     $node->setAttribute('replace', new Expression($newAssign));
                 }
             }

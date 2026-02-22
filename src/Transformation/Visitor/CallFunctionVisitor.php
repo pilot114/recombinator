@@ -10,10 +10,14 @@ use Recombinator\Domain\ScopeStore;
 /**
  * Замена вызова функции телом функции
  */
+#[VisitorMeta('Подстановка тел функций на место вызовов (инлайн)')]
 class CallFunctionVisitor extends BaseVisitor
 {
-    public function __construct(protected \Recombinator\Domain\ScopeStore $scopeStore)
+    protected ScopeStore $scopeStore;
+
+    public function __construct(?ScopeStore $scopeStore = null)
     {
+        $this->scopeStore = $scopeStore ?? ScopeStore::default();
     }
 
     public function enterNode(Node $node): ?Node

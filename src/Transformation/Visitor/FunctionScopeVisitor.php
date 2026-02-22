@@ -11,6 +11,7 @@ use Recombinator\Domain\ScopeStore;
  *
  * Если такая замена уже выполнена, отправляем выражение в хранилище контекстов (scopeStore) и удаляем файл
  */
+#[VisitorMeta('Замена тела функции на однострочник → ScopeStore (работает пофайлово)')]
 class FunctionScopeVisitor extends BaseVisitor
 {
     /**
@@ -19,11 +20,17 @@ class FunctionScopeVisitor extends BaseVisitor
     protected $isGlobalScope;
 
 
+    protected ScopeStore $scopeStore;
+
     /**
      * @param mixed $cacheDir
      */
-    public function __construct(protected \Recombinator\Domain\ScopeStore $scopeStore, protected $cacheDir)
+    public function __construct(?ScopeStore $scopeStore = null, protected string $cacheDir = '')
     {
+        $this->scopeStore = $scopeStore ?? ScopeStore::default();
+        if ($this->cacheDir === '') {
+            $this->cacheDir = sys_get_temp_dir() . '/recombinator';
+        }
     }
 
     #[\Override]

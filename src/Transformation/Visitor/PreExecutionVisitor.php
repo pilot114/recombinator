@@ -26,6 +26,7 @@ use Recombinator\Domain\ScopeStore;
  * Visitor работает только с чистыми функциями (без побочных эффектов)
  * и константными аргументами для обеспечения безопасности и детерминизма.
  */
+#[VisitorMeta('Предвыполнение чистых функций/операций в compile-time через Sandbox')]
 class PreExecutionVisitor extends BaseVisitor
 {
     private readonly Sandbox $sandbox;
@@ -34,8 +35,11 @@ class PreExecutionVisitor extends BaseVisitor
 
     private int $failedCount = 0;
 
-    public function __construct(private readonly ScopeStore $scopeStore = new ScopeStore())
+    private readonly ScopeStore $scopeStore;
+
+    public function __construct(?ScopeStore $scopeStore = null)
     {
+        $this->scopeStore = $scopeStore ?? ScopeStore::default();
         $cache = new ExecutionCache();
         $this->sandbox = new Sandbox($cache);
     }
@@ -45,29 +49,9 @@ class PreExecutionVisitor extends BaseVisitor
      */
     public function enterNode(Node $node)
     {
-        // Обрабатываем вызовы функций
+        // Обрабатываем только вызовы чистых функций с константными аргументами
         if ($node instanceof Node\Expr\FuncCall) {
             return $this->handleFunctionCall($node);
-        }
-
-        // Обрабатываем бинарные операции
-        if ($node instanceof Node\Expr\BinaryOp) {
-            return $this->handleBinaryOp($node);
-        }
-
-        // Обрабатываем унарные операции
-        if (
-            $node instanceof Node\Expr\UnaryMinus
-            || $node instanceof Node\Expr\UnaryPlus
-            || $node instanceof Node\Expr\BitwiseNot
-            || $node instanceof Node\Expr\BooleanNot
-        ) {
-            return $this->handleUnaryOp($node);
-        }
-
-        // Обрабатываем тернарные операции с константными условиями
-        if ($node instanceof Node\Expr\Ternary) {
-            return $this->handleTernary($node);
         }
 
         return null;
@@ -94,76 +78,6 @@ class PreExecutionVisitor extends BaseVisitor
 
         $this->failedCount++;
         return null;
-    }
-
-    /**
-     * Обрабатывает бинарные операции
-     */
-    private function handleBinaryOp(Node\Expr\BinaryOp $node): ?Node
-    {
-        // Проверяем, что оба операнда константные
-        if (!$this->isConstant($node->left) || !$this->isConstant($node->right)) {
-            return null;
-        }
-
-        // Пытаемся выполнить операцию
-        $result = $this->sandbox->execute($node, $this->buildContext());
-
-        if ($result !== null && !$this->sandbox->isError($result)) {
-            $this->executedCount++;
-            return $this->convertToNode($result);
-        }
-
-        $this->failedCount++;
-        return null;
-    }
-
-    /**
-     * Обрабатывает унарные операции
-     */
-    private function handleUnaryOp(Node\Expr\UnaryMinus|Node\Expr\UnaryPlus|Node\Expr\BitwiseNot|Node\Expr\BooleanNot $node): ?Node
-    {
-        // Проверяем, что операнд константный
-        if (!$this->isConstant($node->expr)) {
-            return null;
-        }
-
-        // Пытаемся выполнить операцию
-        $result = $this->sandbox->execute($node, $this->buildContext());
-
-        if ($result !== null && !$this->sandbox->isError($result)) {
-            $this->executedCount++;
-            return $this->convertToNode($result);
-        }
-
-        $this->failedCount++;
-        return null;
-    }
-
-    /**
-     * Обрабатывает тернарные операции
-     */
-    private function handleTernary(Node\Expr\Ternary $node): ?Node
-    {
-        // Проверяем, что условие константное
-        if (!$this->isConstant($node->cond)) {
-            return null;
-        }
-
-        // Вычисляем условие
-        $condResult = $this->sandbox->execute($node->cond, $this->buildContext());
-
-        if ($condResult === null || $this->sandbox->isError($condResult)) {
-            return null;
-        }
-
-        // Возвращаем соответствующую ветку
-        $this->executedCount++;
-        if ($condResult) {
-            return $node->if ?? $node->cond;
-        }
-
-        return $node->else;
     }
 
     /**
@@ -284,10 +198,16 @@ class PreExecutionVisitor extends BaseVisitor
     {
         $context = [];
 
-        // Добавляем глобальные константы
+        // Добавляем глобальные константы; AST-узлы (Node\Scalar) раскрываем до PHP-значений
         $globalConsts = $this->scopeStore->getAllGlobalConsts();
         foreach ($globalConsts as $name => $value) {
-            $context[$name] = $value;
+            if ($value instanceof Node\Scalar) {
+                $context[$name] = $value->value;
+            } elseif (is_scalar($value) || $value === null) {
+                $context[$name] = $value;
+            }
+
+            // Пропускаем всё остальное (AST-объекты с круговыми ссылками)
         }
 
         return $context;
