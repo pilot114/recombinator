@@ -10,9 +10,9 @@ require __DIR__ . '/functions.php';
  */
 class Auth
 {
-    const HASH = 'test_test';
+    const string HASH = 'test_test';
 
-    public $test = 'empty';
+    public string $test = 'empty';
 
     public function login(string $username, string $password): string
     {

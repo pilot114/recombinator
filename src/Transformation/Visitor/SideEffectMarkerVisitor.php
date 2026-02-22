@@ -25,6 +25,7 @@ use Recombinator\Domain\SideEffectType;
  * $effect = $node->getAttribute('side_effect'); // SideEffectType
  * ```
  */
+#[VisitorMeta('Маркировка каждого узла AST типом побочного эффекта (pure/IO/HTTP/…)')]
 class SideEffectMarkerVisitor extends BaseVisitor
 {
     /**

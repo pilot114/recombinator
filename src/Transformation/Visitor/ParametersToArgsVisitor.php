@@ -4,6 +4,7 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
 
+#[VisitorMeta('Подстановка аргументов вместо параметров [внутренний хелпер CallFunctionVisitor]')]
 class ParametersToArgsVisitor extends BaseVisitor
 {
     /**

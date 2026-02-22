@@ -18,19 +18,24 @@
 class Calculator
 {
     const PI = 3.14159;
+
     const E = 2.71828;
+
     const PRECISION = 2;
+
     public function circleArea($radius): string
     {
         $area = self::PI * $radius * $radius;
         if ($area > 100) {
             return "large";
         }
+
         return "small";
     }
 }
-$defaultX = $_GET["x"] ?? $defaultX;
-$defaultY = $_GET["y"] ?? $defaultY;
+
+$defaultX = $_GET["x"] ?? $defaultX ?? null;
+$defaultY = $_GET["y"] ?? $defaultY ?? null;
 $finalX = $defaultX + 10;
 $finalY = $defaultY + 20;
 $totalMultiplier = 6;

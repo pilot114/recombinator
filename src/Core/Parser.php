@@ -20,7 +20,6 @@ use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\EvalStandardFunction;
 use Recombinator\Transformation\Visitor\FunctionScopeVisitor;
 use Recombinator\Transformation\Visitor\IncludeVisitor;
-use Recombinator\Transformation\Visitor\RemoveVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 use Recombinator\Transformation\Visitor\TernarReturnVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
@@ -130,7 +129,6 @@ class Parser
         $ss = new ScopeStore();
         $this->visitors = [
             new BinaryAndIssetVisitor(),
-            new RemoveVisitor(),
             new ConcatAssertVisitor(),
             new EvalStandardFunction(),
             new VarToScalarVisitor($ss),

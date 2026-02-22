@@ -7,7 +7,6 @@ use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Domain\ScopeStore;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
-use Recombinator\Transformation\Visitor\RemoveVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 
 beforeEach(
@@ -35,7 +34,6 @@ class TestClass {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -62,7 +60,6 @@ class Auth {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -88,7 +85,6 @@ $key = Config::API_KEY;';
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -117,7 +113,6 @@ class Constants {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -169,7 +164,6 @@ class Flags {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -195,7 +189,6 @@ class Math {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor($this->visitor);
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 

@@ -8,10 +8,14 @@ use Recombinator\Domain\ScopeStore;
 /**
  * Замена обращений к свойствам объектов их значениями
  */
+#[VisitorMeta('Замена $obj->property на значения из ScopeStore')]
 class PropertyAccessVisitor extends BaseVisitor
 {
-    public function __construct(protected \Recombinator\Domain\ScopeStore $scopeStore)
+    protected ScopeStore $scopeStore;
+
+    public function __construct(?ScopeStore $scopeStore = null)
     {
+        $this->scopeStore = $scopeStore ?? ScopeStore::default();
     }
 
     public function enterNode(Node $node)

@@ -8,15 +8,10 @@ use Recombinator\Domain\ScopeStore;
 /**
  * Подмена переменных их значениями (скаляры)
  */
+#[VisitorMeta('Подстановка скалярных переменных вместо промежуточных присваиваний')]
 class VarToScalarVisitor extends BaseVisitor
 {
-    /**
-     * @var \Recombinator\Domain\ScopeStore
-     */
-    /**
-     * @var \Recombinator\Domain\ScopeStore
-     */
-    public $scopeStore;
+    public ScopeStore $scopeStore;
 
     /**
      * TODO не всегда возможно удалить
@@ -31,9 +26,9 @@ class VarToScalarVisitor extends BaseVisitor
      */
     public $maybeRemove;
 
-    public function __construct(ScopeStore $scopeStore)
+    public function __construct(?ScopeStore $scopeStore = null)
     {
-        $this->scopeStore = $scopeStore;
+        $this->scopeStore = $scopeStore ?? ScopeStore::default();
     }
 
     public function enterNode(Node $node): int|Node|array|null
@@ -80,29 +75,35 @@ class VarToScalarVisitor extends BaseVisitor
             }
         }
 
+        return null;
+    }
+
+    #[\Override]
+    public function leaveNode(Node $node): int|Node|array|null
+    {
         /**
          * Замена переменных 3/3 - Запись нескаляра
-         * Очищаем замену из кеша, если модифицируем переменную не скаляром
+         * Очищаем кеш ПОСЛЕ обхода дочерних узлов, чтобы правая часть
+         * присваивания успела получить подстановку.
+         * Например: $x = $_GET['x'] ?? $x ?? null
+         *   → сначала $x справа заменяется на скаляр из кеша,
+         *   → потом кеш очищается (переменная переопределена не-скаляром).
          */
         if (property_exists($node, 'expr') && $node->expr !== null && $node->expr instanceof Node\Expr\Assign) {
             $assign = $node->expr;
             if ($assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)) {
                 $varName = $assign->var->name;
-                // Also check for ConstFetch like in the storing logic
                 $isScalar = $assign->expr instanceof Node\Scalar;
                 $isConstFetch = $assign->expr instanceof Node\Expr\ConstFetch &&
                                 in_array(strtolower($assign->expr->name->toString()), ['true', 'false', 'null']);
 
                 if (!$isScalar && !$isConstFetch && $this->scopeStore->getVarFromScope($varName) !== null) {
-                    // Don't try to replace inner variables - just clear from scope
-                    // The inner variable replacement logic was causing the left-hand side
-                    // variable to be incorrectly replaced with its value
                     $this->scopeStore->removeVarFromScope($varName);
                 }
             }
         }
 
-        return null;
+        return parent::leaveNode($node);
     }
 
     /**

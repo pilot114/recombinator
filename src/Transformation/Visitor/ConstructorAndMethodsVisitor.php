@@ -10,10 +10,14 @@ use Recombinator\Domain\ScopeStore;
  * Вызовы конструктора и методов заменяем на инстанцирование переменных из скопа класса
  * и тело конструктора
  */
+#[VisitorMeta('Инлайн конструкторов и методов: New_/MethodCall → тело из ScopeStore')]
 class ConstructorAndMethodsVisitor extends BaseVisitor
 {
-    public function __construct(protected \Recombinator\Domain\ScopeStore $scopeStore)
+    protected ScopeStore $scopeStore;
+
+    public function __construct(?ScopeStore $scopeStore = null)
     {
+        $this->scopeStore = $scopeStore ?? ScopeStore::default();
     }
 
     public function enterNode(Node $node): ?Node

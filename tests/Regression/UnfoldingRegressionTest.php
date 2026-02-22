@@ -9,7 +9,6 @@ use Recombinator\Domain\ScopeStore;
 use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
-use Recombinator\Transformation\Visitor\RemoveVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 
 beforeEach(
@@ -34,7 +33,6 @@ echo $val[0];';
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new VarToScalarVisitor($this->store));
-        $traverser->addVisitor(new RemoveVisitor());
 
         // Should not throw exception
         expect(fn(): array => $traverser->traverse($ast))->not->toThrow(Exception::class);
@@ -272,7 +270,6 @@ if (isset($arr["key"])) {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new BinaryAndIssetVisitor());
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 

@@ -11,7 +11,6 @@ use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 use Recombinator\Transformation\Visitor\TernarReturnVisitor;
-use Recombinator\Transformation\Visitor\RemoveVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 
 beforeEach(
@@ -43,7 +42,6 @@ class Auth {
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new ConstClassVisitor($this->store));
         $traverser->addVisitor(new TernarReturnVisitor());
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -77,7 +75,6 @@ $result = 2 + 3 + 5;';
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new BinaryAndIssetVisitor());
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -106,7 +103,6 @@ echo $area;';
         $traverser->addVisitor(new ParentConnectingVisitor());
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new VarToScalarVisitor($this->store));
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -140,7 +136,6 @@ echo "API v" . $version;';
         $traverser->addVisitor(new ConstClassVisitor($this->store));
         $traverser->addVisitor(new BinaryAndIssetVisitor());
         $traverser->addVisitor(new VarToScalarVisitor($this->store));
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -173,7 +168,6 @@ if (isset($_GET["password"])) {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new BinaryAndIssetVisitor());
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -204,7 +198,6 @@ $division = $b / $a;';
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new VarToScalarVisitor($this->store));
         $traverser->addVisitor(new BinaryAndIssetVisitor());
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 
@@ -232,7 +225,6 @@ $message = $hello . " " . $world . "!";';
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new VarToScalarVisitor($this->store));
         $traverser->addVisitor(new BinaryAndIssetVisitor());
-        $traverser->addVisitor(new RemoveVisitor());
 
         $ast = $traverser->traverse($ast);
 

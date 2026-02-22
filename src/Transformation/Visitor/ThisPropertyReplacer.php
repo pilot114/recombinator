@@ -8,6 +8,7 @@ use PhpParser\Node;
  * Заменяет $this->property на переменные инстанса
  * Используется при инлайнинге методов и конструкторов
  */
+#[VisitorMeta('Замена $this->property на переменные инстанса [внутренний хелпер ConstructorAndMethodsVisitor]')]
 class ThisPropertyReplacer extends BaseVisitor
 {
     /**

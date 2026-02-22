@@ -9,6 +9,7 @@ use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 /**
  * Подготавливает кеш скопов
  */
+#[VisitorMeta('Подготовка кеша скоупов: сохраняет функции/классы в файлы (cacheDir=null → пропуск)')]
 class ScopeVisitor extends BaseVisitor
 {
     /**

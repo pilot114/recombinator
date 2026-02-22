@@ -12,12 +12,12 @@
  * After: concise ?? operator usage
  */
 $username = "default_username";
-$username = $_GET["username"] ?? $username;
+$username = $_GET["username"] ?? $username ?? null;
 $password = "default_password";
-$password = $_GET["password"] ?? $password;
+$password = $_GET["password"] ?? $password ?? null;
 $role = "guest";
-$role = $_GET["role"] ?? $role;
+$role = $_GET["role"] ?? $role ?? null;
 $theme = "light";
-$theme = $_COOKIE["theme"] ?? $theme;
+$theme = $_COOKIE["theme"] ?? $theme ?? null;
 echo "User: " . $username;
 echo "Role: " . $role;

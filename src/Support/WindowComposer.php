@@ -10,6 +10,7 @@ namespace Recombinator\Support;
 class WindowComposer
 {
     private array $windows = [];
+
     private array $separators = [];
 
     public function __construct(
@@ -64,7 +65,7 @@ class WindowComposer
 
         // Сортируем окна по уровню (level) перед отрисовкой
         $sortedWindows = $this->windows;
-        usort($sortedWindows, fn(Window $a, Window $b) => $a->level <=> $b->level);
+        usort($sortedWindows, fn(Window $a, Window $b): int => $a->level <=> $b->level);
 
         foreach ($sortedWindows as $window) {
             $lines = $window->getLines();
@@ -72,20 +73,26 @@ class WindowComposer
 
             foreach ($lines as $idx => $line) {
                 $row = $y + $idx;
-
-                if ($row < 0 || $row >= $this->terminalHeight) {
+                if ($row < 0) {
                     continue;
                 }
 
-                $lineLen = mb_strlen($line);
+                if ($row >= $this->terminalHeight) {
+                    continue;
+                }
 
-                if ($x < 0 || $x >= $this->terminalWidth) {
+                $lineLen = mb_strlen((string) $line);
+                if ($x < 0) {
+                    continue;
+                }
+
+                if ($x >= $this->terminalWidth) {
                     continue;
                 }
 
                 $availableWidth = min($lineLen, $this->terminalWidth - $x);
                 $output[$row] = mb_substr($output[$row], 0, $x)
-                    . mb_substr($line, 0, $availableWidth)
+                    . mb_substr((string) $line, 0, $availableWidth)
                     . mb_substr($output[$row], $x + $availableWidth);
             }
         }
@@ -106,18 +113,18 @@ class WindowComposer
         if ($separator->orientation === 'vertical') {
             for ($row = $separator->y; $row < $separator->y + $separator->height; $row++) {
                 if ($row >= 0 && $row < $this->terminalHeight && $separator->x < $this->terminalWidth) {
-                    $output[$row] = mb_substr($output[$row], 0, $separator->x)
+                    $output[$row] = mb_substr((string) $output[$row], 0, $separator->x)
                         . $separator->char
-                        . mb_substr($output[$row], $separator->x + 1);
+                        . mb_substr((string) $output[$row], $separator->x + 1);
                 }
             }
         } else {
             $row = $separator->y;
             if ($row >= 0 && $row < $this->terminalHeight) {
                 $line = str_repeat($separator->char, $separator->width);
-                $output[$row] = mb_substr($output[$row], 0, $separator->x)
+                $output[$row] = mb_substr((string) $output[$row], 0, $separator->x)
                     . $line
-                    . mb_substr($output[$row], $separator->x + $separator->width);
+                    . mb_substr((string) $output[$row], $separator->x + $separator->width);
             }
         }
     }
@@ -144,7 +151,7 @@ class WindowComposer
      */
     public function remove(Window $window): void
     {
-        $this->windows = array_filter($this->windows, static fn($w) => $w !== $window);
+        $this->windows = array_filter($this->windows, static fn($w): bool => $w !== $window);
     }
 
     /**
@@ -436,21 +443,25 @@ enum BorderMode
  */
 class Window
 {
-    private BorderStyle $borderStyle;
+    private readonly BorderStyle $borderStyle;
+
     public string $title = '';
-    private string $content;
+
     public array $position;
 
     public int $level = 0;
 
     private int $width;
+
     private int $height;
+
     private bool $fixedDimensions = false;
+
     private BorderMode $borderMode = BorderMode::PerWindow;
 
     public function __construct(
         string $style,
-        string $content,
+        private string $content,
         private EdgeAlignment $edge,
         private readonly int $size,
         private readonly int $terminalWidth,
@@ -459,7 +470,6 @@ class Window
         private ?int $absoluteY = null,
     ) {
         $this->borderStyle = BorderStyle::fromString($style);
-        $this->content = $content;
 
         $this->calculateDimensions();
         $this->calculatePosition();
@@ -473,7 +483,7 @@ class Window
         }
 
         $lines = explode("\n", $this->content);
-        $maxContentWidth = max(array_map('mb_strlen', $lines));
+        $maxContentWidth = max(array_map(mb_strlen(...), $lines));
 
         // Учитываем заголовок при расчете ширины
         if ($this->title !== '') {
@@ -787,7 +797,8 @@ readonly class Separator
         public int $height,
         public string $char,
         public string $orientation, // 'vertical' или 'horizontal'
-    ) {}
+    ) {
+    }
 }
 
 /**
@@ -805,7 +816,8 @@ readonly class BorderStyle
         public string $bottomLeft,
         public string $bottom,
         public string $bottomRight,
-    ) {}
+    ) {
+    }
 
     public static function fromString(string $style): self
     {

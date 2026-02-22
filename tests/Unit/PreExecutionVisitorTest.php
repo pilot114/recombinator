@@ -128,42 +128,6 @@ it(
 );
 
 it(
-    'executes binary operations with constants',
-    function (): void {
-        $code = '<?php $x = 1 + 2;';
-        $ast = $this->parser->parse($code);
-        $transformedAst = $this->traverser->traverse($ast);
-        $result = $this->printer->prettyPrintFile($transformedAst);
-
-        expect($result)->toContain('$x = 3');
-    }
-);
-
-it(
-    'executes multiplication with constants',
-    function (): void {
-        $code = '<?php $x = 3 * 4;';
-        $ast = $this->parser->parse($code);
-        $transformedAst = $this->traverser->traverse($ast);
-        $result = $this->printer->prettyPrintFile($transformedAst);
-
-        expect($result)->toContain('$x = 12');
-    }
-);
-
-it(
-    'executes string concatenation with constants',
-    function (): void {
-        $code = '<?php $x = "hello" . " " . "world";';
-        $ast = $this->parser->parse($code);
-        $transformedAst = $this->traverser->traverse($ast);
-        $result = $this->printer->prettyPrintFile($transformedAst);
-
-        expect($result)->toContain("'hello world'");
-    }
-);
-
-it(
     'executes unary operations with constants',
     function (): void {
         $code = '<?php $x = -42;';

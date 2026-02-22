@@ -10,10 +10,14 @@ use Recombinator\Domain\ScopeStore;
  * - подменяем использование внутри класса
  * - подменяем использование вне класса
  */
+#[VisitorMeta('Инлайн констант классов: ClassName::CONST → значение')]
 class ConstClassVisitor extends BaseVisitor
 {
-    public function __construct(protected \Recombinator\Domain\ScopeStore $scopeStore)
+    protected ScopeStore $scopeStore;
+
+    public function __construct(?ScopeStore $scopeStore = null)
     {
+        $this->scopeStore = $scopeStore ?? ScopeStore::default();
     }
 
     public function enterNode(Node $node): int|Node|array|null

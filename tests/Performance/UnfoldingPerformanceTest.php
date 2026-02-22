@@ -8,7 +8,6 @@ use Recombinator\Domain\ScopeStore;
 use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
-use Recombinator\Transformation\Visitor\RemoveVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 
 beforeEach(
@@ -65,7 +64,6 @@ it(
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new ConstClassVisitor($this->store));
-        $traverser->addVisitor(new RemoveVisitor());
         $traverser->traverse($ast);
 
         $duration = microtime(true) - $start;
@@ -94,7 +92,6 @@ it(
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new ScopeVisitor());
         $traverser->addVisitor(new VarToScalarVisitor($this->store));
-        $traverser->addVisitor(new RemoveVisitor());
         $traverser->traverse($ast);
 
         $duration = microtime(true) - $start;
@@ -156,7 +153,6 @@ it(
         $traverser->addVisitor(new ConstClassVisitor($this->store));
         $traverser->addVisitor(new BinaryAndIssetVisitor());
         $traverser->addVisitor(new VarToScalarVisitor($this->store));
-        $traverser->addVisitor(new RemoveVisitor());
         $traverser->traverse($ast);
 
         $duration = microtime(true) - $start;

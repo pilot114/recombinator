@@ -8,6 +8,7 @@ use PhpParser\ParserFactory;
 /**
  * подключаемые файлы - подключаем)
  */
+#[VisitorMeta('Устаревший обработчик include/require — заменён Inliner (шаг 0)')]
 class IncludeVisitor extends BaseVisitor
 {
     /**
