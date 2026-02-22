@@ -6,7 +6,8 @@
 
     "require": {
         "php": "^8.4",
-        "nikic/php-parser": "^5.7"
+        "nikic/php-parser": "^5.7",
+        "php-tui/term": "^0.3.4"
     },
     "require-dev": {
         "sebastian/diff": "^7.0",

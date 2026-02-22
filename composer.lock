@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "edc53430b8dfdb1ba2a2f66d073cb742",
+    "content-hash": "17790e4b9286de2aa5eeeaaf6f1bedd0",
     "packages": [
         {
             "name": "nikic/php-parser",
@@ -63,6 +63,51 @@
                 "source": "https://github.com/nikic/PHP-Parser/tree/v5.7.0"
             },
             "time": "2025-12-06T11:56:16+00:00"
+        },
+        {
+            "name": "php-tui/term",
+            "version": "0.3.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/php-tui/term.git",
+                "reference": "bf8bb01d5997c2b926637a7b436cb5beac6acde9"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/php-tui/term/zipball/bf8bb01d5997c2b926637a7b436cb5beac6acde9",
+                "reference": "bf8bb01d5997c2b926637a7b436cb5beac6acde9",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.1"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.34",
+                "phpstan/phpstan": "^1.10",
+                "phpunit/phpunit": "^10.4",
+                "symfony/var-dumper": "^6.3"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PhpTui\\Term\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Daniel Leech"
+                }
+            ],
+            "description": "comprehensive low level terminal control",
+            "support": {
+                "issues": "https://github.com/php-tui/term/issues",
+                "source": "https://github.com/php-tui/term/tree/0.3.4"
+            },
+            "time": "2023-12-04T18:42:32+00:00"
         }
     ],
     "packages-dev": [

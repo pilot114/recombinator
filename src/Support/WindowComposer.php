@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Cli;
+namespace Recombinator\Support;
 
 /**
  * Компоновщик окон для CLI утилит
@@ -95,7 +95,7 @@ class WindowComposer
             $this->renderSeparator($output, $separator);
         }
 
-        return implode("\n", $output);
+        return implode('', $output);
     }
 
     /**
