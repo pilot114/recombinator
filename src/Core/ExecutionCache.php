@@ -14,7 +14,7 @@ namespace Recombinator\Core;
  * Для долговременного кеширования можно расширить класс и добавить
  * сохранение в файловую систему или другое хранилище.
  */
-class ExecutionCache
+class ExecutionCache implements \Recombinator\Contract\CacheInterface
 {
     /**
      * Хранилище кеша
@@ -97,6 +97,14 @@ class ExecutionCache
     {
         unset($this->cache[$key]);
         $this->removeFromAccessOrder($key);
+    }
+
+    /**
+     * Удаляет значение из кеша (CacheInterface)
+     */
+    public function remove(string $key): void
+    {
+        $this->delete($key);
     }
 
     /**

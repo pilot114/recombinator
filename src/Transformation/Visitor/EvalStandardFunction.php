@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
@@ -17,21 +19,19 @@ class EvalStandardFunction extends BaseVisitor
 {
     /**
      * Гарантированно проходят со статичными аргументами
+     *
+     * @var array<int, string>
      */
-    /**
-     * @var mixed
-     */
-    protected $functionListNeedStatic = [
+    protected array $functionListNeedStatic = [
         'in_array',
     ];
 
     /**
      * Требуют специальной проверки аргументов (например, на тип)
+     *
+     * @var array<string, string>
      */
-    /**
-     * @var mixed
-     */
-    protected $specialFunction = [
+    protected array $specialFunction = [
         'is_array' => 'isArrayHandler'
     ];
 

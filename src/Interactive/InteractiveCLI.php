@@ -88,7 +88,7 @@ class InteractiveCLI
         try {
             $this->commands[$cmd]($args);
             return true;
-        } catch (\Exception $exception) {
+        } catch (\InvalidArgumentException | \Recombinator\Support\ParseException | \Recombinator\Support\IncludeException $exception) {
             $this->output("Error executing command: " . $exception->getMessage());
             return false;
         }

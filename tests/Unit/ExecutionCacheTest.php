@@ -2,11 +2,29 @@
 
 declare(strict_types=1);
 
+use Recombinator\Contract\CacheInterface;
 use Recombinator\Core\ExecutionCache;
 
 beforeEach(
     function (): void {
         $this->cache = new ExecutionCache(10); // Малый размер для тестирования LRU
+    }
+);
+
+it(
+    'implements CacheInterface',
+    function (): void {
+        expect(new ExecutionCache())->toBeInstanceOf(CacheInterface::class);
+    }
+);
+
+it(
+    'can remove value via CacheInterface remove method',
+    function (): void {
+        $this->cache->set('key1', 'value1');
+        $this->cache->remove('key1');
+
+        expect($this->cache->has('key1'))->toBeFalse();
     }
 );
 

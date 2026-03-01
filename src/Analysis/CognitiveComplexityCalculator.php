@@ -23,7 +23,7 @@ use PhpParser\NodeTraverser;
  * - Среднее (3-5 баллов): $x * $y + $z, $arr[$key]['value'], hash('sha256', $data)
  * - Сложное (6+ баллов): sqrt($x * $x + $y * $y), вложенные вызовы функций
  */
-class CognitiveComplexityCalculator
+class CognitiveComplexityCalculator implements \Recombinator\Contract\ComplexityCalculatorInterface
 {
     /**
      * Вычисляет когнитивную сложность узла или массива узлов

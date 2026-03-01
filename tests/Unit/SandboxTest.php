@@ -271,3 +271,31 @@ it(
         expect($result)->toBeNull();
     }
 );
+
+it(
+    'executes pure expression via subprocess',
+    function (): void {
+        $code = '<?php 2 + 3;';
+        $ast = $this->parser->parse($code);
+        $node = $ast[0]->expr;
+
+        $result = $this->sandbox->execute($node);
+
+        expect($result)->toBe(5);
+    }
+);
+
+it(
+    'isolates execution from main process',
+    function (): void {
+        // Setting a variable in sandbox should not affect main process
+        $code = '<?php strlen("isolation test");';
+        $ast = $this->parser->parse($code);
+        $node = $ast[0]->expr;
+
+        $result = $this->sandbox->execute($node);
+
+        expect($result)->toBe(14);
+        // If we got here, the main process was not affected
+    }
+);

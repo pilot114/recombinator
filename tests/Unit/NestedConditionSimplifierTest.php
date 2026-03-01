@@ -182,6 +182,62 @@ it(
 );
 
 it(
+    'detects nesting depth correctly',
+    function (): void {
+        $code = '<?php
+    if ($a) {
+        if ($b) {
+            echo "nested";
+        }
+    }';
+        $ast = $this->parser->parse($code);
+
+        $analysis = $this->simplifier->analyze($ast);
+
+        expect($analysis->maxNesting)->toBe(2);
+    }
+);
+
+it(
+    'suggests guard clause for simple nested if',
+    function (): void {
+        $code = '<?php
+    if ($a) {
+        if ($b) {
+            return true;
+        }
+    }';
+        $ast = $this->parser->parse($code);
+
+        $simplified = $this->simplifier->simplify($ast);
+        $result = $this->printer->prettyPrintFile($simplified);
+
+        // Should combine with &&
+        expect($result)->toContain('&&');
+    }
+);
+
+it(
+    'handles elseif chains',
+    function (): void {
+        $code = '<?php
+    if ($a) {
+        echo "a";
+    } elseif ($b) {
+        echo "b";
+    } elseif ($c) {
+        echo "c";
+    }';
+        $ast = $this->parser->parse($code);
+
+        $analysis = $this->simplifier->analyze($ast);
+
+        // Should handle without errors
+        expect($analysis->maxNesting)->toBeGreaterThanOrEqual(1);
+    }
+);
+
+it(
     'does not modify simple code',
     function (): void {
         $code = '<?php

@@ -251,6 +251,148 @@ describe(
 );
 
 describe(
+    'AST Modification',
+    function (): void {
+        it(
+            'modifies AST node when applying change',
+            function (): void {
+                $parser = new ParserFactory()->createForHostVersion();
+                $code = '<?php $x = 123;';
+                $ast = $parser->parse($code);
+
+                $analyzer = new InteractiveEditAnalyzer();
+                $result = $analyzer->analyze($ast);
+                $session = new EditSession($ast, $result);
+
+                $node = $ast[0]->expr->var;
+                $change = new Change(
+                    Change::TYPE_RENAME,
+                    'Renamed x to username',
+                    $node,
+                    ['old' => 'x'],
+                    ['new' => 'username']
+                );
+
+                $session->applyChange($change);
+
+                // Check that the AST was actually modified
+                $currentAst = $session->getCurrentAst();
+                $printer = new \PhpParser\PrettyPrinter\Standard();
+                $output = $printer->prettyPrint($currentAst);
+
+                expect($output)->toContain('$username');
+            }
+        );
+
+        it(
+            'restores AST node on undo',
+            function (): void {
+                $parser = new ParserFactory()->createForHostVersion();
+                $code = '<?php $x = 123;';
+                $ast = $parser->parse($code);
+
+                $analyzer = new InteractiveEditAnalyzer();
+                $result = $analyzer->analyze($ast);
+                $session = new EditSession($ast, $result);
+
+                $node = $ast[0]->expr->var;
+                $change = new Change(
+                    Change::TYPE_RENAME,
+                    'Renamed x to username',
+                    $node,
+                    ['old' => 'x'],
+                    ['new' => 'username']
+                );
+
+                $session->applyChange($change);
+                $session->undo();
+
+                $currentAst = $session->getCurrentAst();
+                $printer = new \PhpParser\PrettyPrinter\Standard();
+                $output = $printer->prettyPrint($currentAst);
+
+                expect($output)->toContain('$x');
+            }
+        );
+
+        it(
+            're-applies change on redo',
+            function (): void {
+                $parser = new ParserFactory()->createForHostVersion();
+                $code = '<?php $x = 123;';
+                $ast = $parser->parse($code);
+
+                $analyzer = new InteractiveEditAnalyzer();
+                $result = $analyzer->analyze($ast);
+                $session = new EditSession($ast, $result);
+
+                $node = $ast[0]->expr->var;
+                $change = new Change(
+                    Change::TYPE_RENAME,
+                    'Renamed x to username',
+                    $node,
+                    ['old' => 'x'],
+                    ['new' => 'username']
+                );
+
+                $session->applyChange($change);
+                $session->undo();
+                $session->redo();
+
+                $currentAst = $session->getCurrentAst();
+                $printer = new \PhpParser\PrettyPrinter\Standard();
+                $output = $printer->prettyPrint($currentAst);
+
+                expect($output)->toContain('$username');
+            }
+        );
+
+        it(
+            'tracks correct state after multiple changes',
+            function (): void {
+                $parser = new ParserFactory()->createForHostVersion();
+                $code = '<?php $x = 123;';
+                $ast = $parser->parse($code);
+
+                $analyzer = new InteractiveEditAnalyzer();
+                $result = $analyzer->analyze($ast);
+                $session = new EditSession($ast, $result);
+
+                $node = $ast[0]->expr->var;
+                $change1 = new Change(
+                    Change::TYPE_RENAME,
+                    'Renamed x to y',
+                    $node,
+                    ['old' => 'x'],
+                    ['new' => 'y']
+                );
+                $change2 = new Change(
+                    Change::TYPE_RENAME,
+                    'Renamed y to z',
+                    $node,
+                    ['old' => 'y'],
+                    ['new' => 'z']
+                );
+
+                $session->applyChange($change1);
+                $session->applyChange($change2);
+
+                expect($session->getTotalAppliedChanges())->toBe(2);
+            }
+        );
+
+        it(
+            'handles undo when no changes were applied',
+            function (): void {
+                $result = $this->session->undo();
+
+                expect($result)->toBeFalse();
+            }
+        );
+    }
+);
+
+describe(
     'Session Statistics',
     function (): void {
         it(

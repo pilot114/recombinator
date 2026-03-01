@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Recombinator\Interactive;
 
 use PhpParser\Node;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
 
 /**
  * Сессия интерактивного редактирования
@@ -20,15 +22,11 @@ class EditSession
     private readonly ChangeHistory $history;
 
     /**
-     *
-     *
      * @var array<string, mixed>
      */
     private array $userPreferences = [];
 
     /**
-     *
-     *
      * @var array<string, int>
      */
     private array $appliedChangesStats = [];
@@ -38,7 +36,7 @@ class EditSession
     /**
      * @param Node[] $currentAst
      */
-    public function __construct(private readonly array $currentAst, private readonly InteractiveEditResult $analysisResult)
+    public function __construct(private array $currentAst, private readonly InteractiveEditResult $analysisResult)
     {
         $this->history = new ChangeHistory();
         $this->sessionStartTime = time();
@@ -68,8 +66,7 @@ class EditSession
      */
     public function applyChange(Change $change): bool
     {
-        // Здесь должна быть логика применения изменения к AST
-        // Для простоты просто добавляем в историю
+        $this->modifyAst($change, $change->getAfterState());
 
         $this->history->addChange($change);
 
@@ -90,12 +87,11 @@ class EditSession
     public function undo(): bool
     {
         $change = $this->history->undo();
-        if (!$change instanceof \Recombinator\Interactive\Change) {
+        if (!$change instanceof Change) {
             return false;
         }
 
-        // Здесь должна быть логика отката изменения в AST
-        // Используем beforeState из Change
+        $this->modifyAst($change, $change->getBeforeState());
 
         // Обновляем статистику
         $type = $change->getType();
@@ -112,11 +108,11 @@ class EditSession
     public function redo(): bool
     {
         $change = $this->history->redo();
-        if (!$change instanceof \Recombinator\Interactive\Change) {
+        if (!$change instanceof Change) {
             return false;
         }
 
-        // Здесь должна быть логика повтора изменения в AST
+        $this->modifyAst($change, $change->getAfterState());
 
         // Обновляем статистику
         $type = $change->getType();
@@ -127,6 +123,44 @@ class EditSession
         $this->appliedChangesStats[$type]++;
 
         return true;
+    }
+
+    /**
+     * Модифицирует AST на основе изменения
+     *
+     * @param array<string, mixed> $state
+     */
+    private function modifyAst(Change $change, array $state): void
+    {
+        $targetNode = $change->getNode();
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new class ($targetNode, $state, $change->getType()) extends NodeVisitorAbstract {
+            /** @param array<string, mixed> $state */
+            public function __construct(
+                private readonly Node $target,
+                private readonly array $state,
+                private readonly string $type
+            ) {
+            }
+
+            public function enterNode(Node $node): ?Node
+            {
+                if ($node !== $this->target) {
+                    return null;
+                }
+
+                if ($this->type === Change::TYPE_RENAME && $node instanceof Node\Expr\Variable) {
+                    $newName = $this->state['new'] ?? $this->state['old'] ?? null;
+                    if (is_string($newName)) {
+                        $node->name = $newName;
+                    }
+                }
+
+                return $node;
+            }
+        });
+
+        $this->currentAst = $traverser->traverse($this->currentAst);
     }
 
     /**

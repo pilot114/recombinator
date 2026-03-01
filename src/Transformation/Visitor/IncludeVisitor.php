@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
@@ -11,25 +13,44 @@ use PhpParser\ParserFactory;
 #[VisitorMeta('Устаревший обработчик include/require — заменён Inliner (шаг 0)')]
 class IncludeVisitor extends BaseVisitor
 {
-    /**
-     * @param mixed $entryPoint
-     */
-    public function __construct(protected $entryPoint)
+    public function __construct(protected string $entryPoint)
     {
     }
 
+    /**
+     * @throws \Recombinator\Support\IncludeException
+     */
     public function enterNode(Node $node): int|Node|array|null
     {
         if (
             $node instanceof Node\Expr\Include_
+            && $node->expr instanceof Node\Scalar\String_
         ) {
-            $path = dirname((string) $this->entryPoint) . '/' . $node->expr->value;
-            if (!file_exists($path)) {
-                throw new \Exception(sprintf("Include file dont exist: %s", $path));
+            $baseDir = dirname($this->entryPoint);
+            $path = $baseDir . '/' . $node->expr->value;
+            $realPath = realpath($path);
+            $realBaseDir = realpath($baseDir);
+
+            if ($realPath === false || !file_exists($path)) {
+                throw new \Recombinator\Support\IncludeException(
+                    sprintf("Include file does not exist: %s", $path)
+                );
             }
 
-            $scopeContent = file_get_contents($path);
-            $parser = new ParserFactory()->create(ParserFactory::PREFER_PHP7);
+            if ($realBaseDir !== false && !str_starts_with($realPath, $realBaseDir)) {
+                throw new \Recombinator\Support\IncludeException(
+                    sprintf("Path traversal detected: %s", $node->expr->value)
+                );
+            }
+
+            $scopeContent = file_get_contents($realPath);
+            if ($scopeContent === false) {
+                throw new \Recombinator\Support\IncludeException(
+                    sprintf("Failed to read include file: %s", $realPath)
+                );
+            }
+
+            $parser = new ParserFactory()->createForNewestSupportedVersion();
             $nodes = $parser->parse($scopeContent);
 
             $node->getAttribute('parent')->setAttribute('replace', $nodes);
