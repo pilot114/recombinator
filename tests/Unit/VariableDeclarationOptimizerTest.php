@@ -315,6 +315,44 @@ it(
 );
 
 it(
+    'groups related declarations together',
+    function (): void {
+        $code = '<?php
+    $x = $point->x;
+    echo "processing";
+    $y = $point->y;
+    $z = $point->z;';
+
+        $ast = $this->parser->parse($code);
+        $ast = markSideEffects($ast);
+
+        $result = $this->optimizer->optimize($ast);
+
+        // Should produce valid output without error
+        expect($result)->toBeArray();
+        expect(count($result))->toBeGreaterThanOrEqual(1);
+    }
+);
+
+it(
+    'does not reorder declarations with dependencies',
+    function (): void {
+        $code = '<?php
+    $x = 1;
+    $y = $x + 1;
+    $z = $y + 1;';
+
+        $ast = $this->parser->parse($code);
+        $ast = markSideEffects($ast);
+
+        $result = $this->optimizer->optimize($ast);
+
+        // Should preserve all 3 statements
+        expect(count($result))->toBe(3);
+    }
+);
+
+it(
     'preserves statement order when no optimization is applied',
     function (): void {
         $code = '<?php

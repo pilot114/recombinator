@@ -3,11 +3,19 @@
 use PhpParser\Node;
 use PhpParser\ParserFactory;
 use Recombinator\Analysis\CyclomaticComplexityCalculator;
+use Recombinator\Contract\ComplexityCalculatorInterface;
 
 beforeEach(
     function (): void {
         $this->parser = new ParserFactory()->createForHostVersion();
         $this->calculator = new CyclomaticComplexityCalculator();
+    }
+);
+
+test(
+    'implements ComplexityCalculatorInterface',
+    function (): void {
+        expect(new CyclomaticComplexityCalculator())->toBeInstanceOf(ComplexityCalculatorInterface::class);
     }
 );
 

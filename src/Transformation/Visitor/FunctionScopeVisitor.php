@@ -14,17 +14,11 @@ use Recombinator\Domain\ScopeStore;
 #[VisitorMeta('Замена тела функции на однострочник → ScopeStore (работает пофайлово)')]
 class FunctionScopeVisitor extends BaseVisitor
 {
-    /**
-     * @var mixed
-     */
-    protected $isGlobalScope;
+    protected bool $isGlobalScope = false;
 
 
     protected ScopeStore $scopeStore;
 
-    /**
-     * @param mixed $cacheDir
-     */
     public function __construct(?ScopeStore $scopeStore = null, protected string $cacheDir = '')
     {
         $this->scopeStore = $scopeStore ?? ScopeStore::default();

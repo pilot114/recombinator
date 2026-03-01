@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
@@ -11,22 +13,12 @@ use Recombinator\Core\PrettyDumper;
 
 class BaseVisitor extends NodeVisitorAbstract
 {
-    /**
-     * @var mixed
-     */
-    public $scopeName;
+    public ?string $scopeName = null;
 
-    /**
-     * @var mixed
-     */
+    public ?string $diff = null;
 
-    public $diff;
-
-    /**
-     * @var mixed
-     */
-
-    protected $ast;
+    /** @var array<Node> */
+    protected array $ast = [];
 
     public function beforeTraverse(array $nodes): ?array
     {
@@ -117,9 +109,6 @@ class BaseVisitor extends NodeVisitorAbstract
     {
         $nodeFinder = new NodeFinder();
         $searchIn = $node ?? $this->ast;
-        if (!is_array($searchIn) && !($searchIn instanceof Node)) {
-            return [];
-        }
 
         /**
  * @var array<T>

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
@@ -12,13 +14,9 @@ use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 #[VisitorMeta('Подготовка кеша скоупов: сохраняет функции/классы в файлы (cacheDir=null → пропуск)')]
 class ScopeVisitor extends BaseVisitor
 {
-    /**
-     * @param mixed $cacheDir
-     * @param mixed $entryPoint
-     */
     public function __construct(
-        protected $entryPoint = null,
-        protected $cacheDir = null
+        protected ?string $entryPoint = null,
+        protected ?string $cacheDir = null
     ) {
     }
 

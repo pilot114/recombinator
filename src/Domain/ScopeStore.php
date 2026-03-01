@@ -22,7 +22,7 @@ namespace Recombinator\Domain;
  *       methodAB
  *  + anonFunctions
  */
-class ScopeStore
+class ScopeStore implements \Recombinator\Contract\SymbolTableInterface
 {
     private static ?self $default = null;
 
@@ -50,28 +50,12 @@ class ScopeStore
 
     public function setVarToScope(string $name, mixed $value): void
     {
-        $scope = $this->currentScope ?? '';
-        if (!isset($this->scopes[$scope])) {
-            $this->scopes[$scope] = [
-                'vars' => []
-            ];
-        }
-
-        if (!isset($this->scopes[$scope]['vars'])) {
-            $this->scopes[$scope]['vars'] = [];
-        }
-
-        $this->scopes[$scope]['vars'][$name] = $value;
+        $this->setScopedValue('vars', $name, $value);
     }
 
     public function getVarFromScope(string $name): mixed
     {
-        $scope = $this->currentScope ?? '';
-        if (!isset($this->scopes[$scope]['vars'])) {
-            return null;
-        }
-
-        return $this->scopes[$scope]['vars'][$name] ?? null;
+        return $this->getScopedValue('vars', $name);
     }
 
     public function removeVarFromScope(string $name): void
@@ -84,82 +68,76 @@ class ScopeStore
 
     public function setConstToScope(string $name, mixed $value): void
     {
-        $scope = $this->currentScope ?? '';
-        if (!isset($this->scopes[$scope])) {
-            $this->scopes[$scope] = [
-                'consts' => []
-            ];
-        }
-
-        if (!isset($this->scopes[$scope]['consts'])) {
-            $this->scopes[$scope]['consts'] = [];
-        }
-
-        $this->scopes[$scope]['consts'][$name] = $value;
+        $this->setScopedValue('consts', $name, $value);
     }
 
     public function getConstFromScope(string $name): mixed
     {
-        $scope = $this->currentScope ?? '';
-        if (!isset($this->scopes[$scope]['consts'])) {
-            return null;
-        }
-
-        return $this->scopes[$scope]['consts'][$name] ?? null;
+        return $this->getScopedValue('consts', $name);
     }
 
     public function setConstToGlobal(string $name, mixed $value): void
     {
-        if (!isset($this->global['consts'])) {
-            $this->global['consts'] = [];
-        }
-
-        $this->global['consts'][$name] = $value;
+        $this->setGlobalValue('consts', $name, $value);
     }
 
     public function getConstFromGlobal(string $name): mixed
     {
-        if (!isset($this->global['consts'])) {
-            return null;
-        }
-
-        return $this->global['consts'][$name] ?? null;
+        return $this->getGlobalValue('consts', $name);
     }
 
     public function setFunctionToGlobal(string $name, mixed $value): void
     {
-        if (!isset($this->global['functions'])) {
-            $this->global['functions'] = [];
-        }
-
-        $this->global['functions'][$name] = $value;
+        $this->setGlobalValue('functions', $name, $value);
     }
 
     public function getFunctionFromGlobal(string $name): mixed
     {
-        if (!isset($this->global['functions'])) {
-            return null;
-        }
-
-        return $this->global['functions'][$name] ?? null;
+        return $this->getGlobalValue('functions', $name);
     }
 
     public function setClassToGlobal(string $name, mixed $value): void
     {
-        if (!isset($this->global['classes'])) {
-            $this->global['classes'] = [];
-        }
-
-        $this->global['classes'][$name] = $value;
+        $this->setGlobalValue('classes', $name, $value);
     }
 
     public function getClassFromGlobal(string $name): mixed
     {
-        if (!isset($this->global['classes'])) {
-            return null;
+        return $this->getGlobalValue('classes', $name);
+    }
+
+    private function setScopedValue(string $section, string $name, mixed $value): void
+    {
+        $scope = $this->currentScope ?? '';
+        if (!isset($this->scopes[$scope])) {
+            $this->scopes[$scope] = [];
         }
 
-        return $this->global['classes'][$name] ?? null;
+        if (!isset($this->scopes[$scope][$section])) {
+            $this->scopes[$scope][$section] = [];
+        }
+
+        $this->scopes[$scope][$section][$name] = $value;
+    }
+
+    private function getScopedValue(string $section, string $name): mixed
+    {
+        $scope = $this->currentScope ?? '';
+        return $this->scopes[$scope][$section][$name] ?? null;
+    }
+
+    private function setGlobalValue(string $section, string $name, mixed $value): void
+    {
+        if (!isset($this->global[$section])) {
+            $this->global[$section] = [];
+        }
+
+        $this->global[$section][$name] = $value;
+    }
+
+    private function getGlobalValue(string $section, string $name): mixed
+    {
+        return $this->global[$section][$name] ?? null;
     }
 
     /**

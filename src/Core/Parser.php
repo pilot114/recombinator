@@ -16,6 +16,7 @@ use Recombinator\Support\ColorDiffer;
 use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\CallFunctionVisitor;
 use Recombinator\Transformation\Visitor\ConcatAssertVisitor;
+use Recombinator\Transformation\Visitor\ConstructorAndMethodsVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\EvalStandardFunction;
 use Recombinator\Transformation\Visitor\FunctionScopeVisitor;
@@ -136,11 +137,14 @@ class Parser
             new CallFunctionVisitor($ss),
             new ConstClassVisitor($ss),
             new TernarReturnVisitor(),
-        //            new ConstructorAndMethodsVisitor($ss),
+            new ConstructorAndMethodsVisitor($ss),
         ];
         $this->parseScopesWithVisitors();
     }
 
+    /**
+     * @throws \Recombinator\Support\ParseException
+     */
     protected function parseScopes(NodeVisitor $visitor, bool $updateCache = true): void
     {
         $differ = new ColorDiffer();
@@ -155,7 +159,7 @@ class Parser
                 ->withVisitors([new NodeConnectingVisitor()])
                 ->modify();
 
-            if (property_exists($visitor, 'scopeName')) {
+            if ($visitor instanceof \Recombinator\Transformation\Visitor\BaseVisitor) {
                 $visitor->scopeName = $scopeName;
             }
 
@@ -172,7 +176,7 @@ class Parser
                 ->modify();
             $textAfter = $printer->prettyPrint($this->ast[$scopeName]);
 
-            if (property_exists($visitor, 'diff')) {
+            if ($visitor instanceof \Recombinator\Transformation\Visitor\BaseVisitor) {
                 $visitor->diff = $differ->diff($textBefore, $textAfter);
             }
 
@@ -180,7 +184,7 @@ class Parser
             if ($differ->hasDiff) {
                 $this->hasEdit = true;
                 echo sprintf("> EDIT %s\n", $visitor::class);
-                if (property_exists($visitor, 'diff') && is_string($visitor->diff)) {
+                if ($visitor instanceof \Recombinator\Transformation\Visitor\BaseVisitor && is_string($visitor->diff)) {
                     echo $visitor->diff;
                 }
 
@@ -287,6 +291,8 @@ class Parser
 
     /**
      * @return array<int, Node>
+     *
+     * @throws \Recombinator\Support\ParseException
      */
     protected function buildAST(string $name, string $code): array
     {
@@ -300,7 +306,11 @@ class Parser
                 $this->ast[$name] = $ast;
             }
         } catch (Error $error) {
-            echo $error->getMessage() . "\n";
+            throw new \Recombinator\Support\ParseException(
+                sprintf('Parse error in %s: %s', $name, $error->getMessage()),
+                0,
+                $error
+            );
         }
 
         return $this->ast[$name] ?? [];

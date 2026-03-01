@@ -7,6 +7,7 @@ namespace Recombinator\Support;
 use PhpParser\Node;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Core\ExecutionCache;
+use Symfony\Component\Process\Process;
 use Throwable;
 
 /**
@@ -29,7 +30,12 @@ class Sandbox
     /**
      * Максимальное время выполнения в секундах
      */
-    private const int MAX_EXECUTION_TIME = 1;
+    private const int MAX_EXECUTION_TIME = 2;
+
+    /**
+     * Максимальный лимит памяти для subprocess
+     */
+    private const string MAX_MEMORY = '32M';
 
     /**
      * Список запрещенных функций (blacklist)
@@ -256,28 +262,55 @@ class Sandbox
     }
 
     /**
-     * Выполняет код в изолированном окружении
+     * Выполняет код в изолированном окружении через subprocess
      */
     private function executeInIsolation(string $code): mixed
     {
-        $oldTimeLimit = ini_get('max_execution_time');
+        // Оборачиваем: заменяем "return expr;" на "echo json_encode(expr);"
+        $wrappedCode = preg_replace(
+            '/return\s+(.+);$/',
+            'echo json_encode($1);',
+            $code
+        );
+
+        if (!is_string($wrappedCode)) {
+            return new SandboxError('Failed to prepare code for execution');
+        }
+
+        $tmpFile = tempnam(sys_get_temp_dir(), 'sandbox_');
+        if ($tmpFile === false) {
+            return new SandboxError('Failed to create temporary file');
+        }
+
+        file_put_contents($tmpFile, $wrappedCode);
+
         try {
-            // Устанавливаем лимит времени выполнения
-            set_time_limit(self::MAX_EXECUTION_TIME);
+            $process = new Process(
+                ['php', '-d', 'memory_limit=' . self::MAX_MEMORY, $tmpFile],
+                timeout: self::MAX_EXECUTION_TIME
+            );
+            $process->run();
 
-            // Выполняем код
-            $result = eval('?>' . $code);
+            if (!$process->isSuccessful()) {
+                $errorOutput = $process->getErrorOutput();
+                return new SandboxError($errorOutput ?: 'Subprocess execution failed');
+            }
 
-            // Восстанавливаем лимит
-            set_time_limit((int)$oldTimeLimit);
+            $output = $process->getOutput();
+            if ($output === '') {
+                return null;
+            }
 
-            return $result;
+            return json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\Symfony\Component\Process\Exception\ProcessTimedOutException) {
+            return new SandboxError('Execution timed out after ' . self::MAX_EXECUTION_TIME . ' seconds');
+        } catch (\JsonException $e) {
+            return new SandboxError('Failed to decode result: ' . $e->getMessage());
         } catch (Throwable $throwable) {
-            // Восстанавливаем лимит в случае ошибки
-            set_time_limit((int)$oldTimeLimit);
-
             $errorCode = $throwable->getCode();
             return new SandboxError($throwable->getMessage(), is_int($errorCode) ? $errorCode : 0, $throwable);
+        } finally {
+            @unlink($tmpFile);
         }
     }
 

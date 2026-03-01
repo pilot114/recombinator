@@ -366,6 +366,101 @@ it(
 );
 
 it(
+    'generates correct function name based on effect type',
+    function (): void {
+        $pureCandidate = new FunctionCandidate(
+            nodes: [],
+            effectType: SideEffectType::PURE,
+            size: 5,
+            complexity: 5,
+            usedVariables: [],
+            definedVariables: ['$result'],
+            returnVariable: '$result',
+        );
+
+        $ioCandidate = new FunctionCandidate(
+            nodes: [],
+            effectType: SideEffectType::IO,
+            size: 3,
+            complexity: 3,
+            usedVariables: [],
+            definedVariables: [],
+        );
+
+        $pureResult = $this->extractor->extract($pureCandidate);
+        $ioResult = $this->extractor->extract($ioCandidate);
+
+        expect($pureResult->functionName)->toContain('calculate');
+        expect($ioResult->functionName)->toContain('print');
+    }
+);
+
+it(
+    'identifies input variables as parameters',
+    function (): void {
+        $candidate = new FunctionCandidate(
+            nodes: [],
+            effectType: SideEffectType::PURE,
+            size: 1,
+            complexity: 2,
+            usedVariables: ['$x', '$y', '$z'],
+            definedVariables: ['$z'],
+            returnVariable: '$z',
+        );
+
+        $result = $this->extractor->extract($candidate, 'testFunc');
+
+        // $x and $y are input variables (used but not defined)
+        expect($result->parameters)->toContain('$x', '$y');
+        expect($result->parameters)->not->toContain('$z');
+    }
+);
+
+it(
+    'identifies output variable as return value',
+    function (): void {
+        $candidate = new FunctionCandidate(
+            nodes: [],
+            effectType: SideEffectType::PURE,
+            size: 3,
+            complexity: 5,
+            usedVariables: ['$x'],
+            definedVariables: ['$result'],
+            returnVariable: '$result',
+        );
+
+        $result = $this->extractor->extract($candidate, 'compute');
+
+        expect($result->hasReturn())->toBeTrue();
+        expect($result->returnVariable)->toBe('$result');
+    }
+);
+
+it(
+    'generates valid function call statement',
+    function (): void {
+        $candidate = new FunctionCandidate(
+            nodes: [],
+            effectType: SideEffectType::PURE,
+            size: 3,
+            complexity: 5,
+            usedVariables: ['$a', '$b'],
+            definedVariables: ['$sum'],
+            returnVariable: '$sum',
+        );
+
+        $result = $this->extractor->extract($candidate, 'addValues');
+
+        $callCode = $this->printer->prettyPrint([$result->call]);
+
+        expect($callCode)->toContain('addValues');
+        expect($callCode)->toContain('$a');
+        expect($callCode)->toContain('$b');
+        expect($callCode)->toContain('$sum');
+    }
+);
+
+it(
     'preserves original line information in doc comment',
     function (): void {
         $candidate = new FunctionCandidate(

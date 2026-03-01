@@ -13,7 +13,7 @@ use Recombinator\Domain\SideEffectType;
  * Анализирует узлы AST и определяет тип побочного эффекта
  * для каждого узла и его потомков.
  */
-class SideEffectClassifier
+class SideEffectClassifier implements \Recombinator\Contract\EffectClassifierInterface
 {
     /**
      * Функции I/O операций
@@ -422,7 +422,7 @@ class SideEffectClassifier
      *
      * Использует тот же whitelist, что и Sandbox
      */
-    private function isPureFunction(string $funcName): bool
+    public function isPureFunction(string $funcName): bool
     {
         // Используем список из Sandbox::ALLOWED_PURE_FUNCTIONS
         // Для простоты дублируем основные категории

@@ -5,11 +5,19 @@ declare(strict_types=1);
 use PhpParser\Node;
 use PhpParser\ParserFactory;
 use Recombinator\Analysis\CognitiveComplexityCalculator;
+use Recombinator\Contract\ComplexityCalculatorInterface;
 
 beforeEach(
     function (): void {
         $this->calculator = new CognitiveComplexityCalculator();
         $this->parser = new ParserFactory()->createForHostVersion();
+    }
+);
+
+it(
+    'implements ComplexityCalculatorInterface',
+    function (): void {
+        expect(new CognitiveComplexityCalculator())->toBeInstanceOf(ComplexityCalculatorInterface::class);
     }
 );
 

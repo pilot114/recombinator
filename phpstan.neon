@@ -65,8 +65,6 @@ parameters:
         - '#Possibly invalid array key type#'
         - '#Cannot clone mixed#'
         - '#Cannot cast mixed to string#'
-        - '#Access to undefined constant PhpParser\\ParserFactory#'
-        - '#Call to an undefined method PhpParser\\ParserFactory#'
         - '#Offset .+ might not exist on#'
         - '#Parameter .+1.+ expects PhpParser\\Node\\Expr, PhpParser\\Node given#'
         - '#Unable to resolve the template type T in call to method#'

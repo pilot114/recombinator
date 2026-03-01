@@ -4,12 +4,29 @@ declare(strict_types=1);
 
 use PhpParser\ParserFactory;
 use Recombinator\Analysis\SideEffectClassifier;
+use Recombinator\Contract\EffectClassifierInterface;
 use Recombinator\Domain\SideEffectType;
 
 beforeEach(
     function (): void {
         $this->parser = new ParserFactory()->createForHostVersion();
         $this->classifier = new SideEffectClassifier();
+    }
+);
+
+it(
+    'implements EffectClassifierInterface',
+    function (): void {
+        expect(new SideEffectClassifier())->toBeInstanceOf(EffectClassifierInterface::class);
+    }
+);
+
+it(
+    'exposes isPureFunction publicly',
+    function (): void {
+        $classifier = new SideEffectClassifier();
+        expect($classifier->isPureFunction('strlen'))->toBeTrue();
+        expect($classifier->isPureFunction('exec'))->toBeFalse();
     }
 );
 

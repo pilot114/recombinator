@@ -50,14 +50,28 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         $optimizeMethods = [];
         $hasConstructor = false;
 
+        // Проверка на магические методы — не инлайним
+        $dangerousMagicMethods = [
+            '__destruct', '__clone', '__sleep', '__wakeup',
+            '__serialize', '__unserialize', '__toString', '__debugInfo',
+            '__get', '__set', '__isset', '__unset',
+            '__call', '__callStatic', '__invoke',
+        ];
+
         foreach ($methods as $method) {
+            $methodName = $method->name->name;
+
+            if (in_array($methodName, $dangerousMagicMethods, true)) {
+                return;
+            }
+
             $stmts = $method->stmts;
             // Проверяем простоту методов (однострочные или конструктор)
-            if ($method->name->name === '__construct') {
+            if ($methodName === '__construct') {
                 $hasConstructor = true;
                 $optimizeMethods['__construct'] = $method;
             } elseif ($stmts !== null && count($stmts) === 1 && $stmts[0] instanceof Node\Stmt\Return_) {
-                $optimizeMethods[$method->name->name] = $this->markupFunctionBody($method);
+                $optimizeMethods[$methodName] = $this->markupFunctionBody($method);
             } else {
                 $optimize = false;
             }
@@ -70,6 +84,19 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
                 $prop = $property->props[0] ?? null;
                 if ($prop instanceof Node\PropertyItem) {
                     $optimizeProperties[$prop->name->name] = $prop;
+                }
+            }
+
+            // Handle promoted properties (PHP 8.0+)
+            if (isset($optimizeMethods['__construct'])) {
+                foreach ($optimizeMethods['__construct']->params as $param) {
+                    if ($param->flags !== 0 && $param->var instanceof Node\Expr\Variable && is_string($param->var->name)) {
+                        $propName = $param->var->name;
+                        if (!isset($optimizeProperties[$propName])) {
+                            $propItem = new Node\PropertyItem($propName, $param->default);
+                            $optimizeProperties[$propName] = $propItem;
+                        }
+                    }
                 }
             }
 
@@ -135,8 +162,13 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         $class['instances'][] = $instanceValue;
         $this->scopeStore->setClassToGlobal($className, $class);
 
-        // TODO: раскомментировать когда будет готова полная интеграция
-        // $node->getAttribute('parent')->getAttribute('parent')->setAttribute('replace', $stmts);
+        $parentStmt = $node->getAttribute('parent');
+        if ($parentStmt instanceof Node) {
+            $grandparent = $parentStmt->getAttribute('parent');
+            if ($grandparent instanceof Node) {
+                $grandparent->setAttribute('replace', $stmts);
+            }
+        }
 
         return null;
     }

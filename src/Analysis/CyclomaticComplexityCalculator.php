@@ -29,7 +29,7 @@ use PhpParser\NodeTraverser;
  * - 21-50: Сложный, трудно тестируемый
  * - 51+: Очень сложный, непригодный для тестирования
  */
-class CyclomaticComplexityCalculator
+class CyclomaticComplexityCalculator implements \Recombinator\Contract\ComplexityCalculatorInterface
 {
     /**
      * Вычисляет цикломатическую сложность узла или массива узлов
