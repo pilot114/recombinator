@@ -26,9 +26,42 @@ class VarToScalarVisitor extends BaseVisitor
      */
     public $maybeRemove;
 
+    /**
+     * Переменные, которые переопределяются внутри хотя бы одного цикла.
+     * Их скалярные значения до цикла не кешируются, так как на каждой итерации
+     * значение уже отличается от первоначального.
+     *
+     * @var array<string, true>
+     */
+    private array $loopAssignedVars = [];
+
     public function __construct(?ScopeStore $scopeStore = null)
     {
         $this->scopeStore = $scopeStore ?? ScopeStore::default();
+    }
+
+    public function beforeTraverse(array $nodes): ?array
+    {
+        parent::beforeTraverse($nodes);
+
+        $this->loopAssignedVars = [];
+
+        foreach ([
+            Node\Stmt\Foreach_::class,
+            Node\Stmt\For_::class,
+            Node\Stmt\While_::class,
+            Node\Stmt\Do_::class,
+        ] as $loopClass) {
+            foreach ($this->findNode($loopClass) as $loop) {
+                foreach ($this->findNode(Node\Expr\Assign::class, $loop->stmts) as $assign) {
+                    if ($assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)) {
+                        $this->loopAssignedVars[$assign->var->name] = true;
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     public function enterNode(Node $node): int|Node|array|null
@@ -36,7 +69,9 @@ class VarToScalarVisitor extends BaseVisitor
         /**
          * Замена переменных 1/3 - Запись скаляра
          * Переменная "кэширует" значение, поэтому чтобы избежать сайд-эффектов
-         * подменяем только переменные со скалярным значением
+         * подменяем только переменные со скалярным значением.
+         * Переменные, переопределяемые внутри циклов, не кешируем — там
+         * значение меняется на каждой итерации.
          */
         if ($node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
             $varName = $node->var->name;
@@ -45,7 +80,7 @@ class VarToScalarVisitor extends BaseVisitor
             $isConstFetch = $node->expr instanceof Node\Expr\ConstFetch &&
                             in_array(strtolower($node->expr->name->toString()), ['true', 'false', 'null']);
 
-            if ($isScalar || $isConstFetch) {
+            if (($isScalar || $isConstFetch) && !isset($this->loopAssignedVars[$varName])) {
                 // заносим в кеш
                 $varExprScalar = clone $node->expr;
                 $varExprScalar->setAttributes([]);

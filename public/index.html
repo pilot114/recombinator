@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recombinator — PHP Code Transformer</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/php.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:          #0d1117;
+  --surface:     #161b22;
+  --surface2:    #21262d;
+  --border:      #30363d;
+  --text:        #e6edf3;
+  --muted:       #8b949e;
+  --accent:      #58a6ff;
+  --green:       #3fb950;
+  --green-bg:    rgba(63,185,80,.13);
+  --red:         #f85149;
+  --red-bg:      rgba(248,81,73,.13);
+  --yellow:      #d29922;
+  --hunk-bg:     rgba(88,166,255,.08);
+  --radius:      6px;
+  --mono:        'JetBrains Mono','Fira Code','Cascadia Code',Consolas,monospace;
+  --ui:          -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--ui); font-size: 14px; overflow: hidden; }
+
+/* ── Header ── */
+#header {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 48px; padding: 0 16px;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  flex-shrink: 0; gap: 12px; z-index: 20; position: relative;
+}
+.logo {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 15px; font-weight: 600; color: var(--accent); letter-spacing: -.3px; white-space: nowrap;
+}
+.header-mid {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; color: var(--muted); gap: 12px;
+}
+#example-select {
+  background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 4px 8px; font-size: 12px; cursor: pointer;
+  outline: none;
+}
+#example-select:hover { border-color: var(--accent); }
+#example-select:focus { border-color: var(--accent); }
+#status {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 20px; font-size: 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  transition: border-color .2s, color .2s;
+}
+#status.ok     { border-color: var(--green); color: var(--green); }
+#status.err    { border-color: var(--red);   color: var(--red);   }
+#status.busy   { border-color: var(--yellow);color: var(--yellow);}
+#run-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 18px; background: var(--accent); color: #000;
+  border: none; border-radius: var(--radius);
+  font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: opacity .15s;
+}
+#run-btn:hover   { opacity: .82; }
+#run-btn:active  { opacity: .65; }
+#run-btn:disabled{ opacity: .45; cursor: not-allowed; }
+.kbd { display: inline-block; font-size: 10px; opacity: .7; }
+
+/* ── Layout ── */
+#app { display: flex; height: calc(100vh - 48px); overflow: hidden; }
+
+/* ── Left panel ── */
+#left { display: flex; flex-direction: column; width: 46%; min-width: 180px; border-right: 1px solid var(--border); flex-shrink: 0; }
+
+/* ── Tabs bar ── */
+.tab-bar {
+  display: flex; align-items: stretch; height: 37px; flex-shrink: 0;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+  overflow-x: auto; overflow-y: hidden; scrollbar-width: none;
+}
+.tab-bar::-webkit-scrollbar { display: none; }
+.tab {
+  display: flex; align-items: center; gap: 5px; padding: 0 12px;
+  font-size: 12px; color: var(--muted); cursor: pointer; white-space: nowrap;
+  border-right: 1px solid var(--border); flex-shrink: 0; user-select: none;
+  transition: color .1s, background .1s;
+}
+.tab:hover { color: var(--text); background: var(--surface2); }
+.tab.active {
+  color: var(--text); background: var(--bg);
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+.tab-x {
+  display: flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border-radius: 3px; font-size: 13px; line-height: 1;
+  color: var(--muted);
+}
+.tab-x:hover { background: var(--border); color: var(--text); }
+.tab-add {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; font-size: 18px; color: var(--muted); cursor: pointer; flex-shrink: 0;
+}
+.tab-add:hover { color: var(--text); background: var(--surface2); }
+
+/* ── Editor ── */
+.editor-wrap { display: flex; flex: 1; overflow: hidden; font-family: var(--mono); font-size: 13px; line-height: 1.65; }
+#line-nums {
+  width: 44px; padding: 12px 8px 12px 2px; text-align: right;
+  color: var(--muted); background: var(--bg); border-right: 1px solid var(--border);
+  overflow: hidden; user-select: none; flex-shrink: 0; font-size: 12px;
+  white-space: pre; line-height: 1.65;
+}
+.editor-area { position: relative; flex: 1; overflow: hidden; }
+#editor-highlight {
+  position: absolute; inset: 0; margin: 0;
+  padding: 12px; background: var(--bg);
+  font-family: var(--mono); font-size: 13px; line-height: 1.65;
+  tab-size: 4; white-space: pre; word-wrap: normal; overflow: auto;
+  pointer-events: none; user-select: none;
+  scrollbar-width: none;
+}
+#editor-highlight::-webkit-scrollbar { display: none; }
+#editor-highlight code { background: transparent !important; padding: 0; font-family: inherit; font-size: inherit; line-height: inherit; }
+#editor {
+  position: absolute; inset: 0;
+  padding: 12px; background: transparent; color: transparent;
+  border: none; outline: none; resize: none;
+  font-family: var(--mono); font-size: 13px; line-height: 1.65;
+  tab-size: 4; overflow: auto; white-space: pre; word-wrap: normal;
+  caret-color: var(--accent); z-index: 1;
+}
+
+/* ── Resize handle ── */
+#drag {
+  width: 4px; cursor: col-resize; background: var(--border); flex-shrink: 0;
+  transition: background .15s; z-index: 10;
+}
+#drag:hover, #drag.on { background: var(--accent); }
+
+/* ── Right panel ── */
+#right { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-width: 0; }
+
+/* ── View tabs ── */
+.view-bar {
+  display: flex; align-items: stretch; height: 37px; flex-shrink: 0;
+  background: var(--surface); border-bottom: 1px solid var(--border);
+}
+.vtab {
+  display: flex; align-items: center; gap: 6px; padding: 0 18px;
+  font-size: 12px; color: var(--muted); cursor: pointer; user-select: none;
+  border-right: 1px solid var(--border); transition: color .1s, background .1s;
+}
+.vtab:hover { color: var(--text); background: var(--surface2); }
+.vtab.active { color: var(--text); background: var(--bg); box-shadow: inset 0 -2px 0 var(--accent); }
+.badge {
+  background: var(--accent); color: #000;
+  padding: 1px 7px; border-radius: 10px; font-size: 10px; font-weight: 700;
+}
+
+/* ── View panes ── */
+.pane { flex: 1; overflow: auto; display: none; }
+.pane.show { display: block; }
+
+/* ── Result code ── */
+#pane-result pre { margin: 0; padding: 14px 16px; }
+#pane-result code.hljs { background: transparent !important; padding: 0; font-family: var(--mono); font-size: 13px; line-height: 1.65; }
+
+/* ── Empty / placeholder ── */
+.empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  height: 100%; color: var(--muted); gap: 10px; text-align: center; padding: 40px;
+}
+.empty-icon { font-size: 42px; opacity: .35; }
+.empty h3 { font-size: 14px; font-weight: 500; color: var(--text); opacity: .55; }
+.empty p  { font-size: 12px; max-width: 260px; line-height: 1.5; }
+
+/* ── Steps pane ── */
+#pane-steps { padding: 12px; }
+.steps-meta {
+  font-size: 12px; color: var(--muted); margin-bottom: 12px;
+  padding: 8px 12px; background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border); line-height: 1.6;
+}
+.steps-meta strong { color: var(--text); }
+.pass-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .8px; color: var(--muted);
+  padding: 10px 0 5px; text-transform: uppercase;
+}
+
+/* ── Step card ── */
+.card { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 7px; overflow: hidden; }
+.card-head {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  background: var(--surface); cursor: pointer; user-select: none;
+  transition: background .1s;
+}
+.card-head:hover { background: var(--surface2); }
+.c-pass { font-size: 10px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); padding: 1px 7px; border-radius: 10px; flex-shrink: 0; }
+.c-name { font-family: var(--mono); font-size: 12px; color: var(--accent); flex-shrink: 0; }
+.c-desc { font-size: 12px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-arrow { font-size: 10px; color: var(--muted); transition: transform .2s; flex-shrink: 0; }
+.card.open .c-arrow { transform: rotate(180deg); }
+.card-body { display: none; border-top: 1px solid var(--border); }
+.card.open .card-body { display: block; }
+
+/* ── Inner tabs (Diff / Before / After) ── */
+.inner-tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); }
+.itab {
+  padding: 5px 14px; font-size: 11px; cursor: pointer; color: var(--muted);
+  border-right: 1px solid var(--border); user-select: none;
+  transition: color .1s, background .1s;
+}
+.itab:hover { color: var(--text); background: var(--surface2); }
+.itab.active { color: var(--text); box-shadow: inset 0 -2px 0 var(--accent); }
+
+.inner-pane { display: none; }
+.inner-pane.show { display: block; }
+
+/* ── Diff ── */
+.diff { font-family: var(--mono); font-size: 12px; line-height: 1.65; overflow-x: auto; }
+.dl { display: flex; white-space: pre; min-width: max-content; }
+.dl-add  { background: var(--green-bg); }
+.dl-del  { background: var(--red-bg); }
+.dl-hunk { background: var(--hunk-bg); }
+.dm { display: inline-block; width: 22px; text-align: center; flex-shrink: 0; user-select: none; font-weight: 700; }
+.dl-add  .dm { color: var(--green); }
+.dl-del  .dm { color: var(--red); }
+.dl-hunk .dm { color: var(--accent); }
+.dl      .dm { color: var(--border); }
+.dc { padding: 0 10px; }
+.dl-add  .dc { color: var(--green); }
+.dl-del  .dc { color: var(--red); }
+.dl-hunk .dc { color: var(--accent); font-size: 11px; }
+.dl      .dc { color: var(--muted); }
+
+/* code panes inside card */
+.code-pane pre { margin: 0; padding: 12px 14px; }
+.code-pane code.hljs { background: transparent !important; padding: 0; font-family: var(--mono); font-size: 12px; line-height: 1.65; }
+
+/* ── Spinner ── */
+.spin-wrap {
+  position: absolute; inset: 0; background: rgba(13,17,23,.65);
+  display: flex; align-items: center; justify-content: center; z-index: 50;
+  backdrop-filter: blur(2px);
+}
+.spinner { width: 26px; height: 26px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .65s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── No-change message ── */
+.no-change { padding: 28px; text-align: center; color: var(--muted); font-size: 13px; }
+.no-change .icon { font-size: 30px; margin-bottom: 8px; }
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+<body>
+
+<div id="header">
+  <div class="logo">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+    </svg>
+    Recombinator
+  </div>
+  <div class="header-mid">
+    <select id="example-select" title="Загрузить пример">
+      <option value="" disabled selected>— примеры —</option>
+    </select>
+    <span id="status">Вставьте PHP код и нажмите Transform</span>
+  </div>
+  <button id="run-btn">
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+    Transform
+    <span class="kbd">⌘↵</span>
+  </button>
+</div>
+
+<div id="app">
+
+  <!-- LEFT -->
+  <div id="left">
+    <div class="tab-bar" id="tab-bar">
+      <div class="tab-add" id="tab-add" title="Новый сниппет">+</div>
+    </div>
+    <div class="editor-wrap">
+      <div id="line-nums">1</div>
+      <div class="editor-area">
+        <pre id="editor-highlight"><code class="language-php"></code></pre>
+        <textarea id="editor" spellcheck="false" autocorrect="off" autocapitalize="off"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <div id="drag"></div>
+
+  <!-- RIGHT -->
+  <div id="right">
+    <div class="view-bar">
+      <div class="vtab active" data-v="result">Результат</div>
+      <div class="vtab" data-v="steps">Шаги <span class="badge" id="steps-badge" style="display:none">0</span></div>
+    </div>
+
+    <div class="pane show" id="pane-result">
+      <div class="empty">
+        <div class="empty-icon">⚙</div>
+        <h3>Результат появится здесь</h3>
+        <p>Вставьте PHP-код слева и нажмите «Transform»</p>
+      </div>
+    </div>
+
+    <div class="pane" id="pane-steps">
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <h3>Шаги трансформации</h3>
+        <p>Каждый применённый visitor будет показан отдельной карточкой с diff-ом</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+const $ = id => document.getElementById(id);
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function hi(code) {
+  try { return hljs.highlight(code, { language: 'php' }).value; }
+  catch { return esc(code); }
+}
+
+function plural(n, one, two, five) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m100 >= 11 && m100 <= 19) return five;
+  if (m10 === 1) return one;
+  if (m10 >= 2 && m10 <= 4) return two;
+  return five;
+}
+
+// ── Examples ──────────────────────────────────────────────────────────────────
+
+let EXAMPLES = [];
+
+function loadExample(id) {
+  const ex = EXAMPLES.find(e => e.id === id);
+  if (!ex) return;
+  tabs   = [];
+  nextId = 1;
+  for (const f of ex.files) {
+    tabs.push({ id: nextId++, name: f.name, code: f.code });
+  }
+  // Открываем index.php если есть, иначе первый файл
+  const entry = tabs.find(t => t.name === 'index.php') ?? tabs[0];
+  activeId = entry.id;
+  $('editor').value = entry.code;
+  updateLn();
+  syncHighlight(true);
+  renderTabs();
+  $('editor').focus();
+}
+
+// ── Tabs ─────────────────────────────────────────────────────────────────────
+
+let tabs     = [];
+let activeId = 1;
+let nextId   = 1;
+
+function activeTab() { return tabs.find(t => t.id === activeId); }
+
+function saveCode() {
+  const t = activeTab();
+  if (t) t.code = $('editor').value;
+}
+
+function loadTab(id) {
+  saveCode();
+  activeId = id;
+  const t = activeTab();
+  $('editor').value = t ? t.code : '';
+  updateLn();
+  syncHighlight(true);
+  renderTabs();
+  $('editor').focus();
+}
+
+function addTab() {
+  saveCode();
+  const id = nextId++;
+  tabs.push({ id, name: `snippet${id}.php`, code: '<?php\n\n' });
+  loadTab(id);
+}
+
+function closeTab(id, e) {
+  e.stopPropagation();
+  if (tabs.length === 1) return;
+  const idx = tabs.findIndex(t => t.id === id);
+  tabs.splice(idx, 1);
+  if (activeId === id) {
+    activeId = tabs[Math.max(0, idx - 1)].id;
+    $('editor').value = activeTab().code;
+    updateLn();
+    syncHighlight(true);
+  }
+  renderTabs();
+}
+
+function renameTab(id, e) {
+  e.stopPropagation();
+  const t = tabs.find(t => t.id === id);
+  if (!t) return;
+  const name = prompt('Имя файла:', t.name);
+  if (name && name.trim()) { t.name = name.trim(); renderTabs(); }
+}
+
+function renderTabs() {
+  const bar = $('tab-bar');
+  const add = $('tab-add');
+  bar.querySelectorAll('.tab').forEach(el => el.remove());
+
+  tabs.forEach(t => {
+    const el = document.createElement('div');
+    el.className = 'tab' + (t.id === activeId ? ' active' : '');
+
+    const nm = document.createElement('span');
+    nm.textContent = t.name;
+    nm.addEventListener('dblclick', e => renameTab(t.id, e));
+    el.appendChild(nm);
+
+    if (tabs.length > 1) {
+      const x = document.createElement('span');
+      x.className = 'tab-x';
+      x.textContent = '×';
+      x.addEventListener('click', e => closeTab(t.id, e));
+      el.appendChild(x);
+    }
+
+    el.addEventListener('click', () => loadTab(t.id));
+    bar.insertBefore(el, add);
+  });
+}
+
+// ── Syntax highlight (overlay) ────────────────────────────────────────────────
+
+let _hiTimer = null;
+
+function syncHighlight(immediate) {
+  const code = $('editor').value;
+  const codeEl = document.querySelector('#editor-highlight code');
+  if (!codeEl) return;
+  // Немедленно обновляем текст чтобы не было сдвига при прокрутке
+  codeEl.textContent = code;
+  clearTimeout(_hiTimer);
+  const apply = () => {
+    try { codeEl.innerHTML = hljs.highlight(code, { language: 'php' }).value; }
+    catch { codeEl.textContent = code; }
+    _syncHlScroll();
+  };
+  if (immediate) apply(); else _hiTimer = setTimeout(apply, 80);
+}
+
+function _syncHlScroll() {
+  const ed = $('editor'), hl = $('editor-highlight');
+  if (!hl) return;
+  hl.scrollTop  = ed.scrollTop;
+  hl.scrollLeft = ed.scrollLeft;
+}
+
+// ── Line numbers ──────────────────────────────────────────────────────────────
+
+function updateLn() {
+  const n = $('editor').value.split('\n').length;
+  $('line-nums').textContent = Array.from({ length: n }, (_, i) => i + 1).join('\n');
+  syncLnScroll();
+}
+
+function syncLnScroll() {
+  const ed = $('editor');
+  $('line-nums').scrollTop = ed.scrollTop;
+  _syncHlScroll();
+}
+
+// ── Resize ────────────────────────────────────────────────────────────────────
+
+(function () {
+  const handle = $('drag'), left = $('left'), app = $('app');
+  let on = false;
+  handle.addEventListener('mousedown', e => { on = true; handle.classList.add('on'); e.preventDefault(); document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none'; });
+  document.addEventListener('mousemove', e => {
+    if (!on) return;
+    const r = app.getBoundingClientRect();
+    const pct = Math.min(Math.max((e.clientX - r.left) / r.width * 100, 15), 85);
+    left.style.width = pct + '%';
+  });
+  document.addEventListener('mouseup', () => { if (!on) return; on = false; handle.classList.remove('on'); document.body.style.cursor = ''; document.body.style.userSelect = ''; });
+})();
+
+// ── View switching ────────────────────────────────────────────────────────────
+
+function switchView(v) {
+  document.querySelectorAll('.vtab').forEach(b => b.classList.toggle('active', b.dataset.v === v));
+  document.querySelectorAll('.pane').forEach(p => p.classList.toggle('show', p.id === 'pane-' + v));
+}
+
+document.querySelectorAll('.vtab').forEach(b => b.addEventListener('click', () => switchView(b.dataset.v)));
+
+// ── Diff rendering ────────────────────────────────────────────────────────────
+
+function renderDiff(text) {
+  const lines = text.split('\n');
+  let out = '<div class="diff">';
+  for (const line of lines) {
+    if (!line) continue;
+    const ch = line[0];
+    if (ch === '@') {
+      out += `<div class="dl dl-hunk"><span class="dm">@</span><span class="dc">${esc(line)}</span></div>`;
+    } else if (ch === '+') {
+      out += `<div class="dl dl-add"><span class="dm">+</span><span class="dc">${esc(line.slice(1))}</span></div>`;
+    } else if (ch === '-') {
+      out += `<div class="dl dl-del"><span class="dm">−</span><span class="dc">${esc(line.slice(1))}</span></div>`;
+    } else {
+      out += `<div class="dl"><span class="dm"> </span><span class="dc">${esc(line.slice(1))}</span></div>`;
+    }
+  }
+  return out + '</div>';
+}
+
+// ── Step cards ────────────────────────────────────────────────────────────────
+
+let cardSeq = 0;
+
+function makeCard(step) {
+  const id = 'c' + (++cardSeq);
+  return `
+<div class="card" id="${id}">
+  <div class="card-head" onclick="toggleCard('${id}')">
+    <span class="c-pass">pass ${step.pass}</span>
+    <span class="c-name">${esc(step.visitor)}</span>
+    <span class="c-desc">${esc(step.desc || '')}</span>
+    <span class="c-arrow">▼</span>
+  </div>
+  <div class="card-body">
+    <div class="inner-tabs">
+      <div class="itab active" onclick="switchInner('${id}','diff',this)">Diff</div>
+      <div class="itab"        onclick="switchInner('${id}','before',this)">До</div>
+      <div class="itab"        onclick="switchInner('${id}','after',this)">После</div>
+    </div>
+    <div class="inner-pane show" data-ip="diff">
+      ${renderDiff(step.diff)}
+    </div>
+    <div class="inner-pane code-pane" data-ip="before">
+      <pre><code class="language-php hljs">${hi(step.before)}</code></pre>
+    </div>
+    <div class="inner-pane code-pane" data-ip="after">
+      <pre><code class="language-php hljs">${hi(step.after)}</code></pre>
+    </div>
+  </div>
+</div>`;
+}
+
+function toggleCard(id) { $(id).classList.toggle('open'); }
+
+function switchInner(cardId, pane, el) {
+  const card = $(cardId);
+  card.querySelectorAll('.inner-pane').forEach(p => p.classList.remove('show'));
+  card.querySelector(`[data-ip="${pane}"]`).classList.add('show');
+  card.querySelectorAll('.itab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ── Render results ────────────────────────────────────────────────────────────
+
+function renderResults(data) {
+  // Result pane
+  $('pane-result').innerHTML = `<pre><code class="language-php hljs">${hi(data.final)}</code></pre>`;
+
+  // Steps pane
+  const badge = $('steps-badge');
+  const n     = data.steps.length;
+
+  if (n === 0) {
+    $('pane-steps').innerHTML = `<div class="no-change"><div class="icon">✓</div>Код уже оптимален — изменений нет</div>`;
+    badge.style.display = 'none';
+  } else {
+    badge.style.display = '';
+    badge.textContent = n;
+
+    const byPass = {};
+    for (const s of data.steps) { (byPass[s.pass] = byPass[s.pass] || []).push(s); }
+
+    cardSeq = 0;
+    let html = `<div style="padding:12px">`;
+    html += `<div class="steps-meta">
+      <strong>${n}</strong> ${plural(n,'трансформация','трансформации','трансформаций')}
+      &nbsp;·&nbsp;
+      <strong>${data.passes}</strong> ${plural(data.passes,'проход','прохода','проходов')}
+    </div>`;
+
+    for (const [pass, steps] of Object.entries(byPass)) {
+      html += `<div class="pass-label">Проход ${pass}</div>`;
+      steps.forEach(s => { html += makeCard(s); });
+    }
+
+    html += '</div>';
+    $('pane-steps').innerHTML = html;
+
+    // auto-open first card
+    const first = $('pane-steps').querySelector('.card');
+    if (first) first.classList.add('open');
+  }
+
+  switchView('result');
+}
+
+// ── Transform ─────────────────────────────────────────────────────────────────
+
+async function run() {
+  saveCode();
+
+  let bodyObj;
+  if (tabs.length === 1) {
+    const code = tabs[0].code?.trim();
+    if (!code) return;
+    bodyObj = { code };
+  } else {
+    // Несколько файлов: отправляем все, entry = index.php или первый
+    const entryName = (tabs.find(t => t.name === 'index.php') ?? tabs[0]).name;
+    bodyObj = { files: tabs.map(t => ({ name: t.name, code: t.code })), entry: entryName };
+  }
+
+  const btn = $('run-btn');
+  const st  = $('status');
+
+  btn.disabled = true;
+  st.className = 'busy';
+  st.textContent = '⏳ Трансформация…';
+
+  const spin = document.createElement('div');
+  spin.className = 'spin-wrap';
+  spin.innerHTML = '<div class="spinner"></div>';
+  $('right').style.position = 'relative';
+  $('right').appendChild(spin);
+
+  try {
+    const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj) });
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    renderResults(data);
+    const n = data.steps.length;
+    st.className = 'ok';
+    st.textContent = `✓ ${n} ${plural(n,'шаг','шага','шагов')} · ${data.passes} ${plural(data.passes,'проход','прохода','проходов')}`;
+
+  } catch (err) {
+    st.className = 'err';
+    st.textContent = '✗ ' + err.message;
+    $('pane-result').innerHTML = `<div class="empty"><div class="empty-icon">⚠</div><h3>Ошибка</h3><p>${esc(err.message)}</p></div>`;
+    switchView('result');
+  } finally {
+    btn.disabled = false;
+    spin.remove();
+  }
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+
+$('editor').addEventListener('input', () => { updateLn(); syncHighlight(); });
+$('editor').addEventListener('scroll', syncLnScroll);
+$('editor').addEventListener('keydown', e => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const ta = e.target, s = ta.selectionStart, end = ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + '    ' + ta.value.slice(end);
+    ta.selectionStart = ta.selectionEnd = s + 4;
+    updateLn();
+  }
+});
+
+$('run-btn').addEventListener('click', run);
+$('tab-add').addEventListener('click', addTab);
+
+document.addEventListener('keydown', e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+(async function () {
+  const sel = $('example-select');
+
+  sel.addEventListener('change', () => {
+    if (sel.value) loadExample(sel.value);
+  });
+
+  try {
+    const res  = await fetch('api.php');
+    const data = await res.json();
+    EXAMPLES = data.examples ?? [];
+  } catch {
+    EXAMPLES = [];
+  }
+
+  for (const ex of EXAMPLES) {
+    const opt = document.createElement('option');
+    opt.value = ex.id;
+    opt.textContent = ex.name + (ex.files.length > 1 ? ` (${ex.files.length} файла)` : '');
+    sel.appendChild(opt);
+  }
+
+  // Загружаем первый пример и помечаем его выбранным в селекте
+  if (EXAMPLES.length > 0) {
+    loadExample(EXAMPLES[0].id);
+    sel.value = EXAMPLES[0].id;
+  }
+})();
+</script>
+</body>
+</html>
