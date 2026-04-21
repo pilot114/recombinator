@@ -63,13 +63,21 @@ class EvalStandardFunction extends BaseVisitor
         return null;
     }
 
-    protected function isArrayHandler(Node\Expr\FuncCall $node): Node\Expr\ConstFetch
+    protected function isArrayHandler(Node\Expr\FuncCall $node): ?Node\Expr\ConstFetch
     {
-        if ($node->args[0]->value instanceof Node\Expr\Array_) {
+        $arg = $node->args[0]->value;
+
+        if ($arg instanceof Node\Expr\Array_) {
             return new Node\Expr\ConstFetch(new Name('true'));
         }
 
-        return new Node\Expr\ConstFetch(new Name('false'));
+        // Скалярные не-массивы: строка, число, float, bool/null через ConstFetch
+        if ($arg instanceof Node\Scalar || $arg instanceof Node\Expr\ConstFetch) {
+            return new Node\Expr\ConstFetch(new Name('false'));
+        }
+
+        // Тип переменной статически неизвестен — не трансформируем
+        return null;
     }
 
     /**

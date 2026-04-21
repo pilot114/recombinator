@@ -49,7 +49,7 @@ it(
 );
 
 it(
-    'evaluates is_array on variable to false (static analysis)',
+    'does not transform is_array on variable with unknown type',
     function (): void {
         $code = '<?php is_array($var);';
         $ast = $this->parser->parse($code);
@@ -57,8 +57,8 @@ it(
         $result = transformWithEval($ast, $this->visitor);
         $output = $this->printer->prettyPrint($result);
 
-        // isArrayHandler replaces non-Array_ nodes with false
-        expect($output)->toContain('false');
+        // Тип переменной статически неизвестен — вызов оставляем как есть
+        expect($output)->toContain('is_array($var)');
     }
 );
 

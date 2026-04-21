@@ -241,3 +241,29 @@ echo "Hello, " . $name;';
         expect($result)->toContain('Hello, " . \'World');
     }
 );
+
+it(
+    'should not replace variable with scalar when variable is reassigned inside loop',
+    function (): void {
+        $code = '<?php
+$subtotal = 0;
+foreach ($items as $item) {
+    $subtotal = $subtotal + $item[\'price\'];
+}';
+
+        $ast = $this->parser->parse($code);
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new ParentConnectingVisitor());
+        $traverser->addVisitor(new ScopeVisitor());
+        $traverser->addVisitor($this->visitor);
+
+        $ast = $traverser->traverse($ast);
+
+        $result = $this->printer->prettyPrint($ast);
+
+        // $subtotal = 0 должно остаться (переменная нужна в цикле)
+        expect($result)->toContain('$subtotal = 0');
+        // внутри цикла $subtotal не должен заменяться на скаляр
+        expect($result)->toContain('$subtotal = $subtotal + $item[\'price\']');
+    }
+);
