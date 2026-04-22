@@ -4,6 +4,7 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\CloningVisitor;
 use Recombinator\Domain\ScopeStore;
 
 /**
@@ -142,17 +143,44 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         ];
         $stmts = [];
 
-        // Инициализация свойств значениями по умолчанию
-        foreach ($class['props'] as $prop) {
-            $varName = sprintf('%s_%s_%s', $assign->var->name, $prop->name->name, $uid);
-            $var = new Node\Expr\Variable($varName);
-            $stmt = new Node\Expr\Assign($var, $prop->default);
-            $stmts[] = new Node\Stmt\Expression($stmt);
-
-            $instanceValue['properties'][$prop->name->name] = $varName;
+        // Карта promoted-свойств: propName → индекс аргумента конструктора
+        $promotedArgIndex = [];
+        if (isset($class['methods']['__construct'])) {
+            foreach ($class['methods']['__construct']->params as $i => $param) {
+                if (
+                    $param->flags !== 0
+                    && $param->var instanceof Node\Expr\Variable
+                    && is_string($param->var->name)
+                ) {
+                    $promotedArgIndex[$param->var->name] = $i;
+                }
+            }
         }
 
-        // Обработка конструктора, если есть
+        // Инициализация свойств: promoted → из args вызова, обычные → из default
+        foreach ($class['props'] as $prop) {
+            $propName = $prop->name->name;
+            $varName = sprintf('%s_%s_%s', $assign->var->name, $propName, $uid);
+            $var = new Node\Expr\Variable($varName);
+
+            $initExpr = $prop->default;
+            if (isset($promotedArgIndex[$propName])) {
+                $i = $promotedArgIndex[$propName];
+                if (isset($node->args[$i]) && $node->args[$i] instanceof Node\Arg) {
+                    $initExpr = $node->args[$i]->value;
+                } elseif (isset($class['methods']['__construct']->params[$i])) {
+                    $param = $class['methods']['__construct']->params[$i];
+                    if ($param->default instanceof Node\Expr) {
+                        $initExpr = $param->default;
+                    }
+                }
+            }
+
+            $stmts[] = new Node\Stmt\Expression(new Node\Expr\Assign($var, $initExpr));
+            $instanceValue['properties'][$propName] = $varName;
+        }
+
+        // Обработка тела конструктора (непромоутед-присваивания, прочая логика)
         if (isset($class['methods']['__construct'])) {
             $constructor = $class['methods']['__construct'];
             $constructorStmts = $this->inlineConstructor($constructor, $node, $instanceValue);
@@ -183,8 +211,9 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         $stmts = [];
 
         foreach ($constructor->stmts as $stmt) {
-            // Клонируем statement и заменяем $this->property на переменные инстанса
-            $clonedStmt = clone $stmt;
+            // Глубокая копия тела — shallow clone оставил бы поддеревья общими
+            // с оригиналом, и обход замен мутировал бы исходный метод
+            $clonedStmt = $this->deepClone($stmt);
             $traverser = new NodeTraverser();
             $traverser->addVisitor(new ThisPropertyReplacer($instance));
             $traverser->addVisitor(new ParametersToArgsVisitor($newExpr));
@@ -253,11 +282,14 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
     protected function replaceCallToBody(Node\Expr\MethodCall $call, Node\Stmt\ClassMethod $method, array $instance): ?\PhpParser\Node\Expr
     {
         if (count($method->stmts) === 1 && $method->stmts[0] instanceof Node\Stmt\Return_) {
-            // Заменяем в копии тела параметры на аргументы и $this->property на значения
+            // Глубокая копия тела обязательна: иначе каждая последующая подстановка
+            // аргументов будет видеть изменения предыдущей (общие поддеревья).
+            $cloned = $this->deepClone($method->stmts[0]);
+
             $traverser = new NodeTraverser();
             $traverser->addVisitor(new ThisPropertyReplacer($instance));
             $traverser->addVisitor(new ParametersToArgsVisitor($call));
-            $result = $traverser->traverse([clone $method->stmts[0]]);
+            $result = $traverser->traverse([$cloned]);
 
             // Возвращаем выражение из return (без самого return)
             if ($result[0] instanceof Node\Stmt\Return_ && $result[0]->expr instanceof \PhpParser\Node\Expr) {
@@ -266,5 +298,13 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         }
 
         return null;
+    }
+
+    private function deepClone(Node $node): Node
+    {
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(new CloningVisitor());
+        $result = $traverser->traverse([$node]);
+        return $result[0] instanceof Node ? $result[0] : $node;
     }
 }
