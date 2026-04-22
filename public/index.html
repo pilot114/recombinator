@@ -459,21 +459,22 @@ function renderTabs() {
 
 // ── Syntax highlight (overlay) ────────────────────────────────────────────────
 
-let _hiTimer = null;
+let _hiPending = false;
 
 function syncHighlight(immediate) {
-  const code = $('editor').value;
   const codeEl = document.querySelector('#editor-highlight code');
   if (!codeEl) return;
-  // Немедленно обновляем текст чтобы не было сдвига при прокрутке
-  codeEl.textContent = code;
-  clearTimeout(_hiTimer);
   const apply = () => {
+    _hiPending = false;
+    const code = $('editor').value;
     try { codeEl.innerHTML = hljs.highlight(code, { language: 'php' }).value; }
     catch { codeEl.textContent = code; }
     _syncHlScroll();
   };
-  if (immediate) apply(); else _hiTimer = setTimeout(apply, 80);
+  if (immediate) { apply(); return; }
+  if (_hiPending) return;
+  _hiPending = true;
+  requestAnimationFrame(apply);
 }
 
 function _syncHlScroll() {
