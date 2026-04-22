@@ -29,7 +29,9 @@ class Calculator
         return "small";
     }
 }
+$defaultX = 0;
 $defaultX = $_GET["x"] ?? $defaultX ?? null;
+$defaultY = 0;
 $defaultY = $_GET["y"] ?? $defaultY ?? null;
 $finalX = $defaultX + 10;
 $finalY = $defaultY + 20;

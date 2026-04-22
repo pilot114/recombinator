@@ -27,13 +27,13 @@ class VarToScalarVisitor extends BaseVisitor
     public $maybeRemove;
 
     /**
-     * Переменные, которые переопределяются внутри хотя бы одного цикла.
-     * Их скалярные значения до цикла не кешируются, так как на каждой итерации
-     * значение уже отличается от первоначального.
+     * Переменные, которые переопределяются внутри условно-исполняемой конструкции
+     * (циклы, if/elseif/else, switch/match, try/catch). Их значения зависят от
+     * потока управления и не могут кешироваться как скалярные.
      *
      * @var array<string, true>
      */
-    private array $loopAssignedVars = [];
+    private array $conditionalAssignedVars = [];
 
     public function __construct(?ScopeStore $scopeStore = null)
     {
@@ -44,18 +44,22 @@ class VarToScalarVisitor extends BaseVisitor
     {
         parent::beforeTraverse($nodes);
 
-        $this->loopAssignedVars = [];
+        $this->conditionalAssignedVars = [];
 
         foreach ([
             Node\Stmt\Foreach_::class,
             Node\Stmt\For_::class,
             Node\Stmt\While_::class,
             Node\Stmt\Do_::class,
-        ] as $loopClass) {
-            foreach ($this->findNode($loopClass) as $loop) {
-                foreach ($this->findNode(Node\Expr\Assign::class, $loop->stmts) as $assign) {
+            Node\Stmt\If_::class,
+            Node\Stmt\Switch_::class,
+            Node\Expr\Match_::class,
+            Node\Stmt\TryCatch::class,
+        ] as $scopedClass) {
+            foreach ($this->findNode($scopedClass) as $scoped) {
+                foreach ($this->findNode(Node\Expr\Assign::class, $scoped) as $assign) {
                     if ($assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)) {
-                        $this->loopAssignedVars[$assign->var->name] = true;
+                        $this->conditionalAssignedVars[$assign->var->name] = true;
                     }
                 }
             }
@@ -70,8 +74,8 @@ class VarToScalarVisitor extends BaseVisitor
          * Замена переменных 1/3 - Запись скаляра
          * Переменная "кэширует" значение, поэтому чтобы избежать сайд-эффектов
          * подменяем только переменные со скалярным значением.
-         * Переменные, переопределяемые внутри циклов, не кешируем — там
-         * значение меняется на каждой итерации.
+         * Переменные, переопределяемые внутри циклов или ветвей (if/switch/match/try),
+         * не кешируем — их значение зависит от потока управления, а не от первой записи.
          */
         if ($node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
             $varName = $node->var->name;
@@ -80,7 +84,7 @@ class VarToScalarVisitor extends BaseVisitor
             $isConstFetch = $node->expr instanceof Node\Expr\ConstFetch &&
                             in_array(strtolower($node->expr->name->toString()), ['true', 'false', 'null']);
 
-            if (($isScalar || $isConstFetch) && !isset($this->loopAssignedVars[$varName])) {
+            if (($isScalar || $isConstFetch) && !isset($this->conditionalAssignedVars[$varName])) {
                 // заносим в кеш
                 $varExprScalar = clone $node->expr;
                 $varExprScalar->setAttributes([]);
