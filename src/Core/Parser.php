@@ -21,9 +21,13 @@ use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\EvalStandardFunction;
 use Recombinator\Transformation\Visitor\FunctionScopeVisitor;
 use Recombinator\Transformation\Visitor\IncludeVisitor;
+use Recombinator\Transformation\Visitor\LinterVisitor;
 use Recombinator\Transformation\Visitor\MethodToSingleReturnVisitor;
+use Recombinator\Transformation\Visitor\ListSingleUseInlinerVisitor;
+use Recombinator\Transformation\Visitor\PureFunctionCacheVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedClassVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
+use Recombinator\Transformation\Visitor\SingleUseInlinerVisitor;
 use Recombinator\Transformation\Visitor\TernarReturnVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 
@@ -139,9 +143,13 @@ class Parser
             new CallFunctionVisitor($ss),
             new ConstClassVisitor($ss),
             new TernarReturnVisitor(),
+            new SingleUseInlinerVisitor(),
+            new ListSingleUseInlinerVisitor(),
+            new PureFunctionCacheVisitor(),
             new MethodToSingleReturnVisitor(),
             new ConstructorAndMethodsVisitor($ss),
             new RemoveUnusedClassVisitor(),
+            new LinterVisitor(dirname(__DIR__, 2)),
         ];
         $this->parseScopesWithVisitors();
     }

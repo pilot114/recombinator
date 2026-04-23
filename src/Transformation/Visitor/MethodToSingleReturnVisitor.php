@@ -112,7 +112,7 @@ class MethodToSingleReturnVisitor extends BaseVisitor
             return $expr;
         }
 
-        $cloned = self::deepClone($expr);
+        $cloned = self::cloneExpr($expr);
 
         $traverser = new NodeTraverser();
         $traverser->addVisitor(
@@ -125,7 +125,7 @@ class MethodToSingleReturnVisitor extends BaseVisitor
                 public function leaveNode(Node $n): ?Node
                 {
                     if ($n instanceof Node\Expr\Variable && is_string($n->name) && isset($this->subs[$n->name])) {
-                        return MethodToSingleReturnVisitor::deepClone($this->subs[$n->name]);
+                        return MethodToSingleReturnVisitor::cloneExpr($this->subs[$n->name]);
                     }
                     return null;
                 }
@@ -136,7 +136,7 @@ class MethodToSingleReturnVisitor extends BaseVisitor
         return $result[0] instanceof Node\Expr ? $result[0] : $expr;
     }
 
-    public static function deepClone(Node\Expr $expr): Node\Expr
+    public static function cloneExpr(Node\Expr $expr): Node\Expr
     {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new CloningVisitor());

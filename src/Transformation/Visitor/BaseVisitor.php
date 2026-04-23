@@ -117,6 +117,31 @@ class BaseVisitor extends NodeVisitorAbstract
     }
 
     /**
+     * Рекурсивно клонирует узел AST со всеми дочерними.
+     * Нужен чтобы не разделять один объект между двумя позициями в дереве.
+     */
+    protected function deepClone(Node $node): Node
+    {
+        $cloned = clone $node;
+        foreach ($cloned->getSubNodeNames() as $subName) {
+            $value = $cloned->$subName;
+            if ($value instanceof Node) {
+                $cloned->$subName = $this->deepClone($value);
+            } elseif (is_array($value)) {
+                foreach ($value as $k => $item) {
+                    if ($item instanceof Node) {
+                        $value[$k] = $this->deepClone($item);
+                    }
+                }
+
+                $cloned->$subName = $value;
+            }
+        }
+
+        return $cloned;
+    }
+
+    /**
      * Выводит список нод с их позициями (строка:смещение в файле)
      */
     protected function printNodesPos(string $className): void

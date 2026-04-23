@@ -32,15 +32,9 @@ class UserValidator
 }
 function checkPermission($level): string
 {
-    if ($level > 5) {
-        return "allowed";
-    }
-    return "denied";
+    return $level > 5 ? "allowed" : "denied";
 }
 function getLabel($count): string
 {
-    if ($count == 1) {
-        return "item";
-    }
-    return "items";
+    return $count == 1 ? "item" : "items";
 }

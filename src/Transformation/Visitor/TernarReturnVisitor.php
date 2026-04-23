@@ -1,59 +1,92 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
-use Recombinator\Domain\ScopeStore;
 
 /**
  * Подмена:
  *
- * if(x) { return a; } else { return b };
+ * if(x) { return a; } else { return b; }
  * или
  * if(x) { return a; } return b;
  * на
  * return x ? a : b;
+ *
+ * Работает для ClassMethod и Function_.
+ * Приставочные стейтменты перед паттерном сохраняются.
  */
-#[VisitorMeta('if(x){return a;} return b; → return x ? a : b')]
+#[VisitorMeta('if(x){return a;} else {return b;} → return x ? a : b')]
 class TernarReturnVisitor extends BaseVisitor
 {
     public function enterNode(Node $node): int|Node|array|null
     {
-        if (!$node instanceof Node\Stmt\ClassMethod) {
+        $stmts = match (true) {
+            $node instanceof Node\Stmt\ClassMethod,
+            $node instanceof Node\Stmt\Function_ => $node->stmts,
+            default => null,
+        };
+
+        if ($stmts === null || $stmts === []) {
             return null;
         }
 
-        $stmts = $node->stmts;
-        if ($stmts === null || !isset($stmts[0], $stmts[1])) {
-            return null;
+        $count = count($stmts);
+        $last  = $stmts[$count - 1];
+
+        // Паттерн 1: if(cond) { return a; } else { return b; }
+        if ($last instanceof Node\Stmt\If_ && $last->else !== null && $last->elseifs === []) {
+            $ifReturn   = $this->getSingleReturn($last->stmts);
+            $elseReturn = $this->getSingleReturn($last->else->stmts);
+
+            if ($ifReturn !== null && $elseReturn !== null) {
+                $nodeNew        = clone $node;
+                $nodeNew->stmts = [
+                    ...array_slice($stmts, 0, $count - 1),
+                    new Node\Stmt\Return_(new Node\Expr\Ternary($last->cond, $ifReturn, $elseReturn)),
+                ];
+                $node->setAttribute('replace', $nodeNew);
+                return null;
+            }
         }
 
-        if (!$stmts[0] instanceof Node\Stmt\If_ || !$stmts[1] instanceof Node\Stmt\Return_) {
-            return null;
+        // Паттерн 2: if(cond) { return a; } return b;
+        if ($count >= 2) {
+            $prev = $stmts[$count - 2];
+            if (
+                $prev instanceof Node\Stmt\If_
+                && $prev->else === null
+                && $prev->elseifs === []
+                && $last instanceof Node\Stmt\Return_
+            ) {
+                $ifReturn = $this->getSingleReturn($prev->stmts);
+                $elseExpr = $last->expr;
+
+                if ($ifReturn !== null && $elseExpr instanceof Node\Expr) {
+                    $nodeNew        = clone $node;
+                    $nodeNew->stmts = [
+                        ...array_slice($stmts, 0, $count - 2),
+                        new Node\Stmt\Return_(new Node\Expr\Ternary($prev->cond, $ifReturn, $elseExpr)),
+                    ];
+                    $node->setAttribute('replace', $nodeNew);
+                    return null;
+                }
+            }
         }
-
-        $if = $stmts[0];
-        $second = $stmts[1]->expr;
-        if (!$second instanceof \PhpParser\Node\Expr) {
-            return null;
-        }
-
-        $ifStmts = $if->stmts;
-        if (!isset($ifStmts[0]) || !$ifStmts[0] instanceof Node\Stmt\Return_) {
-            return null;
-        }
-
-        $first = $ifStmts[0]->expr;
-        if (!$first instanceof \PhpParser\Node\Expr) {
-            return null;
-        }
-
-        $ternar = new Node\Expr\Ternary($stmts[0]->cond, $first, $second);
-        $nodeNew = clone $node;
-        $nodeNew->stmts = [new Node\Stmt\Return_($ternar)];
-
-        $node->setAttribute('replace', $nodeNew);
 
         return null;
+    }
+
+    /** @param array<Node\Stmt> $stmts */
+    private function getSingleReturn(array $stmts): ?Node\Expr
+    {
+        if (count($stmts) !== 1 || !$stmts[0] instanceof Node\Stmt\Return_) {
+            return null;
+        }
+
+        $expr = $stmts[0]->expr;
+        return $expr instanceof Node\Expr ? $expr : null;
     }
 }

@@ -237,7 +237,7 @@ class ClassInlinerVisitor extends BaseVisitor
     /**
      * Recursively clone a node and all its child nodes.
      */
-    private function deepClone(Node $node): Node
+    protected function deepClone(Node $node): Node
     {
         $cloned = clone $node;
         foreach ($cloned->getSubNodeNames() as $subName) {

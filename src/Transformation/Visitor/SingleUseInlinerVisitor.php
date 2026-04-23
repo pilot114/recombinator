@@ -147,28 +147,4 @@ class SingleUseInlinerVisitor extends BaseVisitor
         return false;
     }
 
-    /**
-     * Recursively clones an AST node and all its children.
-     * Needed to avoid sharing node objects between two AST positions.
-     */
-    private function deepClone(Node $node): Node
-    {
-        $cloned = clone $node;
-        foreach ($cloned->getSubNodeNames() as $subName) {
-            $value = $cloned->$subName;
-            if ($value instanceof Node) {
-                $cloned->$subName = $this->deepClone($value);
-            } elseif (is_array($value)) {
-                foreach ($value as $k => $item) {
-                    if ($item instanceof Node) {
-                        $value[$k] = $this->deepClone($item);
-                    }
-                }
-
-                $cloned->$subName = $value;
-            }
-        }
-
-        return $cloned;
-    }
 }
