@@ -300,7 +300,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         return null;
     }
 
-    private function deepClone(Node $node): Node
+    protected function deepClone(Node $node): Node
     {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new CloningVisitor());

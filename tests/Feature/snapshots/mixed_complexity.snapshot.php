@@ -23,10 +23,7 @@ class Calculator
     public function circleArea($radius): string
     {
         $area = self::PI * $radius * $radius;
-        if ($area > 100) {
-            return "large";
-        }
-        return "small";
+        return $area > 100 ? "large" : "small";
     }
 }
 $defaultX = 0;
