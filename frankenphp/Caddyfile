@@ -1,0 +1,12 @@
+{
+	frankenphp
+	auto_https off
+}
+
+:80 {
+	root * /app/public
+	encode gzip
+
+	try_files {path} {path}/index.html index.html
+	php_server
+}
