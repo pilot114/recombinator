@@ -9,4 +9,4 @@ run_all:
 	@make run82 && make run83 && make run84
 run:
 	@docker build -t recombinator-dev .
-	@docker run -it --rm -v "$$PWD":/app -p 80:80 -w /app recombinator-dev sh -c "cd public && php -S 0.0.0.0:80"
+	@docker run -it --rm -v "$$PWD":/app -p 80:80 -w /app recombinator-dev sh -c "composer i && cd public && php -S 0.0.0.0:80"
