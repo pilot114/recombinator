@@ -7,3 +7,6 @@ run84:
 	@docker run -it --rm --name tmp -v "$$PWD":/myapp -w /myapp php:8.4-cli php $(SCRIPT)
 run_all:
 	@make run82 && make run83 && make run84
+run:
+	@docker build -t recombinator-dev .
+	@docker run -it --rm -v "$$PWD":/app -p 80:80 -w /app recombinator-dev sh -c "cd public && php -S 0.0.0.0:80"
