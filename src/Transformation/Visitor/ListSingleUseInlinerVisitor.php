@@ -101,7 +101,11 @@ class ListSingleUseInlinerVisitor extends BaseVisitor
                 }
 
                 $v = $item->value;
-                if (!$v instanceof Node\Expr\Variable || !is_string($v->name)) {
+                if (!$v instanceof Node\Expr\Variable) {
+                    continue;
+                }
+
+                if (!is_string($v->name)) {
                     continue;
                 }
 

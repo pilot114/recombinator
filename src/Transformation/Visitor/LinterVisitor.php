@@ -20,7 +20,9 @@ use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 #[VisitorMeta('Финальная нормализация: Rector (PHP 8.4+, качество кода) + PHPCBF (PSR-12)')]
 class LinterVisitor extends BaseVisitor
 {
-    public function __construct(private readonly string $projectRoot) {}
+    public function __construct(private readonly string $projectRoot)
+    {
+    }
 
     /**
      * @param  array<Node> $nodes
@@ -46,7 +48,7 @@ class LinterVisitor extends BaseVisitor
                 return null;
             }
 
-            $parser = (new ParserFactory())->createForNewestSupportedVersion();
+            $parser = new ParserFactory()->createForNewestSupportedVersion();
             return $parser->parse($codeAfter) ?? null;
         } finally {
             if (file_exists($tmpFile)) {

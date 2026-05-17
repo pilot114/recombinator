@@ -311,10 +311,12 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         return null;
     }
 
+    #[\Override]
     protected function deepClone(Node $node): Node
     {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new CloningVisitor());
+
         $result = $traverser->traverse([$node]);
         return $result[0] instanceof Node ? $result[0] : $node;
     }

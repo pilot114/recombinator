@@ -122,7 +122,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
     private function analyzeVariable(Expr\Variable $node, string $name): void
     {
         // Пропускаем специальные переменные
-        if (in_array($name, ['this', '_GET', '_POST', '_SESSION', '_SERVER', '_COOKIE', '_FILES'])) {
+        if (in_array($name, ['this', '_GET', '_POST', '_SESSION', '_SERVER', '_COOKIE', '_FILES'], true)) {
             return;
         }
 

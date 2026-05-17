@@ -2,3 +2,4 @@ vendor
 .idea
 tests/cache
 .phpunit.result.cache
+examples/06-symfony-demo/

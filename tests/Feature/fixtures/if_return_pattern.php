@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * If-return patterns that can be converted to ternary operators.
  *

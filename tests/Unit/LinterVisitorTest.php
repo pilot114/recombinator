@@ -19,6 +19,7 @@ it('returns null when code has no changes after linting', function (): void {
 
     $traverser = new NodeTraverser();
     $traverser->addVisitor($this->visitor);
+
     $result = $traverser->traverse($ast);
 
     // Either null (no changes) or a valid AST — never an exception
@@ -33,7 +34,7 @@ it('does not throw when tools are unavailable', function (): void {
     $traverser = new NodeTraverser();
     $traverser->addVisitor($visitor);
 
-    expect(fn () => $traverser->traverse($ast))->not->toThrow(Throwable::class);
+    expect(fn (): array => $traverser->traverse($ast))->not->toThrow(Throwable::class);
 });
 
 it('runs as the last visitor in the pipeline and returns valid AST', function (): void {
@@ -42,6 +43,7 @@ it('runs as the last visitor in the pipeline and returns valid AST', function ()
 
     $traverser = new NodeTraverser();
     $traverser->addVisitor($this->visitor);
+
     $result = $traverser->traverse($ast);
 
     expect($result)->toBeArray()->not->toBeEmpty();

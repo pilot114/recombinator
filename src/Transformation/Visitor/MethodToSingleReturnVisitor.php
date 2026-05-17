@@ -127,6 +127,7 @@ class MethodToSingleReturnVisitor extends BaseVisitor
                     if ($n instanceof Node\Expr\Variable && is_string($n->name) && isset($this->subs[$n->name])) {
                         return MethodToSingleReturnVisitor::cloneExpr($this->subs[$n->name]);
                     }
+
                     return null;
                 }
             }
@@ -140,6 +141,7 @@ class MethodToSingleReturnVisitor extends BaseVisitor
     {
         $traverser = new NodeTraverser();
         $traverser->addVisitor(new CloningVisitor());
+
         $result = $traverser->traverse([$expr]);
         return $result[0] instanceof Node\Expr ? $result[0] : $expr;
     }
@@ -159,6 +161,7 @@ class MethodToSingleReturnVisitor extends BaseVisitor
                 if ($n instanceof Node\Expr\Variable && is_string($n->name) && array_key_exists($n->name, $this->counts)) {
                     $this->counts[$n->name]++;
                 }
+
                 return null;
             }
         };
@@ -203,6 +206,7 @@ class MethodToSingleReturnVisitor extends BaseVisitor
                     $this->pure = false;
                     return NodeTraverser::STOP_TRAVERSAL;
                 }
+
                 return null;
             }
         };

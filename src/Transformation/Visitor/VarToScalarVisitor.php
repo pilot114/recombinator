@@ -40,13 +40,15 @@ class VarToScalarVisitor extends BaseVisitor
         $this->scopeStore = $scopeStore ?? ScopeStore::default();
     }
 
+    #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
 
         $this->conditionalAssignedVars = [];
 
-        foreach ([
+        foreach (
+            [
             Node\Stmt\Foreach_::class,
             Node\Stmt\For_::class,
             Node\Stmt\While_::class,
@@ -55,7 +57,8 @@ class VarToScalarVisitor extends BaseVisitor
             Node\Stmt\Switch_::class,
             Node\Expr\Match_::class,
             Node\Stmt\TryCatch::class,
-        ] as $scopedClass) {
+            ] as $scopedClass
+        ) {
             foreach ($this->findNode($scopedClass) as $scoped) {
                 foreach ($this->findNode(Node\Expr\Assign::class, $scoped) as $assign) {
                     if ($assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)) {
@@ -82,7 +85,7 @@ class VarToScalarVisitor extends BaseVisitor
             // Support both Scalar values and ConstFetch (true, false, null)
             $isScalar = $node->expr instanceof Node\Scalar;
             $isConstFetch = $node->expr instanceof Node\Expr\ConstFetch &&
-                            in_array(strtolower($node->expr->name->toString()), ['true', 'false', 'null']);
+                            in_array(strtolower($node->expr->name->toString()), ['true', 'false', 'null'], true);
 
             if (($isScalar || $isConstFetch) && !isset($this->conditionalAssignedVars[$varName])) {
                 // заносим в кеш
@@ -134,7 +137,7 @@ class VarToScalarVisitor extends BaseVisitor
                 $varName = $assign->var->name;
                 $isScalar = $assign->expr instanceof Node\Scalar;
                 $isConstFetch = $assign->expr instanceof Node\Expr\ConstFetch &&
-                                in_array(strtolower($assign->expr->name->toString()), ['true', 'false', 'null']);
+                                in_array(strtolower($assign->expr->name->toString()), ['true', 'false', 'null'], true);
 
                 if (!$isScalar && !$isConstFetch && $this->scopeStore->getVarFromScope($varName) !== null) {
                     $this->scopeStore->removeVarFromScope($varName);

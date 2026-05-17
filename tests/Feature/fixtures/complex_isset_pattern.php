@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Complex isset pattern that can be simplified to null coalescing.
  *

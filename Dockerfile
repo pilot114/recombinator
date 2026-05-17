@@ -6,6 +6,6 @@ RUN apt-get update \
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-COPY frankenphp/Caddyfile /etc/frankenphp/Caddyfile
+COPY Caddyfile /etc/frankenphp/Caddyfile
 
 WORKDIR /app

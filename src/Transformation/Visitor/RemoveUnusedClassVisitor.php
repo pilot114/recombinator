@@ -28,7 +28,7 @@ class RemoveUnusedClassVisitor extends BaseVisitor
     private array $externalReferences = [];
 
     /** Зарезервированные / built-in имена типов — их не считаем ссылками на классы. */
-    private const RESERVED = [
+    private const array RESERVED = [
         'self' => true, 'parent' => true, 'static' => true, 'this' => true,
         'null' => true, 'bool' => true, 'int' => true, 'float' => true,
         'string' => true, 'array' => true, 'object' => true, 'mixed' => true,
@@ -43,6 +43,7 @@ class RemoveUnusedClassVisitor extends BaseVisitor
         $this->config = $config ?? new Config();
     }
 
+    #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
@@ -53,7 +54,7 @@ class RemoveUnusedClassVisitor extends BaseVisitor
 
     public function enterNode(Node $node): ?Node
     {
-        if (!$node instanceof Node\Stmt\Class_ || $node->name === null) {
+        if (!$node instanceof Node\Stmt\Class_ || !$node->name instanceof \PhpParser\Node\Identifier) {
             return null;
         }
 
@@ -68,7 +69,6 @@ class RemoveUnusedClassVisitor extends BaseVisitor
     /**
      * Рекурсивный обход со стеком вложенных классов.
      *
-     * @param mixed         $nodes
      * @param array<string> $enclosing
      */
     private function scan(mixed $nodes, array $enclosing): void
@@ -87,7 +87,7 @@ class RemoveUnusedClassVisitor extends BaseVisitor
             }
 
             $pushed = false;
-            if ($node instanceof Node\Stmt\Class_ && $node->name !== null) {
+            if ($node instanceof Node\Stmt\Class_ && $node->name instanceof \PhpParser\Node\Identifier) {
                 $enclosing[] = strtolower($node->name->toString());
                 $pushed = true;
             }

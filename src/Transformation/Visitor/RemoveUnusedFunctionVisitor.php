@@ -28,6 +28,7 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
         $this->config = $config ?? new Config();
     }
 
+    #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);

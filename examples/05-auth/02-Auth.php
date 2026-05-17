@@ -2,12 +2,6 @@
 
 require __DIR__ . '/functions.php';
 
-/**
- * dump Auth
- * $auth = new Auth();
- * $result = $auth->login($username, $pass);
- * $result = $auth->login('test', 'test');
- */
 class Auth
 {
     const string HASH = 'test_test';

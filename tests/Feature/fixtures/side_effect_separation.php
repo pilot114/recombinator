@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 // EXTERNAL_STATE
 $username = $_GET["username"];
 $password = $_GET["password"];

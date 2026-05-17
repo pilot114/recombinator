@@ -48,7 +48,7 @@ class EvalStandardFunction extends BaseVisitor
                     return null;
                 }
 
-                if (in_array($funcName, array_keys($this->specialFunction))) {
+                if (in_array($funcName, array_keys($this->specialFunction), true)) {
                     $handlerName = $this->specialFunction[$funcName];
                     if (is_string($handlerName) && method_exists($this, $handlerName)) {
                         $result = $this->{$handlerName}($node);

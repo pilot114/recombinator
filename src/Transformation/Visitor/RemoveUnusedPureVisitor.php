@@ -68,6 +68,7 @@ class RemoveUnusedPureVisitor extends BaseVisitor
         'intval' => true, 'floatval' => true, 'strval' => true, 'boolval' => true,
         'settype' => true,
     ];
+
     /**
      * Переменные, которые хотя бы раз читаются в коде (не только присваиваются)
      *
@@ -80,6 +81,7 @@ class RemoveUnusedPureVisitor extends BaseVisitor
 
     private array $readVars = [];
 
+    #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
@@ -148,54 +150,62 @@ class RemoveUnusedPureVisitor extends BaseVisitor
         if ($node instanceof Node\Scalar) {
             return true;
         }
+
         if ($node instanceof Node\Expr\ConstFetch) {
             return true;
         }
+
         if ($node instanceof Node\Expr\Variable) {
             return true;
         }
+
         if ($node instanceof Node\Expr\BinaryOp) {
             return $this->isPure($node->left) && $this->isPure($node->right);
         }
+
         if ($node instanceof Node\Expr\UnaryOp || $node instanceof Node\Expr\BooleanNot) {
             return $this->isPure($node->expr);
         }
+
         if ($node instanceof Node\Expr\Cast) {
             return $this->isPure($node->expr);
         }
+
         if ($node instanceof Node\Expr\Array_) {
             foreach ($node->items as $item) {
                 if ($item === null) {
                     continue;
                 }
+
                 if ($item->key !== null && !$this->isPure($item->key)) {
                     return false;
                 }
+
                 if (!$this->isPure($item->value)) {
                     return false;
                 }
             }
+
             return true;
         }
+
         if ($node instanceof Node\Expr\ArrayDimFetch) {
-            return $this->isPure($node->var) && ($node->dim === null || $this->isPure($node->dim));
+            return $this->isPure($node->var) && (!$node->dim instanceof \PhpParser\Node\Expr || $this->isPure($node->dim));
         }
+
         if ($node instanceof Node\Expr\Ternary) {
             return $this->isPure($node->cond)
-                && ($node->if === null || $this->isPure($node->if))
+                && (!$node->if instanceof \PhpParser\Node\Expr || $this->isPure($node->if))
                 && $this->isPure($node->else);
         }
+
         if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name) {
             $name = strtolower($node->name->toString());
             if (isset(self::PURE_FUNCTIONS[$name])) {
-                foreach ($node->args as $arg) {
-                    if ($arg instanceof Node\Arg && !$this->isPure($arg->value)) {
-                        return false;
-                    }
-                }
-                return true;
+                return array_all($node->args, fn($arg): bool => !($arg instanceof Node\Arg && !$this->isPure($arg->value)));
             }
         }
+
         return false;
     }
 }
