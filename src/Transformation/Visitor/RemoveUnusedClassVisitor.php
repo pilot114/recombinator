@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Core\Config;
 
 /**
  * Удаляет определения классов, на которые нет ссылок извне их собственного тела.
@@ -35,6 +36,13 @@ class RemoveUnusedClassVisitor extends BaseVisitor
         'true' => true, 'false' => true, 'numeric' => true, 'resource' => true,
     ];
 
+    private Config $config;
+
+    public function __construct(?Config $config = null)
+    {
+        $this->config = $config ?? new Config();
+    }
+
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
@@ -50,7 +58,7 @@ class RemoveUnusedClassVisitor extends BaseVisitor
         }
 
         $name = strtolower($node->name->toString());
-        if (!isset($this->externalReferences[$name])) {
+        if (!isset($this->externalReferences[$name]) && !$this->config->isProtected($name)) {
             $node->setAttribute('remove', true);
         }
 

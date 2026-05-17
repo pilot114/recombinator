@@ -5,6 +5,7 @@ namespace Recombinator\Transformation\Visitor;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\CloningVisitor;
+use Recombinator\Core\Config;
 use Recombinator\Domain\ScopeStore;
 
 /**
@@ -16,9 +17,12 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
 {
     protected ScopeStore $scopeStore;
 
-    public function __construct(?ScopeStore $scopeStore = null)
+    protected Config $config;
+
+    public function __construct(?ScopeStore $scopeStore = null, ?Config $config = null)
     {
         $this->scopeStore = $scopeStore ?? ScopeStore::default();
+        $this->config = $config ?? new Config();
     }
 
     public function enterNode(Node $node): ?Node
@@ -46,6 +50,13 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
      */
     protected function processClass(Node\Stmt\Class_ $node): void
     {
+        // Класс из публичного контракта не выгружаем в стор — значит он не
+        // будет заинлайнен в местах использования, а его определение
+        // сохранится для внешних потребителей.
+        if ($node->name !== null && $this->config->isProtected($node->name->name)) {
+            return;
+        }
+
         $methods = $this->findNode(Node\Stmt\ClassMethod::class, $node);
         $optimize = true;
         $optimizeMethods = [];
