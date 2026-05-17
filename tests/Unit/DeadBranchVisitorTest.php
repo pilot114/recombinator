@@ -22,10 +22,12 @@ function applyDeadBranch(string $code, DeadBranchVisitor $visitor): string
 
     $t1 = new NodeTraverser();
     $t1->addVisitor(new NodeConnectingVisitor());
+
     $ast = $t1->traverse($ast);
 
     $t2 = new NodeTraverser();
     $t2->addVisitor($visitor);
+
     $ast = $t2->traverse($ast);
 
     return $printer->prettyPrint($ast);

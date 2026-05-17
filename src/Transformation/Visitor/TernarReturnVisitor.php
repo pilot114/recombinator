@@ -37,11 +37,11 @@ class TernarReturnVisitor extends BaseVisitor
         $last  = $stmts[$count - 1];
 
         // Паттерн 1: if(cond) { return a; } else { return b; }
-        if ($last instanceof Node\Stmt\If_ && $last->else !== null && $last->elseifs === []) {
+        if ($last instanceof Node\Stmt\If_ && $last->else instanceof \PhpParser\Node\Stmt\Else_ && $last->elseifs === []) {
             $ifReturn   = $this->getSingleReturn($last->stmts);
             $elseReturn = $this->getSingleReturn($last->else->stmts);
 
-            if ($ifReturn !== null && $elseReturn !== null) {
+            if ($ifReturn instanceof \PhpParser\Node\Expr && $elseReturn instanceof \PhpParser\Node\Expr) {
                 $nodeNew        = clone $node;
                 $nodeNew->stmts = [
                     ...array_slice($stmts, 0, $count - 1),
@@ -57,14 +57,14 @@ class TernarReturnVisitor extends BaseVisitor
             $prev = $stmts[$count - 2];
             if (
                 $prev instanceof Node\Stmt\If_
-                && $prev->else === null
+                && !$prev->else instanceof \PhpParser\Node\Stmt\Else_
                 && $prev->elseifs === []
                 && $last instanceof Node\Stmt\Return_
             ) {
                 $ifReturn = $this->getSingleReturn($prev->stmts);
                 $elseExpr = $last->expr;
 
-                if ($ifReturn !== null && $elseExpr instanceof Node\Expr) {
+                if ($ifReturn instanceof \PhpParser\Node\Expr && $elseExpr instanceof Node\Expr) {
                     $nodeNew        = clone $node;
                     $nodeNew->stmts = [
                         ...array_slice($stmts, 0, $count - 2),

@@ -33,6 +33,7 @@ use Recombinator\Domain\SideEffectType;
 class PureFunctionCacheVisitor extends BaseVisitor
 {
     private readonly SideEffectClassifier $classifier;
+
     private readonly StandardPrinter $printer;
 
     /** @var array<string, true> имена функций, определённых в текущем файле */
@@ -183,7 +184,7 @@ class PureFunctionCacheVisitor extends BaseVisitor
      */
     private function buildHoisted(Node $bodyNode): ?array
     {
-        $relevant = array_filter($this->toHoist, fn ($h) => $h['parentNode'] === $bodyNode);
+        $relevant = array_filter($this->toHoist, fn (array $h): bool => $h['parentNode'] === $bodyNode);
         if ($relevant === []) {
             return null;
         }
@@ -215,7 +216,7 @@ class PureFunctionCacheVisitor extends BaseVisitor
         }
 
         $this->toHoist = array_values(
-            array_filter($this->toHoist, fn ($h) => $h['parentNode'] !== $bodyNode)
+            array_filter($this->toHoist, fn (array $h): bool => $h['parentNode'] !== $bodyNode)
         );
 
         return $result;

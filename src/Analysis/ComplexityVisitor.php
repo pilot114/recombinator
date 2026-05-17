@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Recombinator\Analysis;
 
 use PhpParser\Node;

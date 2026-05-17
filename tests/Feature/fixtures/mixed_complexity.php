@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Mixed complexity example combining multiple patterns.
  *

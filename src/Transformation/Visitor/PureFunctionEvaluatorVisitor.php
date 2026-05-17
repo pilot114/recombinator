@@ -33,6 +33,7 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
     private readonly StandardPrinter $printer;
 
     private const int TIMEOUT = 3;
+
     private const string MEMORY_LIMIT = '32M';
 
     public function __construct()
@@ -40,6 +41,7 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
         $this->printer = new StandardPrinter();
     }
 
+    #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
@@ -89,6 +91,7 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
                 if (!$arg instanceof Node\Arg) {
                     return null; // spread/variadic — пропускаем
                 }
+
                 $resolvedArgs[] = $this->resolveToValue($arg->value);
             }
         } catch (\RuntimeException) {
@@ -103,25 +106,31 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
     {
         $stmts = $fn->stmts;
 
-        if (!empty($this->findNode(Node\Stmt\Echo_::class, $stmts))) {
+        if ($this->findNode(Node\Stmt\Echo_::class, $stmts) !== []) {
             return false;
         }
-        if (!empty($this->findNode(Node\Expr\Print_::class, $stmts))) {
+
+        if ($this->findNode(Node\Expr\Print_::class, $stmts) !== []) {
             return false;
         }
-        if (!empty($this->findNode(Node\Stmt\Global_::class, $stmts))) {
+
+        if ($this->findNode(Node\Stmt\Global_::class, $stmts) !== []) {
             return false;
         }
-        if (!empty($this->findNode(Node\Stmt\Static_::class, $stmts))) {
+
+        if ($this->findNode(Node\Stmt\Static_::class, $stmts) !== []) {
             return false;
         }
-        if (!empty($this->findNode(Node\Expr\MethodCall::class, $stmts))) {
+
+        if ($this->findNode(Node\Expr\MethodCall::class, $stmts) !== []) {
             return false;
         }
-        if (!empty($this->findNode(Node\Expr\StaticCall::class, $stmts))) {
+
+        if ($this->findNode(Node\Expr\StaticCall::class, $stmts) !== []) {
             return false;
         }
-        if (!empty($this->findNode(Node\Expr\New_::class, $stmts))) {
+
+        if ($this->findNode(Node\Expr\New_::class, $stmts) !== []) {
             return false;
         }
 
@@ -137,6 +146,7 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
             if (!$call->name instanceof Node\Name) {
                 return false; // динамический вызов
             }
+
             $name = strtolower($call->name->toString());
             if (!RemoveUnusedPureVisitor::isKnownPureFunction($name) && !isset($this->pureFunctions[$name])) {
                 return false;
@@ -156,32 +166,39 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
         if ($node instanceof Node\Scalar\Int_) {
             return $node->value;
         }
+
         if ($node instanceof Node\Scalar\Float_) {
             return $node->value;
         }
+
         if ($node instanceof Node\Scalar\String_) {
             return $node->value;
         }
+
         if ($node instanceof Node\Expr\ConstFetch) {
             return match (strtolower($node->name->toString())) {
                 'true'  => true,
                 'false' => false,
                 'null'  => null,
-                default => throw new \RuntimeException("Unknown const: {$node->name}"),
+                default => throw new \RuntimeException('Unknown const: ' . $node->name),
             };
         }
+
         if ($node instanceof Node\Expr\Variable && is_string($node->name)) {
             if (array_key_exists($node->name, $this->knownVars)) {
                 return $this->knownVars[$node->name];
             }
-            throw new \RuntimeException("Unknown variable: \${$node->name}");
+
+            throw new \RuntimeException('Unknown variable: $' . $node->name);
         }
+
         if ($node instanceof Node\Expr\Array_) {
             $arr = [];
             foreach ($node->items as $item) {
                 if ($item === null) {
                     continue;
                 }
+
                 $val = $this->resolveToValue($item->value);
                 if ($item->key !== null) {
                     $arr[$this->resolveToValue($item->key)] = $val;
@@ -189,6 +206,7 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
                     $arr[] = $val;
                 }
             }
+
             return $arr;
         }
 
@@ -214,9 +232,11 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
         if ($node instanceof Node\Expr\UnaryMinus) {
             return -$this->resolveToValue($node->expr);
         }
+
         if ($node instanceof Node\Expr\UnaryPlus) {
             return +$this->resolveToValue($node->expr);
         }
+
         if ($node instanceof Node\Expr\BooleanNot) {
             return !$this->resolveToValue($node->expr);
         }
@@ -233,7 +253,7 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
     {
         $fnCode  = $this->printer->prettyPrint([$fn]);
         $fnName  = $fn->name->name;
-        $argStrs = array_map(fn($v) => var_export($v, true), $resolvedArgs);
+        $argStrs = array_map(fn($v): string => var_export($v, true), $resolvedArgs);
         $call    = $fnName . '(' . implode(', ', $argStrs) . ')';
 
         $code = "<?php\n" . $fnCode . "\necho json_encode(" . $call . ');';
@@ -269,18 +289,23 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
         if ($value === null) {
             return new Node\Expr\ConstFetch(new Node\Name('null'));
         }
+
         if (is_bool($value)) {
             return new Node\Expr\ConstFetch(new Node\Name($value ? 'true' : 'false'));
         }
+
         if (is_int($value)) {
             return new Node\Scalar\Int_($value);
         }
+
         if (is_float($value)) {
             return new Node\Scalar\Float_($value);
         }
+
         if (is_string($value)) {
             return new Node\Scalar\String_($value);
         }
+
         if (is_array($value)) {
             $items = [];
             foreach ($value as $k => $v) {
@@ -289,6 +314,7 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
                     is_string($k) ? new Node\Scalar\String_($k) : new Node\Scalar\Int_($k)
                 );
             }
+
             return new Node\Expr\Array_($items);
         }
 

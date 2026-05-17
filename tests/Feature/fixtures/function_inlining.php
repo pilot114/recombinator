@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 function double($x): int|float {
     return $x * 2;
 }

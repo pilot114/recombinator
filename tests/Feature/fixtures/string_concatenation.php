@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * String concatenation that can be simplified.
  *

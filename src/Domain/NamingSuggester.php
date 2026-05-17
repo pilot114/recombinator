@@ -87,7 +87,7 @@ class NamingSuggester
     public function isPoorName(string $name): bool
     {
         // Слишком короткие имена (кроме стандартных)
-        if (strlen($name) <= 2 && !in_array($name, ['i', 'j', 'k', 'id', 'db'])) {
+        if (strlen($name) <= 2 && !in_array($name, ['i', 'j', 'k', 'id', 'db'], true)) {
             return true;
         }
 
@@ -98,7 +98,7 @@ class NamingSuggester
             'x', 'y', 'z', 'a', 'b', 'c',
         ];
 
-        if (in_array(strtolower($name), $badNames)) {
+        if (in_array(strtolower($name), $badNames, true)) {
             return true;
         }
 

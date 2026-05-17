@@ -146,5 +146,4 @@ class SingleUseInlinerVisitor extends BaseVisitor
 
         return false;
     }
-
 }

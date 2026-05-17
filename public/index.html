@@ -110,6 +110,31 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 .tab-add:hover { color: var(--text); background: var(--surface2); }
 
+/* ── Project description pane ── */
+#project-desc {
+  display: none; flex: 1; overflow-y: auto;
+  padding: 28px 24px; flex-direction: column; gap: 16px;
+}
+#project-desc.show { display: flex; }
+.proj-title { font-size: 15px; font-weight: 700; color: var(--text); }
+.proj-body { font-size: 13px; color: var(--muted); line-height: 1.65; }
+.proj-meta {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 12px 14px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 12px; color: var(--muted);
+}
+.proj-meta a { color: var(--accent); text-decoration: none; }
+.proj-meta a:hover { text-decoration: underline; }
+.proj-meta-row { display: flex; gap: 8px; }
+.proj-meta-row span:first-child { color: var(--muted); flex-shrink: 0; }
+.proj-meta-row code { font-family: var(--mono); color: var(--text); font-size: 11px; }
+.proj-notice {
+  font-size: 12px; color: var(--muted); padding: 10px 14px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface2); line-height: 1.5;
+}
+
 /* ── Editor ── */
 .editor-wrap { display: flex; flex: 1; overflow: hidden; font-family: var(--mono); font-size: 13px; line-height: 1.65; }
 #line-nums {
@@ -273,6 +298,70 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── Info button ── */
+.info-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid var(--muted); color: var(--muted);
+  font-size: 11px; font-weight: 700; cursor: pointer;
+  transition: border-color .15s, color .15s; flex-shrink: 0;
+  background: none; font-family: var(--ui);
+}
+.info-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── Info overlay ── */
+.info-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,.55); backdrop-filter: blur(3px);
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+}
+.info-overlay.show { opacity: 1; pointer-events: auto; }
+.info-panel {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; width: 720px; max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px); overflow-y: auto;
+  transform: translateY(12px); transition: transform .2s;
+  padding: 28px 36px 32px;
+}
+.info-overlay.show .info-panel { transform: translateY(0); }
+.info-panel h2 {
+  font-size: 17px; font-weight: 700; color: var(--text);
+  margin-bottom: 6px; display: flex; align-items: center; gap: 10px;
+}
+.info-panel .tagline {
+  font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.5;
+}
+.info-section { margin-bottom: 22px; }
+.info-section h3 {
+  font-size: 11px; font-weight: 700; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+}
+.info-phases { display: flex; flex-direction: column; gap: 8px; }
+.info-phase {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 10px 14px; background: var(--surface2);
+  border: 1px solid var(--border); border-radius: var(--radius);
+}
+.phase-num {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); color: #000;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.phase-body { flex: 1; }
+.phase-body strong { font-size: 13px; color: var(--text); display: block; margin-bottom: 2px; }
+.phase-body span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.info-usecases { display: flex; flex-direction: column; gap: 0; }
+.info-usecase {
+  display: flex; gap: 10px; align-items: baseline;
+  padding: 7px 0; border-bottom: 1px solid var(--border);
+}
+.info-usecase:last-child { border-bottom: none; }
+.uc-dot { flex-shrink: 0; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 7px; }
+.info-usecase strong { font-size: 13px; color: var(--text); margin-right: 6px; white-space: nowrap; }
+.info-usecase span { font-size: 12px; color: var(--muted); line-height: 1.5; }
 </style>
 </head>
 <body>
@@ -283,6 +372,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
     </svg>
     Recombinator
+    <button class="info-btn" id="info-btn" title="О библиотеке">?</button>
   </div>
   <div class="header-mid">
     <select id="example-select" title="Загрузить пример">
@@ -295,6 +385,72 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     Transform
     <span class="kbd">⌘↵</span>
   </button>
+</div>
+
+<div class="info-overlay" id="info-overlay">
+  <div class="info-panel">
+    <h2>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2">
+        <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+      </svg>
+      Recombinator
+    </h2>
+    <p class="tagline">Автоматический рефакторинг PHP через манипуляции с AST. Recombinator идёт по реальному потоку выполнения, а не по тексту — поэтому видит то, что линтеры пропускают.</p>
+
+    <div class="info-section">
+      <h3>Как работает</h3>
+      <div class="info-phases">
+        <div class="info-phase">
+          <div class="phase-num">1</div>
+          <div class="phase-body">
+            <strong>Развёртка</strong>
+            <span>Убирает абстракции: инлайнит функции и классы, вычисляет константные выражения, удаляет мёртвые ветви. Код сводится к тому, что реально происходит.</span>
+          </div>
+        </div>
+        <div class="info-phase">
+          <div class="phase-num">2</div>
+          <div class="phase-body">
+            <strong>Свёртка</strong>
+            <span>Снижает сложность: группирует код по типам побочных эффектов, упрощает условия, предлагает новые абстракции там, где они действительно нужны.</span>
+          </div>
+        </div>
+        <div class="info-phase">
+          <div class="phase-num">3</div>
+          <div class="phase-body">
+            <strong>Интерактивный режим</strong>
+            <span>CLI-диалог для улучшений, которые не автоматизировать: переименование переменных, выбор имён для новых функций и структур.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="info-section">
+      <h3>Когда это нужно</h3>
+      <div class="info-usecases">
+        <div class="info-usecase">
+          <div class="uc-dot"></div>
+          <div><strong>Рефакторинг legacy</strong><span>Большая кодовая база, которую никто не решается трогать. Recombinator убирает мёртвый код, сворачивает константы и снимает лишние слои — автоматически, по всему проекту.</span></div>
+        </div>
+        <div class="info-usecase">
+          <div class="uc-dot"></div>
+          <div><strong>Пересадка из монолита</strong><span>Нужно вытащить один кусок функциональности из запутанного монолита. Развёртка разматывает зависимости и показывает, что реально нужно взять с собой.</span></div>
+        </div>
+        <div class="info-usecase">
+          <div class="uc-dot"></div>
+          <div><strong>Понимание чужого кода</strong><span>Незнакомый код с множеством уровней косвенности. После трансформации остаётся только то, что влияет на результат — читать становится в разы проще.</span></div>
+        </div>
+        <div class="info-usecase">
+          <div class="uc-dot"></div>
+          <div><strong>Аудит безопасности</strong><span>Развёртка раскрывает реальные пути выполнения — уязвимости, скрытые за несколькими слоями вызовов, выходят на поверхность.</span></div>
+        </div>
+        <div class="info-usecase">
+          <div class="uc-dot"></div>
+          <div><strong>Подготовка к тестам</strong><span>Recombinator разделяет чистую логику и побочные эффекты. После этого написать тесты для бизнес-логики — дело нескольких минут.</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <div id="app">
@@ -311,6 +467,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
         <textarea id="editor" spellcheck="false" autocorrect="off" autocapitalize="off"></textarea>
       </div>
     </div>
+    <div id="project-desc"></div>
   </div>
 
   <div id="drag"></div>
@@ -375,9 +532,41 @@ function plural(n, one, two, five) {
 
 let EXAMPLES = [];
 
+function showEditorMode() {
+  $('project-desc').classList.remove('show');
+  document.querySelector('.editor-wrap').style.display = '';
+  $('tab-bar').style.display = '';
+  $('run-btn').disabled = false;
+}
+
+function showProjectMode(ex) {
+  document.querySelector('.editor-wrap').style.display = 'none';
+  $('tab-bar').style.display = 'none';
+  $('run-btn').disabled = true;
+
+  const pd = $('project-desc');
+  pd.innerHTML = `
+    <div class="proj-title">${esc(ex.name)}</div>
+    <div class="proj-body">${esc(ex.description)}</div>
+    <div class="proj-meta">
+      <div class="proj-meta-row"><span>Энтрипоинт</span><code>${esc(ex.entry)}</code></div>
+      ${ex.url ? `<div class="proj-meta-row"><span>Репозиторий</span><a href="${esc(ex.url)}" target="_blank">${esc(ex.url)}</a></div>` : ''}
+    </div>
+    <div class="proj-notice">Анализ project-примеров выполняется на стороне сервера. Функция в разработке.</div>
+  `;
+  pd.classList.add('show');
+}
+
 function loadExample(id) {
   const ex = EXAMPLES.find(e => e.id === id);
   if (!ex) return;
+
+  if (ex.type === 'project') {
+    showProjectMode(ex);
+    return;
+  }
+
+  showEditorMode();
   tabs   = [];
   nextId = 1;
   for (const f of ex.files) {
@@ -718,6 +907,18 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(); }
 });
 
+// ── Info panel ───────────────────────────────────────────────────────────────
+
+(function () {
+  const overlay = $('info-overlay');
+  const open  = () => overlay.classList.add('show');
+  const close = () => overlay.classList.remove('show');
+
+  $('info-btn').addEventListener('click', open);
+  overlay.addEventListener('click', e => { if (e.target === overlay) close(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+})();
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 (async function () {
@@ -738,7 +939,7 @@ document.addEventListener('keydown', e => {
   for (const ex of EXAMPLES) {
     const opt = document.createElement('option');
     opt.value = ex.id;
-    opt.textContent = ex.name + (ex.files.length > 1 ? ` (${ex.files.length} файла)` : '');
+    opt.textContent = ex.name + (ex.files?.length > 1 ? ` (${ex.files.length} файла)` : '');
     sel.appendChild(opt);
   }
 

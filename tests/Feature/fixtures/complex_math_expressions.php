@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 /**
  * Complex mathematical expressions that can be pre-computed.
  *

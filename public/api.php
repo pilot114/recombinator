@@ -14,227 +14,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 // ── GET: список примеров ───────────────────────────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $examples = [
-        [
-            'id'    => 'basic',
-            'name'  => 'Базовый',
-            'files' => [
-                [
-                    'name' => 'example.php',
-                    'code' => <<<'PHP'
-<?php
+    $dir      = __DIR__ . '/../examples';
+    $allMeta  = json_decode((string) file_get_contents($dir . '/meta.json'), true) ?? [];
+    $examples = [];
 
-function calculateTotal(array $items, float $taxRate = 0.2): float
-{
-    $subtotal = 0;
-    foreach ($items as $item) {
-        $subtotal = $subtotal + $item['price'];
-    }
-    $tax   = $subtotal * $taxRate;
-    $total = $subtotal + $tax;
-    return $total;
-}
+    foreach (glob($dir . '/*/') as $exampleDir) {
+        $dirName = basename($exampleDir);
+        $meta    = $allMeta[$dirName] ?? [];
+        $id      = preg_replace('/^\d+-/', '', $dirName);
 
-$products = [
-    ['name' => 'Apple',  'price' => 1 + 1],
-    ['name' => 'Banana', 'price' => 3 * 2],
-];
-
-$result = calculateTotal($products);
-
-if (true) {
-    echo "Total: " . $result;
-} else {
-    echo "never";
-}
-
-$isArr = is_array($products);
-$len   = 1 + 2 + 3;
-PHP
-                ],
-            ],
-        ],
-        [
-            'id'    => 'constants',
-            'name'  => 'Константное свёртывание',
-            'files' => [
-                [
-                    'name' => 'constants.php',
-                    'code' => <<<'PHP'
-<?php
-
-$x   = 2 + 3 * 4;
-$s   = 'foo' . 'bar' . '!';
-$b   = true && false;
-$n   = !false;
-$cmp = 10 > 5 ? 'big' : 'small';
-
-if (false) {
-    echo "мёртвый код";
-} else {
-    echo "живой: " . $x;
-}
-
-$unused = $x * 0 + 0;
-PHP
-                ],
-            ],
-        ],
-        [
-            'id'    => 'functions',
-            'name'  => 'Инлайнинг функций',
-            'files' => [
-                [
-                    'name' => 'functions.php',
-                    'code' => <<<'PHP'
-<?php
-
-function double(int $x): int
-{
-    return $x * 2;
-}
-
-function square(int $x): int
-{
-    return $x * $x;
-}
-
-$a = double(5);
-$b = square(3);
-$c = double(4) + square(2);
-
-echo $a + $b + $c;
-PHP
-                ],
-            ],
-        ],
-        [
-            'id'    => 'classes',
-            'name'  => 'Классы и методы',
-            'files' => [
-                [
-                    'name' => 'Point.php',
-                    'code' => <<<'PHP'
-<?php
-
-class Point
-{
-    public function __construct(
-        public readonly float $x,
-        public readonly float $y,
-    ) {}
-
-    public function distanceTo(Point $other): float
-    {
-        $dx = $this->x - $other->x;
-        $dy = $this->y - $other->y;
-        return sqrt($dx * $dx + $dy * $dy);
-    }
-
-    public function label(): string
-    {
-        return '(' . $this->x . ', ' . $this->y . ')';
-    }
-}
-PHP
-                ],
-                [
-                    'name' => 'index.php',
-                    'code' => <<<'PHP'
-<?php
-
-require_once __DIR__ . '/Point.php';
-
-$origin = new Point(0.0, 0.0);
-$target = new Point(3.0, 4.0);
-
-$distance = $origin->distanceTo($target);
-$label    = $target->label();
-
-echo "Distance to " . $label . " = " . $distance;
-
-$unused = $origin->x * 0;
-PHP
-                ],
-            ],
-        ],
-        [
-            'id'    => 'auth',
-            'name'  => 'Auth (реальный код)',
-            'files' => [
-                [
-                    'name' => 'functions.php',
-                    'code' => <<<'PHP'
-<?php
-
-function test($x, $y): float|int|array
-{
-    return $x + $y;
-}
-PHP
-                ],
-                [
-                    'name' => 'Auth.php',
-                    'code' => <<<'PHP'
-<?php
-
-require __DIR__ . '/functions.php';
-
-class Auth
-{
-    const string HASH = 'test_test';
-
-    public string $test = 'empty';
-
-    public function login(string $username, string $password): string
-    {
-        if ($username . '_' . $password === self::HASH) {
-            return 'success';
+        if (($meta['type'] ?? '') === 'project') {
+            $examples[] = [
+                'id'          => $id,
+                'name'        => (string) ($meta['name'] ?? $id),
+                'type'        => 'project',
+                'description' => (string) ($meta['description'] ?? ''),
+                'entry'       => (string) ($meta['entry'] ?? ''),
+                'url'         => (string) ($meta['url'] ?? ''),
+            ];
+            continue;
         }
 
-        return 'fail';
+        $files = [];
+        foreach (glob($exampleDir . '*.php') as $phpFile) {
+            $files[] = [
+                'name' => preg_replace('/^\d+-/', '', basename($phpFile)),
+                'code' => file_get_contents($phpFile),
+            ];
+        }
+
+        $examples[] = [
+            'id'    => $id,
+            'name'  => (string) ($meta['name'] ?? $id),
+            'files' => $files,
+        ];
     }
-}
-PHP
-                ],
-                [
-                    'name' => 'index.php',
-                    'code' => <<<'PHP'
-<?php
-
-require __DIR__ . '/Auth.php';
-
-echo 1 . 2 . 3 . 4 . 5 . true . false;
-
-echo 1 / (2 + 3);
-
-echo test(1, 2);
-
-echo is_array([]);
-
-echo Auth::HASH;
-
-$username = 'default_username';
-if (isset($_GET['username'])) {
-    $username = $_GET['username'];
-}
-
-$pass = 'default_pass';
-if (isset($_GET['pass'])) {
-    $pass = $_GET['pass'];
-}
-
-$auth = new Auth();
-$result = $auth->login($username, $pass);
-echo $result . "\n";
-
-$result = $auth->login('test', 'test');
-echo $result . "\n";
-PHP
-                ],
-            ],
-        ],
-    ];
 
     echo json_encode(['examples' => $examples], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     exit;

@@ -21,7 +21,9 @@ use PhpParser\ParserFactory;
 class FileMapIncludeVisitor extends BaseVisitor
 {
     /** @param array<string, string> $fileMap filename → source code */
-    public function __construct(private readonly array $fileMap) {}
+    public function __construct(private readonly array $fileMap)
+    {
+    }
 
     public function enterNode(Node $node): ?Node
     {

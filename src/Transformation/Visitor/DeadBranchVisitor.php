@@ -37,7 +37,7 @@ class DeadBranchVisitor extends BaseVisitor
     {
         if ($this->isConstFalse($node->cond)) {
             // if (false) { ... } elseif ($x) { ... } → if ($x) { ... }
-            if (!empty($node->elseifs)) {
+            if ($node->elseifs !== []) {
                 /** @var Node\Stmt\ElseIf_ $first */
                 $first      = array_shift($node->elseifs);
                 $newIf      = new Node\Stmt\If_(
@@ -52,7 +52,7 @@ class DeadBranchVisitor extends BaseVisitor
             }
 
             // if (false) { ... } else { CODE } → CODE
-            if ($node->else !== null) {
+            if ($node->else instanceof \PhpParser\Node\Stmt\Else_) {
                 return $node->else->stmts;
             }
 

@@ -39,7 +39,7 @@ $console = new PipelineConsole(new ColorDiffer());
 // Step 0 – Inliner
 // ════════════════════════════════════════════════════════════════════════════
 
-$entryPoint = __DIR__ . '/../tests/code/index.php';
+$entryPoint = __DIR__ . '/../examples/05-auth/03-index.php';
 $printer    = new Printer();
 $parser     = new ParserFactory()->createForNewestSupportedVersion();
 

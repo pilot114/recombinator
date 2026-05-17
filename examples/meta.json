@@ -1,0 +1,24 @@
+{
+  "01-basic": {
+    "name": "Базовый"
+  },
+  "02-constants": {
+    "name": "Константное свёртывание"
+  },
+  "03-functions": {
+    "name": "Инлайнинг функций"
+  },
+  "04-classes": {
+    "name": "Классы и методы"
+  },
+  "05-auth": {
+    "name": "Auth flow"
+  },
+  "06-symfony-demo": {
+    "name": "Symfony Demo",
+    "type": "project",
+    "entry": "public/index.php",
+    "description": "Полноценное Symfony-приложение — блог с аутентификацией, комментариями и админкой. Реальный production-код: контроллеры, сервисы, Doctrine, Twig. Хороший полигон для проверки развёртки на нетривиальном PHP.",
+    "url": "https://github.com/symfony/demo"
+  }
+}
