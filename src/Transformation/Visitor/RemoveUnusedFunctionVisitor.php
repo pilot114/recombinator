@@ -6,6 +6,7 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
+use Recombinator\Core\Config;
 
 /**
  * Удаляет определения функций, которые нигде не вызываются.
@@ -19,6 +20,13 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
 {
     /** @var array<string, true> */
     private array $calledFunctions = [];
+
+    private Config $config;
+
+    public function __construct(?Config $config = null)
+    {
+        $this->config = $config ?? new Config();
+    }
 
     public function beforeTraverse(array $nodes): ?array
     {
@@ -41,7 +49,7 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
         }
 
         $name = strtolower((string) $node->name);
-        if (!isset($this->calledFunctions[$name])) {
+        if (!isset($this->calledFunctions[$name]) && !$this->config->isProtected($name)) {
             $node->setAttribute('remove', true);
         }
 

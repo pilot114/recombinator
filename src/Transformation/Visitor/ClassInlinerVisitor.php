@@ -5,6 +5,7 @@ namespace Recombinator\Transformation\Visitor;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
+use Recombinator\Core\Config;
 
 /**
  * Инлайнинг классов:
@@ -30,10 +31,23 @@ class ClassInlinerVisitor extends BaseVisitor
      */
     private array $instanceRegistry = [];
 
+    private Config $config;
+
+    public function __construct(?Config $config = null)
+    {
+        $this->config = $config ?? new Config();
+    }
+
     public function enterNode(Node $node): int|Node|array|null
     {
-        // 1. Collect class definition and mark for removal
+        // 1. Collect class definition and mark for removal.
+        //    Классы из публичного контракта не инлайним и не удаляем —
+        //    их определение должно остаться доступным для внешних вызовов.
         if ($node instanceof Node\Stmt\Class_ && $node->name instanceof \PhpParser\Node\Identifier) {
+            if ($this->config->isProtected($node->name->name)) {
+                return null;
+            }
+
             $this->collectClass($node);
             $node->setAttribute('remove', true);
             return null;
