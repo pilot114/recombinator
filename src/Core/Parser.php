@@ -83,13 +83,41 @@ class Parser
 
     protected string $entryPoint = '';
 
+    protected Config $config;
+
     /**
      * @throws \RuntimeException
      */
-    public function __construct(protected string $path, string $cachePath)
+    public function __construct(protected string $path, string $cachePath, ?Config $config = null)
     {
         $this->cacheDir = realpath($cachePath) ?: $cachePath;
+        $this->config = $config ?? new Config();
         $this->buildScopes();
+    }
+
+    /**
+     * Задаёт публичный контракт — массив FQN, которые недопустимо нарушать
+     * в процессе преобразований (см. {@see Config::setPublicContract()}).
+     *
+     * @param array<int, string> $fqns
+     */
+    public function setPublicContract(array $fqns): self
+    {
+        $this->config->setPublicContract($fqns);
+
+        return $this;
+    }
+
+    public function setConfig(Config $config): self
+    {
+        $this->config = $config;
+
+        return $this;
+    }
+
+    public function getConfig(): Config
+    {
+        return $this->config;
     }
 
     /**
@@ -147,8 +175,8 @@ class Parser
             new ListSingleUseInlinerVisitor(),
             new PureFunctionCacheVisitor(),
             new MethodToSingleReturnVisitor(),
-            new ConstructorAndMethodsVisitor($ss),
-            new RemoveUnusedClassVisitor(),
+            new ConstructorAndMethodsVisitor($ss, $this->config),
+            new RemoveUnusedClassVisitor($this->config),
             new LinterVisitor(dirname(__DIR__, 2)),
         ];
         $this->parseScopesWithVisitors();
