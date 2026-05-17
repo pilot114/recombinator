@@ -50,10 +50,14 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
      */
     protected function processClass(Node\Stmt\Class_ $node): void
     {
+        if ($node->name === null) {
+            return; // анонимный класс — не инлайним
+        }
+
         // Класс из публичного контракта не выгружаем в стор — значит он не
         // будет заинлайнен в местах использования, а его определение
         // сохранится для внешних потребителей.
-        if ($node->name !== null && $this->config->isProtected($node->name->name)) {
+        if ($this->config->isProtected($node->name->name)) {
             return;
         }
 
@@ -137,6 +141,10 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
     {
         $assign = $node->getAttribute('parent');
         if (!$assign instanceof Node\Expr\Assign) {
+            return null;
+        }
+
+        if (!$assign->var instanceof Node\Expr\Variable || !is_string($assign->var->name)) {
             return null;
         }
 
@@ -256,6 +264,10 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $instanceName = $var->name;
         } else {
             return null;
+        }
+
+        if (!$node->name instanceof Node\Identifier) {
+            return null; // динамический вызов $obj->$method() — не инлайним
         }
 
         $methodName = $node->name->name;

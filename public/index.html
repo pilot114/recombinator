@@ -134,6 +134,20 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--surface2); line-height: 1.5;
 }
+.proj-entry-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.proj-entry-row label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+#proj-entry-select {
+  flex: 1; min-width: 0; background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-family: var(--mono); font-size: 11px; padding: 5px 8px;
+}
+#proj-run-btn {
+  flex-shrink: 0; padding: 6px 18px; background: var(--accent); color: #000;
+  border: none; border-radius: var(--radius); font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: opacity .15s;
+}
+#proj-run-btn:hover { opacity: .85; }
+#proj-run-btn:disabled { opacity: .45; cursor: default; }
 
 /* ── Editor ── */
 .editor-wrap { display: flex; flex: 1; overflow: hidden; font-family: var(--mono); font-size: 13px; line-height: 1.65; }
@@ -399,7 +413,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       </svg>
       Recombinator
     </h2>
-    <p class="tagline">Автоматический рефакторинг PHP через манипуляции с AST. Recombinator идёт по реальному потоку выполнения, а не по тексту — поэтому видит то, что линтеры пропускают.</p>
+    <p class="tagline">Автоматический рефакторинг PHP через манипуляции с AST. Recombinator идёт по потоку выполнения, а не по тексту — поэтому видит то, что линтеры пропускают</p>
 
     <div class="info-section">
       <h3>Как работает</h3>
@@ -408,21 +422,21 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
           <div class="phase-num">1</div>
           <div class="phase-body">
             <strong>Развёртка</strong>
-            <span>Убирает абстракции: инлайнит функции и классы, вычисляет константные выражения, удаляет мёртвые ветви. Код сводится к тому, что реально происходит.</span>
+            <span>Убирает абстракции: инлайнит функции и классы, вычисляет чистые выражения, удаляет мёртвые ветви. Код сводится к тому, что реально происходит</span>
           </div>
         </div>
         <div class="info-phase">
           <div class="phase-num">2</div>
           <div class="phase-body">
             <strong>Свёртка</strong>
-            <span>Снижает сложность: группирует код по типам побочных эффектов, упрощает условия, предлагает новые абстракции там, где они действительно нужны.</span>
+            <span>Снижает сложность: группирует код по типам побочных эффектов, упрощает условия, предлагает новые абстракции только там, где они действительно нужны</span>
           </div>
         </div>
         <div class="info-phase">
           <div class="phase-num">3</div>
           <div class="phase-body">
             <strong>Интерактивный режим</strong>
-            <span>CLI-диалог для улучшений, которые не автоматизировать: переименование переменных, выбор имён для новых функций и структур.</span>
+            <span>Диалог с разработчиком для улучшений, которые не автоматизировать: переименование переменных, выбор имён для новых функций и структур</span>
           </div>
         </div>
       </div>
@@ -433,24 +447,24 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <div class="info-usecases">
         <div class="info-usecase">
           <div class="uc-dot"></div>
-          <div><strong>Рефакторинг legacy</strong><span>Большая кодовая база, которую никто не решается трогать. Recombinator убирает мёртвый код, сворачивает константы и снимает лишние слои — автоматически, по всему проекту.</span></div>
+          <div><strong>Рефакторинг legacy: </strong><span>Recombinator убирает мёртвый код и снимает лишние слои — автоматически, по всему проекту</span></div>
         </div>
         <div class="info-usecase">
           <div class="uc-dot"></div>
-          <div><strong>Пересадка из монолита</strong><span>Нужно вытащить один кусок функциональности из запутанного монолита. Развёртка разматывает зависимости и показывает, что реально нужно взять с собой.</span></div>
+          <div><strong>Пересадка из монолита:</strong><span>Если нужно вытащить один кусок функциональности из запутанного монолита. Развёртка разматывает зависимости и показывает, что действительно нужно взять с собой</span></div>
         </div>
         <div class="info-usecase">
           <div class="uc-dot"></div>
-          <div><strong>Понимание чужого кода</strong><span>Незнакомый код с множеством уровней косвенности. После трансформации остаётся только то, что влияет на результат — читать становится в разы проще.</span></div>
+          <div><strong>Понимание чужого кода:</strong><span>Незнакомый код с множеством уровней. После трансформации остаётся только то, что влияет на результат — читать становится в разы проще</span></div>
         </div>
-        <div class="info-usecase">
-          <div class="uc-dot"></div>
-          <div><strong>Аудит безопасности</strong><span>Развёртка раскрывает реальные пути выполнения — уязвимости, скрытые за несколькими слоями вызовов, выходят на поверхность.</span></div>
-        </div>
-        <div class="info-usecase">
-          <div class="uc-dot"></div>
-          <div><strong>Подготовка к тестам</strong><span>Recombinator разделяет чистую логику и побочные эффекты. После этого написать тесты для бизнес-логики — дело нескольких минут.</span></div>
-        </div>
+
+        <br/>
+
+        <p class="tagline">
+            Подбочными эффектами являются множественные улучшения по всем параметрам качества:
+            код становится быстрее, уязвимости становяться очевидными, а разделение побочных эффектов и вычислений
+            делает тестирование простым и эффективным
+        </p>
       </div>
     </div>
 
@@ -549,17 +563,27 @@ function showProjectMode(ex) {
   $('tab-bar').style.display = 'none';
   $('run-btn').disabled = true;
 
+  const entries = ex.entries || [];
+  const opts = entries.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
+
   const pd = $('project-desc');
   pd.innerHTML = `
     <div class="proj-title">${esc(ex.name)}</div>
     <div class="proj-body">${esc(ex.description)}</div>
     <div class="proj-meta">
-      <div class="proj-meta-row"><span>Энтрипоинт</span><code>${esc(ex.entry)}</code></div>
       ${ex.url ? `<div class="proj-meta-row"><span>Репозиторий</span><a href="${esc(ex.url)}" target="_blank">${esc(ex.url)}</a></div>` : ''}
+      ${ex.srcCount    != null ? `<div class="proj-meta-row"><span>src/*.php</span><code>${ex.srcCount}</code></div>` : ''}
+      ${ex.vendorCount != null ? `<div class="proj-meta-row"><span>vendor/*.php</span><code>${ex.vendorCount}</code></div>` : ''}
     </div>
-    <div class="proj-notice">Анализ project-примеров выполняется на стороне сервера. Функция в разработке.</div>
+    <div class="proj-entry-row">
+      <label>Энтрипоинт</label>
+      <select id="proj-entry-select">${opts}</select>
+      <button id="proj-run-btn">Transform</button>
+    </div>
   `;
   pd.classList.add('show');
+
+  $('proj-run-btn').addEventListener('click', () => runProject(ex));
 }
 
 function loadExample(id) {
@@ -796,11 +820,97 @@ function switchInner(cardId, pane, el) {
   el.classList.add('active');
 }
 
+// ── Virtual scroller for result pane ─────────────────────────────────────────
+
+const VS_LH  = 13 * 1.65;  // line-height in px — must match CSS font-size * line-height
+const VS_MIN = 300;         // line count threshold to activate virtual scrolling
+const VS_BUF = 10;          // extra lines rendered above/below the visible area
+
+function renderResultVirtual(pane, code) {
+  const rawLines = code.split('\n');
+  const total = rawLines.length;
+
+  let hlLines;
+  try {
+    hlLines = hljs.highlight(code, { language: 'php' }).value.split('\n');
+  } catch {
+    hlLines = rawLines.map(esc);
+  }
+  while (hlLines.length < total) hlLines.push('');
+
+  if (pane._vsAbort) pane._vsAbort.abort();
+  const ctrl = new AbortController();
+  pane._vsAbort = ctrl;
+
+  pane.innerHTML = '';
+
+  // spacer establishes the full scroll height; win is absolutely positioned inside it
+  const spacer = document.createElement('div');
+  spacer.style.cssText = `height:${total * VS_LH}px;position:relative;`;
+  pane.appendChild(spacer);
+
+  const win = document.createElement('div');
+  win.style.cssText = `position:absolute;left:0;right:0;top:0;display:flex;align-items:flex-start;`;
+  spacer.appendChild(win);
+
+  const lnDigits = String(total).length;
+  const lnEl = document.createElement('div');
+  lnEl.style.cssText =
+    `flex-shrink:0;min-width:${lnDigits * 9 + 20}px;padding:0 10px 0 14px;` +
+    `color:var(--muted);background:var(--bg);border-right:1px solid var(--border);` +
+    `font-family:var(--mono);font-size:13px;line-height:${VS_LH}px;` +
+    `text-align:right;user-select:none;white-space:pre;`;
+
+  const preEl = document.createElement('pre');
+  preEl.style.cssText = `flex:1;min-width:0;margin:0;padding:0 16px;overflow-x:auto;`;
+  const codeEl = document.createElement('code');
+  codeEl.className = 'language-php hljs';
+  codeEl.style.cssText =
+    `background:transparent!important;padding:0;` +
+    `font-family:var(--mono);font-size:13px;line-height:${VS_LH}px;` +
+    `white-space:pre;display:block;`;
+  preEl.appendChild(codeEl);
+  win.appendChild(lnEl);
+  win.appendChild(preEl);
+
+  function update() {
+    const st = pane.scrollTop;
+    const vh = pane.clientHeight || 600;
+    const first = Math.max(0, Math.floor(st / VS_LH) - VS_BUF);
+    const last  = Math.min(total - 1, Math.ceil((st + vh) / VS_LH) + VS_BUF);
+
+    win.style.top = (first * VS_LH) + 'px';
+
+    let lnText = '', codeHtml = '';
+    for (let i = first; i <= last; i++) {
+      lnText   += (i + 1) + '\n';
+      codeHtml += (hlLines[i] ?? '') + '\n';
+    }
+    lnEl.textContent = lnText;
+    codeEl.innerHTML = codeHtml;
+  }
+
+  let raf = null;
+  pane.addEventListener('scroll', () => {
+    if (raf) cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(() => { raf = null; update(); });
+  }, { signal: ctrl.signal });
+
+  update();
+}
+
 // ── Render results ────────────────────────────────────────────────────────────
 
 function renderResults(data) {
   // Result pane
-  $('pane-result').innerHTML = renderCodeWithLines(data.final);
+  const pane = $('pane-result');
+  if (pane._vsAbort) { pane._vsAbort.abort(); delete pane._vsAbort; }
+  const finalCode = data.final || '';
+  if (finalCode.split('\n').length >= VS_MIN) {
+    renderResultVirtual(pane, finalCode);
+  } else {
+    pane.innerHTML = renderCodeWithLines(finalCode);
+  }
 
   // Steps pane
   const badge = $('steps-badge');
@@ -872,6 +982,50 @@ async function run() {
   const t0 = performance.now();
   try {
     const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj) });
+    const data = await res.json();
+    const ms   = performance.now() - t0;
+    const timeStr = ms < 1000 ? `${Math.round(ms)} мс` : `${(ms / 1000).toFixed(2)} с`;
+
+    if (data.error) throw new Error(data.error);
+
+    renderResults(data);
+    const n = data.steps.length;
+    st.className = 'ok';
+    st.textContent = `✓ ${n} ${plural(n,'шаг','шага','шагов')} · ${data.passes} ${plural(data.passes,'проход','прохода','проходов')}`;
+    $('exec-time').textContent = timeStr;
+
+  } catch (err) {
+    st.className = 'err';
+    st.textContent = '✗ ' + err.message;
+    $('exec-time').textContent = '';
+    $('pane-result').innerHTML = `<div class="empty"><div class="empty-icon">⚠</div><h3>Ошибка</h3><p>${esc(err.message)}</p></div>`;
+    switchView('result');
+  } finally {
+    btn.disabled = false;
+    spin.remove();
+  }
+}
+
+// ── Project transform ─────────────────────────────────────────────────────────
+
+async function runProject(ex) {
+  const btn = $('proj-run-btn');
+  const st  = $('status');
+  const entry = $('proj-entry-select')?.value || (ex.entries || [])[0] || '';
+
+  btn.disabled = true;
+  st.className = 'busy';
+  st.textContent = '⏳ Трансформация…';
+
+  const spin = document.createElement('div');
+  spin.className = 'spin-wrap';
+  spin.innerHTML = '<div class="spinner"></div>';
+  $('right').style.position = 'relative';
+  $('right').appendChild(spin);
+
+  const t0 = performance.now();
+  try {
+    const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: ex.id, entry }) });
     const data = await res.json();
     const ms   = performance.now() - t0;
     const timeStr = ms < 1000 ? `${Math.round(ms)} мс` : `${(ms / 1000).toFixed(2)} с`;

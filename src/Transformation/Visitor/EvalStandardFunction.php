@@ -65,6 +65,9 @@ class EvalStandardFunction extends BaseVisitor
 
     protected function isArrayHandler(Node\Expr\FuncCall $node): ?Node\Expr\ConstFetch
     {
+        if (!isset($node->args[0]) || !$node->args[0] instanceof Node\Arg) {
+            return null;
+        }
         $arg = $node->args[0]->value;
 
         if ($arg instanceof Node\Expr\Array_) {

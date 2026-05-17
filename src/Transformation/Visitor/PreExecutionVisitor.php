@@ -85,7 +85,7 @@ class PreExecutionVisitor extends BaseVisitor
      */
     private function hasConstantArgs(Node\Expr\FuncCall $node): bool
     {
-        return array_all($node->args, fn($arg): bool => $this->isConstant($arg->value));
+        return array_all($node->args, fn($arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value));
     }
 
     /**
