@@ -24,13 +24,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         $id      = preg_replace('/^\d+-/', '', $dirName);
 
         if (($meta['type'] ?? '') === 'project') {
+            $rawEntry = $meta['entry'] ?? '';
+            $entries  = is_array($rawEntry) ? array_values($rawEntry) : [$rawEntry];
+
+            $countPhp = static function (string $path): int {
+                if (!is_dir($path)) {
+                    return 0;
+                }
+                $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS));
+                $n  = 0;
+                foreach ($it as $f) {
+                    if ($f->isFile() && $f->getExtension() === 'php') {
+                        $n++;
+                    }
+                }
+                return $n;
+            };
+
             $examples[] = [
                 'id'          => $id,
                 'name'        => (string) ($meta['name'] ?? $id),
                 'type'        => 'project',
                 'description' => (string) ($meta['description'] ?? ''),
-                'entry'       => (string) ($meta['entry'] ?? ''),
+                'entries'     => $entries,
                 'url'         => (string) ($meta['url'] ?? ''),
+                'srcCount'    => $countPhp($exampleDir . 'src'),
+                'vendorCount' => $countPhp($exampleDir . 'vendor'),
             ];
             continue;
         }
@@ -89,7 +108,9 @@ use Recombinator\Transformation\Visitor\DeadBranchVisitor;
 use Recombinator\Transformation\Visitor\PureFunctionEvaluatorVisitor;
 use Recombinator\Transformation\Visitor\ReadabilityVisitor;
 use Recombinator\Transformation\Visitor\FileMapIncludeVisitor;
+use Recombinator\Transformation\Visitor\UseImportVisitor;
 use Recombinator\Transformation\Visitor\RemoveCommentsVisitor;
+use Recombinator\Transformation\Visitor\RemoveInterfacesVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedFunctionVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedPureVisitor;
 use Recombinator\Transformation\Visitor\SingleUseInlinerVisitor;
@@ -99,33 +120,77 @@ use Recombinator\Transformation\Visitor\VisitorMeta;
 use SebastianBergmann\Diff\Differ;
 use SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder;
 
-set_time_limit(30);
-ini_set('memory_limit', '256M');
+$timeout = 600;
+set_time_limit($timeout);
+ini_set('memory_limit', '512M');
+$requestStart = microtime(true);
 
 $body  = (string) file_get_contents('php://input');
 $input = json_decode($body, true);
 
-// Поддерживаем два формата: {code} и {files, entry}
+// Поддерживаем три формата: {code}, {files, entry}, {project, entry}
 /** @var array<string, string> $fileMap */
 $fileMap = [];
 
-if (!empty($input['files']) && is_array($input['files'])) {
-    $entry = (string) ($input['entry'] ?? '');
-    $code  = '';
+if (!empty($input['project'])) {
+    $projectId  = preg_replace('/[^a-z0-9-]/', '', (string) $input['project']);
+    $examplesDir = __DIR__ . '/../examples';
+    $allMeta    = json_decode((string) file_get_contents($examplesDir . '/meta.json'), true) ?? [];
+    $projectDir = null;
+    foreach (glob($examplesDir . '/*/') as $d) {
+        $dn = basename($d);
+        if (preg_replace('/^\d+-/', '', $dn) === $projectId) {
+            $meta = $allMeta[$dn] ?? [];
+            if (($meta['type'] ?? '') === 'project') {
+                $projectDir = rtrim($d, '/');
+                $entryRel   = (string) ($input['entry'] ?? $meta['entry'] ?? '');
+            }
+            break;
+        }
+    }
+    if ($projectDir === null) {
+        echo json_encode(['error' => 'Unknown project: ' . $projectId]);
+        exit;
+    }
+    foreach (['src', 'vendor'] as $subdir) {
+        $scanDir = $projectDir . '/' . $subdir;
+        if (!is_dir($scanDir)) {
+            continue;
+        }
+        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($scanDir, RecursiveDirectoryIterator::SKIP_DOTS));
+        foreach ($iterator as $file) {
+            if ($file->isFile() && $file->getExtension() === 'php') {
+                $rel = ltrim(str_replace($projectDir, '', $file->getPathname()), '/');
+                $fileMap[$rel] = (string) file_get_contents($file->getPathname());
+            }
+        }
+    }
+    if (!empty($entryRel) && file_exists($projectDir . '/' . $entryRel)) {
+        $fileMap[$entryRel] = (string) file_get_contents($projectDir . '/' . $entryRel);
+        $code = $fileMap[$entryRel];
+    } else {
+        $code = reset($fileMap) ?: '';
+        $entryRel = array_key_first($fileMap) ?? '';
+    }
+} elseif (!empty($input['files']) && is_array($input['files'])) {
+    $entryRel = (string) ($input['entry'] ?? '');
+    $code     = '';
     foreach ($input['files'] as $file) {
         if (!is_array($file) || !isset($file['name'], $file['code'])) {
             continue;
         }
         $fileMap[(string) $file['name']] = (string) $file['code'];
-        if ((string) $file['name'] === $entry) {
+        if ((string) $file['name'] === $entryRel) {
             $code = (string) $file['code'];
         }
     }
     if ($code === '') {
-        $code = end($fileMap) ?: '';
+        $code     = end($fileMap) ?: '';
+        $entryRel = array_key_last($fileMap) ?? '';
     }
 } else {
-    $code = trim((string) ($input['code'] ?? ''));
+    $code     = trim((string) ($input['code'] ?? ''));
+    $entryRel = '';
 }
 
 if ($code === '') {
@@ -178,13 +243,15 @@ function getVisitorMeta(NodeVisitorAbstract $visitor): array
 
 $ss = new ScopeStore();
 
-$makeMainVisitors = static function () use ($ss, $fileMap): array {
+$makeMainVisitors = static function () use ($ss, $fileMap, $entryRel): array {
     $visitors = [];
     if (!empty($fileMap)) {
-        $visitors[] = new FileMapIncludeVisitor($fileMap);
+        $visitors[] = new FileMapIncludeVisitor($fileMap, $entryRel);
+        $visitors[] = new UseImportVisitor($fileMap);
     }
     return array_merge($visitors, [
         new RemoveCommentsVisitor(),
+        new RemoveInterfacesVisitor(),
         new BinaryAndIssetVisitor(),
         new CoalesceNullRemoveVisitor(),
         new ConcatAssertVisitor(),
@@ -216,12 +283,19 @@ $makeReadabilityVisitors = static fn(): array => [
     new CodeBlockVisitor(),
 ];
 
-$steps            = [];
-$maxPasses        = 8;
-$readabilityPass  = false;
+$steps           = [];
+$readabilityPass = false;
+
+$deadline = $requestStart + ($timeout - 10);
 
 // ── Phase 1: optimisation loop ────────────────────────────────────────────────
-for ($pass = 1; $pass <= $maxPasses; $pass++) {
+// Цикл продолжается до полной сходимости (ни один visitor не изменил AST)
+// или до исчерпания лимита времени.
+for ($pass = 1; ; $pass++) {
+    if (microtime(true) >= $deadline) {
+        break;
+    }
+
     $passChanged = false;
 
     foreach ($makeMainVisitors() as $visitor) {

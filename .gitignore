@@ -3,3 +3,4 @@ vendor
 tests/cache
 .phpunit.result.cache
 examples/06-symfony-demo/
+examples/07-slim-demo/

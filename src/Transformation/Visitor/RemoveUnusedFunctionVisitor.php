@@ -21,6 +21,8 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
     /** @var array<string, true> */
     private array $calledFunctions = [];
 
+    private bool $hasUnresolvedIncludes = false;
+
     private Config $config;
 
     public function __construct(?Config $config = null)
@@ -32,6 +34,11 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
+
+        $this->hasUnresolvedIncludes = !empty($this->findNode(Node\Expr\Include_::class));
+        if ($this->hasUnresolvedIncludes) {
+            return null;
+        }
 
         $this->calledFunctions = [];
         foreach ($this->findNode(Node\Expr\FuncCall::class) as $call) {
@@ -45,7 +52,7 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
 
     public function enterNode(Node $node): ?Node
     {
-        if (!$node instanceof Node\Stmt\Function_) {
+        if ($this->hasUnresolvedIncludes || !$node instanceof Node\Stmt\Function_) {
             return null;
         }
 

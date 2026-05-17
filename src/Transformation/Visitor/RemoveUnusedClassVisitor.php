@@ -27,6 +27,9 @@ class RemoveUnusedClassVisitor extends BaseVisitor
     /** @var array<string, true> */
     private array $externalReferences = [];
 
+    /** Флаг: в AST есть неразрешённые include/require — удалять ничего нельзя. */
+    private bool $hasUnresolvedIncludes = false;
+
     /** Зарезервированные / built-in имена типов — их не считаем ссылками на классы. */
     private const array RESERVED = [
         'self' => true, 'parent' => true, 'static' => true, 'this' => true,
@@ -47,13 +50,20 @@ class RemoveUnusedClassVisitor extends BaseVisitor
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
-        $this->externalReferences = [];
-        $this->scan($nodes, []);
+        $this->externalReferences    = [];
+        $this->hasUnresolvedIncludes = !empty($this->findNode(Node\Expr\Include_::class));
+        if (!$this->hasUnresolvedIncludes) {
+            $this->scan($nodes, []);
+        }
         return null;
     }
 
     public function enterNode(Node $node): ?Node
     {
+        if ($this->hasUnresolvedIncludes) {
+            return null;
+        }
+
         if (!$node instanceof Node\Stmt\Class_ || !$node->name instanceof \PhpParser\Node\Identifier) {
             return null;
         }

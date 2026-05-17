@@ -18,7 +18,25 @@
     "name": "Symfony Demo",
     "type": "project",
     "entry": "public/index.php",
-    "description": "Полноценное Symfony-приложение — блог с аутентификацией, комментариями и админкой. Реальный production-код: контроллеры, сервисы, Doctrine, Twig. Хороший полигон для проверки развёртки на нетривиальном PHP.",
-    "url": "https://github.com/symfony/demo"
+    "description": "Полноценное Symfony-приложение — блог с аутентификацией, комментариями и админкой. Реальный production-код: контроллеры, сервисы, Doctrine, Twig",
+    "url": "https://github.com/symfony/demo",
+    "setup": [
+      "echo 'APP_ENV=prod' > .env.local",
+      "echo 'APP_SECRET=12345qwerty' >> .env.local",
+      "composer install --no-dev --optimize-autoloader --no-scripts",
+      "php bin/console importmap:install",
+      "php bin/console sass:build",
+      "php bin/console asset-map:compile"
+    ]
+  },
+  "07-slim-demo": {
+    "name": "Slim Demo",
+    "type": "project",
+    "entry": "public/index.php",
+    "description": "Приложение на Slim",
+    "url": "https://github.com/1ma/Slim-Doctrine-Demo",
+    "setup": [
+      "composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs"
+    ]
   }
 }
