@@ -213,9 +213,10 @@ try {
     exit;
 }
 
-function applyOneVisitor(array &$ast, NodeVisitorAbstract $visitor): string
+function applyOneVisitor(array &$ast, NodeVisitorAbstract $visitor): array
 {
     global $printer;
+    $t0     = microtime(true);
     $before = $printer->prettyPrint($ast);
 
     $t1 = new NodeTraverser();
@@ -226,7 +227,13 @@ function applyOneVisitor(array &$ast, NodeVisitorAbstract $visitor): string
     $t2->addVisitor($visitor);
     $ast = array_values($t2->traverse($ast));
 
-    return $before;
+    $after = $printer->prettyPrint($ast);
+
+    return [
+        'before'  => $before,
+        'after'   => $after,
+        'time_ms' => (microtime(true) - $t0) * 1000.0,
+    ];
 }
 
 function getVisitorMeta(NodeVisitorAbstract $visitor): array
@@ -300,8 +307,9 @@ for ($pass = 1; ; $pass++) {
 
     foreach ($makeMainVisitors() as $visitor) {
         try {
-            $before = applyOneVisitor($ast, $visitor);
-            $after  = $printer->prettyPrint($ast);
+            $r      = applyOneVisitor($ast, $visitor);
+            $before = $r['before'];
+            $after  = $r['after'];
         } catch (\Throwable) {
             continue;
         }
@@ -320,6 +328,7 @@ for ($pass = 1; ; $pass++) {
             'before'  => "<?php\n" . $before,
             'after'   => "<?php\n" . $after,
             'diff'    => $diff,
+            'time_ms' => $r['time_ms'],
         ];
 
         $passChanged = true;
@@ -333,8 +342,9 @@ for ($pass = 1; ; $pass++) {
 // ── Phase 2: readability (single isolated pass) ───────────────────────────────
 foreach ($makeReadabilityVisitors() as $visitor) {
     try {
-        $before = applyOneVisitor($ast, $visitor);
-        $after  = $printer->prettyPrint($ast);
+        $r      = applyOneVisitor($ast, $visitor);
+        $before = $r['before'];
+        $after  = $r['after'];
     } catch (\Throwable) {
         continue;
     }
@@ -354,12 +364,14 @@ foreach ($makeReadabilityVisitors() as $visitor) {
         'before'  => "<?php\n" . $before,
         'after'   => "<?php\n" . $after,
         'diff'    => $diff,
+        'time_ms' => $r['time_ms'],
     ];
 }
 
 echo json_encode([
-    'original' => $code,
-    'final'    => "<?php\n" . $printer->prettyPrint($ast),
-    'steps'    => $steps,
-    'passes'   => $readabilityPass ? $pass : $pass - 1,
+    'original'      => $code,
+    'final'         => "<?php\n" . $printer->prettyPrint($ast),
+    'steps'         => $steps,
+    'passes'        => $readabilityPass ? $pass : $pass - 1,
+    'total_time_ms' => (microtime(true) - $requestStart) * 1000.0,
 ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
