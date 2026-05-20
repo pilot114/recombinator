@@ -237,16 +237,18 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 /* ── Steps pane ── */
 #pane-steps { padding: 12px; }
-.steps-meta {
-  font-size: 12px; color: var(--muted); margin-bottom: 12px;
-  padding: 8px 12px; background: var(--surface); border-radius: var(--radius);
-  border: 1px solid var(--border); line-height: 1.6;
+.steps-filter {
+  position: sticky; top: 0; z-index: 5;
+  background: var(--bg); padding-bottom: 10px; margin-bottom: 2px;
 }
-.steps-meta strong { color: var(--text); }
-.pass-label {
-  font-size: 10px; font-weight: 700; letter-spacing: .8px; color: var(--muted);
-  padding: 10px 0 5px; text-transform: uppercase;
+#steps-search {
+  width: 100%; padding: 7px 12px; font-size: 12px;
+  background: var(--surface2); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  outline: none; font-family: var(--ui);
 }
+#steps-search::placeholder { color: var(--muted); }
+#steps-search:focus { border-color: var(--accent); }
 
 /* ── Step card ── */
 .card { border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 7px; overflow: hidden; }
@@ -259,10 +261,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .c-pass { font-size: 10px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); padding: 1px 7px; border-radius: 10px; flex-shrink: 0; }
 .c-name { font-family: var(--mono); font-size: 12px; color: var(--accent); flex-shrink: 0; }
 .c-desc { font-size: 12px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.c-time { font-size: 10px; color: var(--muted); background: var(--surface2); border: 1px solid var(--border); padding: 1px 7px; border-radius: 10px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
 .c-arrow { font-size: 10px; color: var(--muted); transition: transform .2s; flex-shrink: 0; }
 .card.open .c-arrow { transform: rotate(180deg); }
 .card-body { display: none; border-top: 1px solid var(--border); }
 .card.open .card-body { display: block; }
+.no-match { padding: 28px; text-align: center; color: var(--muted); font-size: 13px; }
 
 /* ── Inner tabs (Diff / Before / After) ── */
 .inner-tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); }
@@ -380,6 +384,66 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .uc-dot { flex-shrink: 0; width: 5px; height: 5px; border-radius: 50%; background: var(--accent); margin-top: 7px; }
 .info-usecase strong { font-size: 13px; color: var(--text); margin-right: 6px; white-space: nowrap; }
 .info-usecase span { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  html, body { overflow: auto; height: auto; font-size: 13px; }
+
+  #header {
+    height: auto; min-height: 48px; padding: 8px 10px;
+    flex-wrap: wrap; gap: 8px;
+  }
+  .header-mid { order: 3; width: 100%; justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+  #status { display: none; }
+  .kbd { display: none; }
+  #run-btn { padding: 6px 14px; font-size: 12px; }
+  .logo { font-size: 14px; }
+
+  #app {
+    flex-direction: column;
+    height: auto;
+  }
+  #left {
+    width: 100% !important; min-width: 0;
+    height: 55vh; min-height: 280px;
+    border-right: none; border-bottom: 1px solid var(--border);
+  }
+  #drag { display: none; }
+  #right {
+    height: 70vh; min-height: 360px;
+  }
+
+  .editor-wrap, #editor, #editor-highlight { font-size: 12px; line-height: 1.55; }
+  #editor, #editor-highlight { padding: 8px; }
+  #line-nums { width: 34px; font-size: 12px; padding: 8px 4px 8px 2px; line-height: 1.55; }
+
+  .tab { font-size: 11px; padding: 0 10px; }
+  .vtab { padding: 0 12px; font-size: 11px; }
+  #exec-time { padding: 0 10px; font-size: 10px; }
+
+  #pane-steps { padding: 10px; }
+  .card-head { padding: 8px 10px; gap: 6px; flex-wrap: wrap; }
+  .c-desc { white-space: normal; min-width: 0; }
+
+  #pane-result pre { padding: 10px 12px; }
+
+  .info-panel { padding: 20px 18px 22px; }
+  .info-panel h2 { font-size: 15px; }
+  .info-phase { padding: 8px 10px; }
+  .phase-body strong { font-size: 12px; }
+  .phase-body span, .info-usecase span { font-size: 11px; }
+
+  .proj-entry-row { flex-direction: column; align-items: stretch; }
+  #proj-entry-select { width: 100%; }
+  #proj-run-btn { width: 100%; padding: 10px; }
+}
+
+@media (max-width: 420px) {
+  #example-select { max-width: 130px; }
+  .logo { font-size: 13px; gap: 6px; }
+  #run-btn { padding: 6px 10px; font-size: 11px; }
+  .c-name { font-size: 11px; }
+}
 </style>
 </head>
 <body>
@@ -781,14 +845,23 @@ function renderDiff(text) {
 
 let cardSeq = 0;
 
+function fmtTime(ms) {
+  if (ms == null || !isFinite(ms)) return '';
+  if (ms < 1)    return '<1 мс';
+  if (ms < 1000) return `${Math.round(ms)} мс`;
+  return `${(ms / 1000).toFixed(2)} с`;
+}
+
 function makeCard(step) {
   const id = 'c' + (++cardSeq);
+  const time = fmtTime(step.time_ms);
   return `
 <div class="card" id="${id}">
   <div class="card-head" onclick="toggleCard('${id}')">
     <span class="c-pass">pass ${step.pass}</span>
     <span class="c-name">${esc(step.visitor)}</span>
     <span class="c-desc">${esc(step.desc || '')}</span>
+    ${time ? `<span class="c-time">${time}</span>` : ''}
     <span class="c-arrow">▼</span>
   </div>
   <div class="card-body">
@@ -923,28 +996,36 @@ function renderResults(data) {
     badge.style.display = '';
     badge.textContent = n;
 
-    const byPass = {};
-    for (const s of data.steps) { (byPass[s.pass] = byPass[s.pass] || []).push(s); }
-
     cardSeq = 0;
-    let html = `<div style="padding:12px">`;
-    html += `<div class="steps-meta">
-      <strong>${n}</strong> ${plural(n,'трансформация','трансформации','трансформаций')}
-      &nbsp;·&nbsp;
-      <strong>${data.passes}</strong> ${plural(data.passes,'проход','прохода','проходов')}
-    </div>`;
-
-    for (const [pass, steps] of Object.entries(byPass)) {
-      html += `<div class="pass-label">Проход ${pass}</div>`;
-      steps.forEach(s => { html += makeCard(s); });
-    }
-
-    html += '</div>';
+    let html = `
+      <div class="steps-filter">
+        <input type="text" id="steps-search" placeholder="Поиск по названию правила…" spellcheck="false" autocomplete="off">
+      </div>
+      <div id="steps-list">`;
+    data.steps.forEach(s => { html += makeCard(s); });
+    html += `</div>
+      <div class="no-match" id="steps-empty" style="display:none">Ничего не найдено</div>`;
     $('pane-steps').innerHTML = html;
 
     // auto-open first card
-    const first = $('pane-steps').querySelector('.card');
-    if (first) first.classList.add('open');
+    const firstCard = $('pane-steps').querySelector('.card');
+    if (firstCard) firstCard.classList.add('open');
+
+    // wire up filter
+    const search = $('steps-search');
+    const empty  = $('steps-empty');
+    search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      let visible = 0;
+      $('pane-steps').querySelectorAll('.card').forEach(card => {
+        const name = card.querySelector('.c-name')?.textContent.toLowerCase() ?? '';
+        const desc = card.querySelector('.c-desc')?.textContent.toLowerCase() ?? '';
+        const show = !q || name.includes(q) || desc.includes(q);
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      empty.style.display = visible === 0 ? '' : 'none';
+    });
   }
 
   switchView('result');
@@ -979,12 +1060,9 @@ async function run() {
   $('right').style.position = 'relative';
   $('right').appendChild(spin);
 
-  const t0 = performance.now();
   try {
     const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj) });
     const data = await res.json();
-    const ms   = performance.now() - t0;
-    const timeStr = ms < 1000 ? `${Math.round(ms)} мс` : `${(ms / 1000).toFixed(2)} с`;
 
     if (data.error) throw new Error(data.error);
 
@@ -992,7 +1070,7 @@ async function run() {
     const n = data.steps.length;
     st.className = 'ok';
     st.textContent = `✓ ${n} ${plural(n,'шаг','шага','шагов')} · ${data.passes} ${plural(data.passes,'проход','прохода','проходов')}`;
-    $('exec-time').textContent = timeStr;
+    $('exec-time').textContent = fmtTime(data.total_time_ms);
 
   } catch (err) {
     st.className = 'err';
@@ -1023,12 +1101,9 @@ async function runProject(ex) {
   $('right').style.position = 'relative';
   $('right').appendChild(spin);
 
-  const t0 = performance.now();
   try {
     const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: ex.id, entry }) });
     const data = await res.json();
-    const ms   = performance.now() - t0;
-    const timeStr = ms < 1000 ? `${Math.round(ms)} мс` : `${(ms / 1000).toFixed(2)} с`;
 
     if (data.error) throw new Error(data.error);
 
@@ -1036,7 +1111,7 @@ async function runProject(ex) {
     const n = data.steps.length;
     st.className = 'ok';
     st.textContent = `✓ ${n} ${plural(n,'шаг','шага','шагов')} · ${data.passes} ${plural(data.passes,'проход','прохода','проходов')}`;
-    $('exec-time').textContent = timeStr;
+    $('exec-time').textContent = fmtTime(data.total_time_ms);
 
   } catch (err) {
     st.className = 'err';
