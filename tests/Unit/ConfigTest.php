@@ -19,6 +19,7 @@ function applyVisitorWithConfig(string $code, object $visitor): string
 
     $t1 = new NodeTraverser();
     $t1->addVisitor(new NodeConnectingVisitor());
+
     $ast = $t1->traverse($ast);
 
     $t2 = new NodeTraverser();

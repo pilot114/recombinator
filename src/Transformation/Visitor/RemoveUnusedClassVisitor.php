@@ -39,7 +39,7 @@ class RemoveUnusedClassVisitor extends BaseVisitor
         'true' => true, 'false' => true, 'numeric' => true, 'resource' => true,
     ];
 
-    private Config $config;
+    private readonly Config $config;
 
     public function __construct(?Config $config = null)
     {
@@ -51,10 +51,11 @@ class RemoveUnusedClassVisitor extends BaseVisitor
     {
         parent::beforeTraverse($nodes);
         $this->externalReferences    = [];
-        $this->hasUnresolvedIncludes = !empty($this->findNode(Node\Expr\Include_::class));
+        $this->hasUnresolvedIncludes = $this->findNode(Node\Expr\Include_::class) !== [];
         if (!$this->hasUnresolvedIncludes) {
             $this->scan($nodes, []);
         }
+
         return null;
     }
 
