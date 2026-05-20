@@ -15,13 +15,15 @@ function applyRemoveInterfaces(string $code): string
 
     $t1 = new NodeTraverser();
     $t1->addVisitor(new NodeConnectingVisitor());
+
     $ast = $t1->traverse($ast);
 
     $t2 = new NodeTraverser();
     $t2->addVisitor(new RemoveInterfacesVisitor());
+
     $ast = $t2->traverse($ast);
 
-    return (new Printer())->prettyPrint($ast);
+    return new Printer()->prettyPrint($ast);
 }
 
 it('removes interface declaration', function (): void {

@@ -50,7 +50,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
      */
     protected function processClass(Node\Stmt\Class_ $node): void
     {
-        if ($node->name === null) {
+        if (!$node->name instanceof \PhpParser\Node\Identifier) {
             return; // анонимный класс — не инлайним
         }
 

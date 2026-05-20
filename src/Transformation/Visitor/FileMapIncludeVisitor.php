@@ -77,7 +77,7 @@ class FileMapIncludeVisitor extends BaseVisitor
     private function resolve(Node $expr, string $effectiveFile): ?array
     {
         if ($expr instanceof Node\Scalar\String_) {
-            return $this->lookupWithKey(ltrim($expr->value, '/\\'), $effectiveFile);
+            return $this->lookupWithKey(ltrim($expr->value, '/\\'));
         }
 
         if (
@@ -128,10 +128,11 @@ class FileMapIncludeVisitor extends BaseVisitor
         $suffix = ltrim($suffix, '/\\');
 
         if ($effectiveFile !== '') {
-            $parts = array_filter(explode('/', dirname($effectiveFile)), fn($p) => $p !== '.');
+            $parts = array_filter(explode('/', dirname($effectiveFile)), fn($p): bool => $p !== '.');
             for ($i = 0; $i < $depth; $i++) {
                 array_pop($parts);
             }
+
             $base     = implode('/', $parts);
             $resolved = $this->normalizePath(($base !== '' ? $base . '/' : '') . $suffix);
             if (isset($this->fileMap[$resolved])) {
@@ -139,13 +140,13 @@ class FileMapIncludeVisitor extends BaseVisitor
             }
         }
 
-        return $this->lookupWithKey($suffix, $effectiveFile);
+        return $this->lookupWithKey($suffix);
     }
 
     /**
      * @return array{string, string}|null
      */
-    private function lookupWithKey(string $path, string $effectiveFile): ?array
+    private function lookupWithKey(string $path): ?array
     {
         if (isset($this->fileMap[$path])) {
             return [$this->fileMap[$path], $path];
@@ -170,6 +171,7 @@ class FileMapIncludeVisitor extends BaseVisitor
                 $out[] = $part;
             }
         }
+
         return implode('/', $out);
     }
 
@@ -185,9 +187,11 @@ class FileMapIncludeVisitor extends BaseVisitor
             if (!$node instanceof Node) {
                 continue;
             }
+
             if ($node instanceof Node\Expr\Include_) {
                 $node->setAttribute('sourceFile', $sourceFile);
             }
+
             foreach ($node->getSubNodeNames() as $sub) {
                 $val = $node->$sub;
                 if ($val instanceof Node) {

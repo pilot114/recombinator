@@ -120,9 +120,9 @@ use Recombinator\Transformation\Visitor\VisitorMeta;
 use SebastianBergmann\Diff\Differ;
 use SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder;
 
-$timeout = 600;
+$timeout = 60000;
 set_time_limit($timeout);
-ini_set('memory_limit', '512M');
+ini_set('memory_limit', '5G');
 $requestStart = microtime(true);
 
 $body  = (string) file_get_contents('php://input');

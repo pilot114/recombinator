@@ -31,7 +31,7 @@ class ClassInlinerVisitor extends BaseVisitor
      */
     private array $instanceRegistry = [];
 
-    private Config $config;
+    private readonly Config $config;
 
     public function __construct(?Config $config = null)
     {

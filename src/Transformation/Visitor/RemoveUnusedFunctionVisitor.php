@@ -23,7 +23,7 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
 
     private bool $hasUnresolvedIncludes = false;
 
-    private Config $config;
+    private readonly Config $config;
 
     public function __construct(?Config $config = null)
     {
@@ -35,7 +35,7 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
     {
         parent::beforeTraverse($nodes);
 
-        $this->hasUnresolvedIncludes = !empty($this->findNode(Node\Expr\Include_::class));
+        $this->hasUnresolvedIncludes = $this->findNode(Node\Expr\Include_::class) !== [];
         if ($this->hasUnresolvedIncludes) {
             return null;
         }

@@ -71,12 +71,12 @@ class UseImportVisitor extends BaseVisitor
             if (isset($this->inlined[$fqcn])) {
                 continue;
             }
+
             $stmts = $this->resolveClass($fqcn);
             if ($stmts !== null) {
-                $this->inlined[$fqcn] = true;
                 array_push($replacements, ...$stmts);
 
-                // Регистрируем алиас для дальнейшего переименования ссылок.
+                // Регистрируем алиас для переименования ссылок в текущем файле.
                 $parts = explode('\\', $fqcn);
                 $alias = $use->alias?->toString() ?? end($parts);
                 $this->aliasMap[strtolower($alias)] = strtr($fqcn, ['\\' => '_']);
@@ -90,34 +90,79 @@ class UseImportVisitor extends BaseVisitor
     }
 
     /**
-     * Ищет файл в fileMap по FQCN, извлекает use-декларации и объявление класса
-     * без namespace-обёртки. Класс переименовывается по FQCN для уникальности.
+     * Ищет файл в fileMap по FQCN и рекурсивно разворачивает все его зависимости.
+     * Помечает FQCN в $inlined до рекурсии — разрывает циклы и предотвращает дубли.
      *
-     * Стратегия поиска (от длинного суффикса к короткому):
-     *   App\Controller\BlogController → Controller/BlogController.php → BlogController.php
-     *
-     * @return array<Node\Stmt>|null  [use*, classLike]
+     * @return array<Node\Stmt>|null  null если класс не найден в fileMap
      */
     private function resolveClass(string $fqcn): ?array
     {
+        if (isset($this->inlined[$fqcn])) {
+            return null; // уже инлайнен или цикл
+        }
+
+        $this->inlined[$fqcn] = true; // помечаем ДО рекурсии
+
         $parts       = explode('\\', $fqcn);
         $shortName   = end($parts);
         $suffixParts = array_slice($parts, 1);
 
-        while (!empty($suffixParts)) {
+        while ($suffixParts !== []) {
             $suffix = implode('/', $suffixParts) . '.php';
             foreach ($this->fileMap as $key => $code) {
                 if ($key === $suffix || str_ends_with($key, '/' . $suffix)) {
-                    $result = $this->extractFromFile($code, $shortName, $fqcn);
-                    if ($result !== null) {
-                        return $result;
+                    $raw = $this->extractFromFile($code, $shortName, $fqcn);
+                    if ($raw !== null) {
+                        return $this->expandInlinedUses($raw);
                     }
                 }
             }
+
             array_shift($suffixParts);
         }
 
         return null;
+    }
+
+    /**
+     * Рекурсивно разворачивает use-декларации из только что инлайненного файла.
+     *
+     * - Нормальные use (классы) → рекурсивно инлайним если есть в fileMap,
+     *   иначе оставляем как есть (внешняя зависимость).
+     * - use function / use const → оставляем как есть.
+     * - Объявления классов/трейтов/enum → оставляем как есть.
+     *
+     * Зависимости прописываются ПЕРЕД классом, который их требует.
+     *
+     * @param  array<Node\Stmt> $stmts  сырой вывод extractFromFile
+     * @return array<Node\Stmt>
+     */
+    private function expandInlinedUses(array $stmts): array
+    {
+        $output = [];
+        foreach ($stmts as $stmt) {
+            if (!$stmt instanceof Node\Stmt\Use_ || $stmt->type !== Node\Stmt\Use_::TYPE_NORMAL) {
+                $output[] = $stmt; // объявление класса или use function/const
+                continue;
+            }
+
+            foreach ($stmt->uses as $use) {
+                $depFqcn  = $use->name->toString();
+                $resolved = $this->resolveClass($depFqcn);
+                if ($resolved !== null) {
+                    // Класс найден — инлайним и регистрируем алиас
+                    $depParts = explode('\\', $depFqcn);
+                    $depAlias = $use->alias?->toString() ?? end($depParts);
+                    $this->aliasMap[strtolower($depAlias)] = strtr($depFqcn, ['\\' => '_']);
+                    array_push($output, ...$resolved);
+                } else {
+                    // Внешняя зависимость — оставляем use как есть
+                    $output[] = new Node\Stmt\Use_([$use], Node\Stmt\Use_::TYPE_NORMAL);
+                }
+            }
+        }
+
+        return $output;
     }
 
     /**
@@ -145,14 +190,15 @@ class UseImportVisitor extends BaseVisitor
                     $useStmts[] = $stmt;
                 }
             }
+
             foreach ($stmts as $stmt) {
                 if (
                     ($stmt instanceof Node\Stmt\Class_ ||
                      $stmt instanceof Node\Stmt\Interface_ ||
                      $stmt instanceof Node\Stmt\Trait_ ||
-                     $stmt instanceof Node\Stmt\Enum_)
-                    && $stmt->name instanceof Node\Identifier
-                    && $stmt->name->toString() === $shortName
+                     $stmt instanceof Node\Stmt\Enum_) &&
+                    $stmt->name instanceof Node\Identifier &&
+                    $stmt->name->toString() === $shortName
                 ) {
                     $classNode = $stmt;
                 }
@@ -176,5 +222,4 @@ class UseImportVisitor extends BaseVisitor
 
         return [...$useStmts, $classNode];
     }
-
 }

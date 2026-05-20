@@ -26,7 +26,7 @@ class RemoveInterfacesVisitor extends BaseVisitor
             return null;
         }
 
-        if ($node instanceof Node\Stmt\Class_ && !empty($node->implements)) {
+        if ($node instanceof Node\Stmt\Class_ && $node->implements !== []) {
             $node->implements = [];
         }
 
