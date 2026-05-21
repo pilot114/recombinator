@@ -59,29 +59,46 @@ class MethodToSingleReturnVisitor extends BaseVisitor
             }
         }
 
-        /** @var array<string, Node\Expr> $subs */
-        $subs = [];
-
+        // Собираем имена локальных переменных-кандидатов на подстановку до самой подстановки —
+        // нужно, чтобы заранее проверить столкновение с захватами замыканий (use ($x))
+        $candidateNames = [];
         for ($i = 0; $i < $lastIdx; $i++) {
             $s = $stmts[$i];
             if (!$s instanceof Node\Stmt\Expression) {
                 return null;
             }
-
             $expr = $s->expr;
             if (!$expr instanceof Node\Expr\Assign) {
                 return null;
             }
-
             if (!$expr->var instanceof Node\Expr\Variable || !is_string($expr->var->name)) {
                 return null;
             }
-
             $name = $expr->var->name;
-
-            if (isset($paramNames[$name]) || isset($subs[$name])) {
+            if (isset($paramNames[$name]) || isset($candidateNames[$name])) {
                 return null;
             }
+            $candidateNames[$name] = true;
+        }
+
+        // Если какое-то замыкание ниже захватывает локальную через use ($x), подстановка
+        // в его теле даст невалидную AST (ClosureUse::$var должен быть Variable) — отказываемся.
+        if ($this->hasClosureCaptureOf($stmts, $candidateNames)) {
+            return null;
+        }
+
+        /** @var array<string, Node\Expr> $subs */
+        $subs = [];
+
+        for ($i = 0; $i < $lastIdx; $i++) {
+            /** @var Node\Stmt\Expression $s */
+            $s = $stmts[$i];
+            /** @var Node\Expr\Assign $expr */
+            $expr = $s->expr;
+            /** @var Node\Expr\Variable $var */
+            $var = $expr->var;
+            /** @var string $name */
+            $name = $var->name;
 
             $subs[$name] = $this->applySubs($expr->expr, $subs);
         }
@@ -175,6 +192,50 @@ class MethodToSingleReturnVisitor extends BaseVisitor
         $traverser->traverse([$expr]);
 
         return $counter->counts;
+    }
+
+    /**
+     * Проверяет, захватывает ли какое-нибудь замыкание в $stmts (через use ($x))
+     * хотя бы одно из имён в $names.
+     *
+     * @param array<int, Node\Stmt> $stmts
+     * @param array<string, true>   $names
+     */
+    private function hasClosureCaptureOf(array $stmts, array $names): bool
+    {
+        if ($names === []) {
+            return false;
+        }
+
+        $scanner = new class ($names) extends NodeVisitorAbstract {
+            public bool $found = false;
+
+            /** @param array<string, true> $names */
+            public function __construct(private readonly array $names)
+            {
+            }
+
+            public function enterNode(Node $n): ?int
+            {
+                if (
+                    $n instanceof Node\ClosureUse
+                    && $n->var instanceof Node\Expr\Variable
+                    && is_string($n->var->name)
+                    && isset($this->names[$n->var->name])
+                ) {
+                    $this->found = true;
+                    return NodeTraverser::STOP_TRAVERSAL;
+                }
+
+                return null;
+            }
+        };
+
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor($scanner);
+        $traverser->traverse($stmts);
+
+        return $scanner->found;
     }
 
     private function isPureExpr(Node $expr): bool

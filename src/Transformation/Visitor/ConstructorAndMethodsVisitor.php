@@ -148,6 +148,12 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             return null;
         }
 
+        // $node->class может быть Name, выражением (new $cls(), new static::$x())
+        // или анонимным классом. Инлайнить можем только по статически известному имени.
+        if (!$node->class instanceof \PhpParser\Node\Name) {
+            return null;
+        }
+
         $uid = $this->buildUidByNode($node);
         $className = $node->class->toString();
         $class = $this->scopeStore->getClassFromGlobal($className);

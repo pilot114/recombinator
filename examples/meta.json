@@ -38,5 +38,11 @@
     "setup": [
       "composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs"
     ]
+  },
+  "08-syntax-zoo": {
+    "name": "Syntax Zoo",
+    "type": "project",
+    "entry": "index.php",
+    "description": "Синтетический пример: >5 классов под одним namespace, покрывает большую часть синтаксиса PHP 8.4 (abstract/final/readonly, trait, interface, enum, generators, match, named args, varargs, spread, magic methods, try/catch/finally, heredoc/nowdoc, first-class callable, nullsafe, late static binding). Удобен для тестирования правил оптимизатора."
   }
 }
