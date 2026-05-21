@@ -109,6 +109,8 @@ use Recombinator\Transformation\Visitor\PureFunctionEvaluatorVisitor;
 use Recombinator\Transformation\Visitor\ReadabilityVisitor;
 use Recombinator\Transformation\Visitor\FileMapIncludeVisitor;
 use Recombinator\Transformation\Visitor\UseImportVisitor;
+use Recombinator\Transformation\Visitor\FlattenInheritanceVisitor;
+use Recombinator\Transformation\Visitor\RemoveGlobalUseVisitor;
 use Recombinator\Transformation\Visitor\RemoveCommentsVisitor;
 use Recombinator\Transformation\Visitor\RemoveInterfacesVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedFunctionVisitor;
@@ -266,8 +268,10 @@ $makeMainVisitors = static function () use ($ss, $fileMap, $entryRel): array {
         $visitors[] = new UseImportVisitor($fileMap);
     }
     return array_merge($visitors, [
+        new RemoveGlobalUseVisitor(),
         new RemoveCommentsVisitor(),
         new RemoveInterfacesVisitor(),
+        new FlattenInheritanceVisitor(),
         new BinaryAndIssetVisitor(),
         new CoalesceNullRemoveVisitor(),
         new ConcatAssertVisitor(),
@@ -319,14 +323,9 @@ for ($pass = 1; ; $pass++) {
     $reconnect   = true; // первый visitor в проходе всегда требует NodeConnectingVisitor
 
     foreach ($makeMainVisitors() as $visitor) {
-        $prevCode = $currentCode;
-        try {
-            $r           = applyOneVisitor($ast, $visitor, $prevCode, $reconnect);
-            $currentCode = $r['after'];
-        } catch (\Throwable) {
-            $reconnect = false;
-            continue;
-        }
+        $prevCode    = $currentCode;
+        $r           = applyOneVisitor($ast, $visitor, $prevCode, $reconnect);
+        $currentCode = $r['after'];
 
         $changed   = ($prevCode !== $currentCode);
         $reconnect = $changed; // следующий visitor нуждается в reconnect только при изменении AST
@@ -361,14 +360,9 @@ $currentCode = $printer->prettyPrint($ast);
 $reconnect   = true;
 
 foreach ($makeReadabilityVisitors() as $visitor) {
-    $prevCode = $currentCode;
-    try {
-        $r           = applyOneVisitor($ast, $visitor, $prevCode, $reconnect);
-        $currentCode = $r['after'];
-    } catch (\Throwable) {
-        $reconnect = false;
-        continue;
-    }
+    $prevCode    = $currentCode;
+    $r           = applyOneVisitor($ast, $visitor, $prevCode, $reconnect);
+    $currentCode = $r['after'];
 
     $changed   = ($prevCode !== $currentCode);
     $reconnect = $changed;
