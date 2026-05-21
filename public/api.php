@@ -120,7 +120,7 @@ use Recombinator\Transformation\Visitor\VisitorMeta;
 use SebastianBergmann\Diff\Differ;
 use SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder;
 
-$timeout = 60000;
+$timeout = 60;
 set_time_limit($timeout);
 ini_set('memory_limit', '5G');
 $requestStart = microtime(true);
@@ -213,15 +213,24 @@ try {
     exit;
 }
 
-function applyOneVisitor(array &$ast, NodeVisitorAbstract $visitor): array
+/**
+ * Применяет один visitor к AST.
+ *
+ * @param string $before  Код до применения (передаётся снаружи, чтобы переиспользовать
+ *                        строку «after» предыдущего visitor как «before» текущего).
+ * @param bool   $reconnect  Запускать ли NodeConnectingVisitor. Нужен только если
+ *                           предыдущий visitor изменил AST (или это первый в проходе).
+ */
+function applyOneVisitor(array &$ast, NodeVisitorAbstract $visitor, string $before, bool $reconnect = true): array
 {
     global $printer;
-    $t0     = microtime(true);
-    $before = $printer->prettyPrint($ast);
+    $t0 = microtime(true);
 
-    $t1 = new NodeTraverser();
-    $t1->addVisitor(new NodeConnectingVisitor());
-    $ast = array_values($t1->traverse($ast));
+    if ($reconnect) {
+        $t1 = new NodeTraverser();
+        $t1->addVisitor(new NodeConnectingVisitor());
+        $ast = array_values($t1->traverse($ast));
+    }
 
     $t2 = new NodeTraverser();
     $t2->addVisitor($visitor);
@@ -304,29 +313,37 @@ for ($pass = 1; ; $pass++) {
     }
 
     $passChanged = false;
+    // Вычисляем «before» один раз перед проходом; далее переиспользуем «after»
+    // предыдущего visitor как «before» следующего — экономим вызов prettyPrint.
+    $currentCode = $printer->prettyPrint($ast);
+    $reconnect   = true; // первый visitor в проходе всегда требует NodeConnectingVisitor
 
     foreach ($makeMainVisitors() as $visitor) {
+        $prevCode = $currentCode;
         try {
-            $r      = applyOneVisitor($ast, $visitor);
-            $before = $r['before'];
-            $after  = $r['after'];
+            $r           = applyOneVisitor($ast, $visitor, $prevCode, $reconnect);
+            $currentCode = $r['after'];
         } catch (\Throwable) {
+            $reconnect = false;
             continue;
         }
 
-        if ($before === $after) {
+        $changed   = ($prevCode !== $currentCode);
+        $reconnect = $changed; // следующий visitor нуждается в reconnect только при изменении AST
+
+        if (!$changed) {
             continue;
         }
 
-        $diff = $differ->diff($before, $after);
+        $diff = $differ->diff($prevCode, $currentCode);
         $meta = getVisitorMeta($visitor);
 
         $steps[] = [
             'pass'    => $pass,
             'visitor' => $meta['name'],
             'desc'    => $meta['desc'],
-            'before'  => "<?php\n" . $before,
-            'after'   => "<?php\n" . $after,
+            'before'  => "<?php\n" . $prevCode,
+            'after'   => "<?php\n" . $currentCode,
             'diff'    => $diff,
             'time_ms' => $r['time_ms'],
         ];
@@ -340,20 +357,27 @@ for ($pass = 1; ; $pass++) {
 }
 
 // ── Phase 2: readability (single isolated pass) ───────────────────────────────
+$currentCode = $printer->prettyPrint($ast);
+$reconnect   = true;
+
 foreach ($makeReadabilityVisitors() as $visitor) {
+    $prevCode = $currentCode;
     try {
-        $r      = applyOneVisitor($ast, $visitor);
-        $before = $r['before'];
-        $after  = $r['after'];
+        $r           = applyOneVisitor($ast, $visitor, $prevCode, $reconnect);
+        $currentCode = $r['after'];
     } catch (\Throwable) {
+        $reconnect = false;
         continue;
     }
 
-    if ($before === $after) {
+    $changed   = ($prevCode !== $currentCode);
+    $reconnect = $changed;
+
+    if (!$changed) {
         continue;
     }
 
-    $diff = $differ->diff($before, $after);
+    $diff = $differ->diff($prevCode, $currentCode);
     $meta = getVisitorMeta($visitor);
 
     $readabilityPass = true;
@@ -361,8 +385,8 @@ foreach ($makeReadabilityVisitors() as $visitor) {
         'pass'    => $pass,
         'visitor' => $meta['name'],
         'desc'    => $meta['desc'],
-        'before'  => "<?php\n" . $before,
-        'after'   => "<?php\n" . $after,
+        'before'  => "<?php\n" . $prevCode,
+        'after'   => "<?php\n" . $currentCode,
         'diff'    => $diff,
         'time_ms' => $r['time_ms'],
     ];

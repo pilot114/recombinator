@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitorAbstract;
+use PhpParser\Parser;
 use PhpParser\ParserFactory;
 
 /**
@@ -19,8 +22,29 @@ use PhpParser\ParserFactory;
 #[VisitorMeta('Импорт классов по use-декларациям')]
 class UseImportVisitor extends BaseVisitor
 {
-    /** @var array<string, true> уже вставленные FQCN */
+    /**
+     * FQCNs, успешно инлайненных или находящихся в процессе инлайнинга.
+     * Устанавливается ДО рекурсии — разрывает циклические зависимости.
+     *
+     * @var array<string, true>
+     */
     private array $inlined = [];
+
+    /**
+     * FQCNs, которые искались, но не найдены в fileMap (внешние зависимости).
+     *
+     * @var array<string, true>
+     */
+    private array $notInFileMap = [];
+
+    /**
+     * Ключи fileMap, чей файл сейчас обрабатывается (in-progress).
+     * Предотвращает ложное совпадение: если файл 'src/Kernel.php' уже открыт
+     * для App\Kernel, другой FQCN (Symfony\...\Kernel) не должен брать тот же файл.
+     *
+     * @var array<string, true>
+     */
+    private array $filesInProgress = [];
 
     /**
      * Карта алиасов из успешно инлайненных use-деклараций:
@@ -31,18 +55,54 @@ class UseImportVisitor extends BaseVisitor
      */
     private array $aliasMap = [];
 
+    /**
+     * Индекс для быстрого поиска файлов: суффикс пути → список ключей fileMap.
+     * Позволяет искать O(1) вместо O(n) по всем файлам.
+     *
+     * @var array<string, list<string>>
+     */
+    private array $fileIndex = [];
+
+    /**
+     * Кэш разобранных AST: ключ fileMap → массив стейтментов (null = ошибка парсинга).
+     *
+     * @var array<string, array<Node\Stmt>|null>
+     */
+    private array $parseCache = [];
+
+    private readonly Parser $parser;
+
     /** @param array<string, string> $fileMap relative-path → source code */
     public function __construct(private readonly array $fileMap)
     {
+        $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
     }
 
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
-        $this->inlined   = [];
-        $this->aliasMap  = [];
+        $this->inlined          = [];
+        $this->notInFileMap     = [];
+        $this->filesInProgress  = [];
+        $this->aliasMap         = [];
+        $this->parseCache       = [];
+        $this->buildFileIndex();
         return null;
+    }
+
+    /** Строит индекс: суффикс пути → ключи fileMap. Выполняется один раз за traversal. */
+    private function buildFileIndex(): void
+    {
+        $this->fileIndex = [];
+        foreach ($this->fileMap as $key => $_) {
+            $parts = explode('/', $key);
+            $n     = count($parts);
+            for ($i = 0; $i < $n; $i++) {
+                $suffix                    = implode('/', array_slice($parts, $i));
+                $this->fileIndex[$suffix][] = $key;
+            }
+        }
     }
 
     public function enterNode(Node $node): ?Node
@@ -83,6 +143,12 @@ class UseImportVisitor extends BaseVisitor
             }
         }
 
+        // Применяем накопленный aliasMap к replacement-нодам, чтобы короткие имена
+        // внутри тел классов были переименованы прямо сейчас, а не в следующих проходах.
+        if (!empty($replacements) && !empty($this->aliasMap)) {
+            $replacements = $this->applyAliasMap($replacements);
+        }
+
         // Удаляем use всегда: либо заменяем на найденные классы, либо просто убираем.
         $node->setAttribute('replace', $replacements);
 
@@ -93,15 +159,15 @@ class UseImportVisitor extends BaseVisitor
      * Ищет файл в fileMap по FQCN и рекурсивно разворачивает все его зависимости.
      * Помечает FQCN в $inlined до рекурсии — разрывает циклы и предотвращает дубли.
      *
-     * @return array<Node\Stmt>|null  null если класс не найден в fileMap
+     * @return array<Node\Stmt>|null  null если класс не найден в fileMap или уже инлайнится
      */
     private function resolveClass(string $fqcn): ?array
     {
-        if (isset($this->inlined[$fqcn])) {
-            return null; // уже инлайнен или цикл
+        if (isset($this->inlined[$fqcn]) || isset($this->notInFileMap[$fqcn])) {
+            return null;
         }
 
-        $this->inlined[$fqcn] = true; // помечаем ДО рекурсии
+        $this->inlined[$fqcn] = true; // помечаем ДО рекурсии (in-progress)
 
         $parts       = explode('\\', $fqcn);
         $shortName   = end($parts);
@@ -109,17 +175,28 @@ class UseImportVisitor extends BaseVisitor
 
         while ($suffixParts !== []) {
             $suffix = implode('/', $suffixParts) . '.php';
-            foreach ($this->fileMap as $key => $code) {
-                if ($key === $suffix || str_ends_with($key, '/' . $suffix)) {
-                    $raw = $this->extractFromFile($code, $shortName, $fqcn);
-                    if ($raw !== null) {
-                        return $this->expandInlinedUses($raw);
-                    }
+            foreach ($this->fileIndex[$suffix] ?? [] as $key) {
+                // Файл, который уже обрабатывается для другого FQCN, пропускаем:
+                // это предотвращает ложное совпадение (один файл — один FQCN за раз).
+                if (isset($this->filesInProgress[$key])) {
+                    continue;
                 }
+                $this->filesInProgress[$key] = true;
+                $raw                         = $this->extractFromFile($key, $shortName, $fqcn);
+                if ($raw !== null) {
+                    $result = $this->expandInlinedUses($raw);
+                    unset($this->filesInProgress[$key]);
+                    return $result;
+                }
+                unset($this->filesInProgress[$key]);
             }
 
             array_shift($suffixParts);
         }
+
+        // Не найден в fileMap — помечаем как внешнюю зависимость.
+        unset($this->inlined[$fqcn]);
+        $this->notInFileMap[$fqcn] = true;
 
         return null;
     }
@@ -155,10 +232,12 @@ class UseImportVisitor extends BaseVisitor
                     $depAlias = $use->alias?->toString() ?? end($depParts);
                     $this->aliasMap[strtolower($depAlias)] = strtr($depFqcn, ['\\' => '_']);
                     array_push($output, ...$resolved);
-                } else {
-                    // Внешняя зависимость — оставляем use как есть
+                } elseif (isset($this->notInFileMap[$depFqcn])) {
+                    // Внешняя зависимость (не найдена в fileMap) — оставляем use как есть
                     $output[] = new Node\Stmt\Use_([$use], Node\Stmt\Use_::TYPE_NORMAL);
                 }
+                // Иначе: in-progress (предок в стеке рекурсии) — use не нужен,
+                // класс будет инлайнен на уровне выше.
             }
         }
 
@@ -166,17 +245,63 @@ class UseImportVisitor extends BaseVisitor
     }
 
     /**
-     * Парсит файл и возвращает [use-декларации из файла..., переименованный ClassLike].
-     * Namespace-обёртка отбрасывается.
+     * Применяет aliasMap к массиву нод: переименовывает однокомпонентные Name-ноды.
+     * Используется для переименования коротких имён в телах инлайненных классов.
+     *
+     * @param  array<Node\Stmt> $nodes
+     * @return array<Node\Stmt>
+     */
+    private function applyAliasMap(array $nodes): array
+    {
+        $aliasMap  = $this->aliasMap;
+        $traverser = new NodeTraverser();
+        $traverser->addVisitor(
+            new class ($aliasMap) extends NodeVisitorAbstract {
+                /** @param array<string, string> $aliasMap */
+                public function __construct(private readonly array $aliasMap)
+                {
+                }
+
+                public function enterNode(Node $node): ?Node
+                {
+                    if (
+                        $node instanceof Node\Name
+                        && !$node instanceof Node\Name\FullyQualified
+                        && !$node instanceof Node\Name\Relative
+                        && count($node->getParts()) === 1
+                    ) {
+                        $lower = strtolower($node->toString());
+                        if (isset($this->aliasMap[$lower])) {
+                            return new Node\Name($this->aliasMap[$lower], $node->getAttributes());
+                        }
+                    }
+
+                    return null;
+                }
+            }
+        );
+
+        return $traverser->traverse($nodes);
+    }
+
+    /**
+     * Парсит файл (с кэшированием) и возвращает [use-декларации..., переименованный ClassLike].
+     * Namespace-обёртка отбрасывается. ClassLike глубоко клонируется, чтобы не мутировать кэш.
      *
      * @return array<Node\Stmt>|null
      */
-    private function extractFromFile(string $code, string $shortName, string $fqcn): ?array
+    private function extractFromFile(string $key, string $shortName, string $fqcn): ?array
     {
-        $parser = new ParserFactory()->createForNewestSupportedVersion();
-        try {
-            $ast = $parser->parse($code) ?? [];
-        } catch (\Throwable) {
+        if (!array_key_exists($key, $this->parseCache)) {
+            try {
+                $this->parseCache[$key] = $this->parser->parse($this->fileMap[$key]) ?? [];
+            } catch (\Throwable) {
+                $this->parseCache[$key] = null;
+            }
+        }
+
+        $ast = $this->parseCache[$key];
+        if ($ast === null) {
             return null;
         }
 
@@ -217,7 +342,8 @@ class UseImportVisitor extends BaseVisitor
             return null;
         }
 
-        // Переименовываем: App\Controller\BlogController → App_Controller_BlogController
+        // Глубокое клонирование: не мутируем кэшированный AST при переименовании.
+        $classNode       = $this->deepClone($classNode);
         $classNode->name = new Node\Identifier(strtr($fqcn, ['\\' => '_']));
 
         return [...$useStmts, $classNode];
