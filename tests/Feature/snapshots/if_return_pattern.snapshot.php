@@ -18,28 +18,23 @@ class UserValidator
     {
         return $age >= 18;
     }
-
     public function getStatus($isActive): string
     {
         return $isActive ? "active" : "inactive";
     }
-
     public function getRole($isAdmin): string
     {
         return $isAdmin ? "administrator" : "user";
     }
-
     public function getMessage($hasErrors): string
     {
         return $hasErrors ? "Please fix the errors" : "All good!";
     }
 }
-
 function checkPermission($level): string
 {
     return $level > 5 ? "allowed" : "denied";
 }
-
 function getLabel($count): string
 {
     return $count == 1 ? "item" : "items";

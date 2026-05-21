@@ -19,18 +19,14 @@ declare (strict_types=1);
 class Calculator
 {
     const PI = 3.14159;
-
     const E = 2.71828;
-
     const PRECISION = 2;
-
     public function circleArea($radius): string
     {
         $area = self::PI * $radius * $radius;
         return $area > 100 ? "large" : "small";
     }
 }
-
 $defaultX = 0;
 $defaultX = $_GET["x"] ?? $defaultX ?? null;
 $defaultY = 0;
