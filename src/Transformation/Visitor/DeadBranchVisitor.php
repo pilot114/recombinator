@@ -27,6 +27,20 @@ class DeadBranchVisitor extends BaseVisitor
             }
         }
 
+        if ($node instanceof Node\Stmt\Switch_) {
+            $result = $this->processSwitch($node);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+
+        if ($node instanceof Node\Expr\Match_) {
+            $result = $this->processMatch($node);
+            if ($result instanceof \PhpParser\Node\Expr) {
+                return $result;
+            }
+        }
+
         return parent::leaveNode($node);
     }
 
@@ -77,5 +91,151 @@ class DeadBranchVisitor extends BaseVisitor
     {
         return $node instanceof Node\Expr\ConstFetch
             && strtolower($node->name->toString()) === 'true';
+    }
+
+    /**
+     * @return int|array<Node>|null  null = без изменений
+     */
+    private function processSwitch(Node\Stmt\Switch_ $node): int|array|null
+    {
+        $condResult = $this->asScalarValue($node->cond);
+        if ($condResult === null) {
+            return null;
+        }
+
+        [, $condVal] = $condResult;
+
+        // Find matching case index and default index
+        $matchingIdx = null;
+        $defaultIdx  = null;
+        foreach ($node->cases as $idx => $case) {
+            if ($case->cond === null) {
+                $defaultIdx = $idx;
+                continue;
+            }
+
+            $caseResult = $this->asScalarValue($case->cond);
+            if ($caseResult !== null && $caseResult[1] == $condVal) {
+                $matchingIdx = $idx;
+                break;
+            }
+        }
+
+        $startIdx = $matchingIdx ?? $defaultIdx;
+        if ($startIdx === null) {
+            return NodeTraverser::REMOVE_NODE;
+        }
+
+        // Collect stmts from startIdx, stopping at first plain `break`
+        $stmts = [];
+        $cases  = $node->cases;
+        for ($i = $startIdx, $total = count($cases); $i < $total; $i++) {
+            foreach ($cases[$i]->stmts as $stmt) {
+                if ($stmt instanceof Node\Stmt\Break_ && !$stmt->num instanceof \PhpParser\Node\Expr) {
+                    return $stmts !== [] ? $stmts : NodeTraverser::REMOVE_NODE;
+                }
+
+                $stmts[] = $stmt;
+            }
+        }
+
+        return $stmts !== [] ? $stmts : NodeTraverser::REMOVE_NODE;
+    }
+
+    private function processMatch(Node\Expr\Match_ $node): ?Node\Expr
+    {
+        $subjectResult = $this->asScalarValue($node->cond);
+        if ($subjectResult === null) {
+            return null;
+        }
+
+        [, $sv] = $subjectResult;
+
+        $newArms    = [];
+        $defaultArm = null;
+        $changed    = false;
+
+        foreach ($node->arms as $arm) {
+            if ($arm->conds === null) {
+                $defaultArm = $arm;
+                continue;
+            }
+
+            $surviving = [];
+            $matched   = false;
+
+            foreach ($arm->conds as $cond) {
+                $cv = $this->asScalarValue($cond);
+                if ($cv === null) {
+                    $surviving[] = $cond;
+                } elseif ($cv[1] === $sv) {
+                    $matched = true;
+                    break;
+                } else {
+                    $changed = true; // dead condition — dropped
+                }
+            }
+
+            if ($matched) {
+                return $arm->body;
+            }
+
+            if ($surviving !== []) {
+                if (count($surviving) !== count($arm->conds)) {
+                    $changed    = true;
+                    $arm->conds = $surviving;
+                }
+
+                $newArms[] = $arm;
+            } else {
+                $changed = true;
+            }
+        }
+
+        if ($newArms === [] && $defaultArm !== null) {
+            return $defaultArm->body;
+        }
+
+        if ($changed) {
+            if ($defaultArm !== null) {
+                $newArms[] = $defaultArm;
+            }
+
+            $node->arms = $newArms;
+            return $node;
+        }
+
+        return null;
+    }
+
+    /** @return array{0: true, 1: mixed}|null */
+    private function asScalarValue(Node $node): ?array
+    {
+        if ($node instanceof Node\Scalar\LNumber) {
+            return [true, $node->value];
+        }
+
+        if ($node instanceof Node\Scalar\String_) {
+            return [true, $node->value];
+        }
+
+        if ($node instanceof Node\Scalar\DNumber) {
+            return [true, $node->value];
+        }
+
+        if ($node instanceof Node\Expr\ConstFetch) {
+            return match (strtolower($node->name->toString())) {
+                'true'  => [true, true],
+                'false' => [true, false],
+                'null'  => [true, null],
+                default => null,
+            };
+        }
+
+        if ($node instanceof Node\Expr\UnaryMinus && $node->expr instanceof Node\Scalar\LNumber) {
+            return [true, -$node->expr->value];
+        }
+
+        return null;
     }
 }

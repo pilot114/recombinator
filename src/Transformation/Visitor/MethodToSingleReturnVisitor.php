@@ -67,17 +67,21 @@ class MethodToSingleReturnVisitor extends BaseVisitor
             if (!$s instanceof Node\Stmt\Expression) {
                 return null;
             }
+
             $expr = $s->expr;
             if (!$expr instanceof Node\Expr\Assign) {
                 return null;
             }
+
             if (!$expr->var instanceof Node\Expr\Variable || !is_string($expr->var->name)) {
                 return null;
             }
+
             $name = $expr->var->name;
             if (isset($paramNames[$name]) || isset($candidateNames[$name])) {
                 return null;
             }
+
             $candidateNames[$name] = true;
         }
 

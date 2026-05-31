@@ -112,6 +112,31 @@ class RemoveUnusedPureVisitor extends BaseVisitor
             $this->isPure($expr->expr)
         ) {
             $node->setAttribute('remove', true);
+            return null;
+        }
+
+        // Случай 3: $x++ / ++$x / $x-- / --$x для переменной, которая нигде не читается
+        if (
+            ($expr instanceof Node\Expr\PostInc || $expr instanceof Node\Expr\PreInc
+            || $expr instanceof Node\Expr\PostDec || $expr instanceof Node\Expr\PreDec)
+            && $expr->var instanceof Node\Expr\Variable
+            && is_string($expr->var->name)
+            && !isset($this->readVars[$expr->var->name])
+        ) {
+            $node->setAttribute('remove', true);
+            return null;
+        }
+
+        // Случай 4: $x += expr / $x .= expr для переменной, которая нигде не читается
+        if (
+            $expr instanceof Node\Expr\AssignOp
+            && $expr->var instanceof Node\Expr\Variable
+            && is_string($expr->var->name)
+            && !isset($this->readVars[$expr->var->name])
+            && $this->isPure($expr->expr)
+        ) {
+            $node->setAttribute('remove', true);
+            return null;
         }
 
         return null;
@@ -128,16 +153,35 @@ class RemoveUnusedPureVisitor extends BaseVisitor
     {
         $readVars = [];
 
-        // Идентификаторы Variable-узлов, стоящих на LHS присваивания
-        $assignLhsIds = [];
+        // Variable nodes that are mutation targets (not real reads)
+        $mutationLhsIds = [];
         foreach ($this->findNode(Node\Expr\Assign::class, $nodes) as $assign) {
             if ($assign->var instanceof Node\Expr\Variable) {
-                $assignLhsIds[spl_object_id($assign->var)] = true;
+                $mutationLhsIds[spl_object_id($assign->var)] = true;
+            }
+        }
+
+        foreach ($this->findNode(Node\Expr\AssignOp::class, $nodes) as $assignOp) {
+            if ($assignOp->var instanceof Node\Expr\Variable) {
+                $mutationLhsIds[spl_object_id($assignOp->var)] = true;
+            }
+        }
+
+        foreach (
+            [
+            Node\Expr\PostInc::class, Node\Expr\PreInc::class,
+            Node\Expr\PostDec::class, Node\Expr\PreDec::class,
+            ] as $cls
+        ) {
+            foreach ($this->findNode($cls, $nodes) as $mut) {
+                if ($mut->var instanceof Node\Expr\Variable) {
+                    $mutationLhsIds[spl_object_id($mut->var)] = true;
+                }
             }
         }
 
         foreach ($this->findNode(Node\Expr\Variable::class, $nodes) as $var) {
-            if (is_string($var->name) && !isset($assignLhsIds[spl_object_id($var)])) {
+            if (is_string($var->name) && !isset($mutationLhsIds[spl_object_id($var)])) {
                 $readVars[$var->name] = true;
             }
         }
@@ -191,6 +235,11 @@ class RemoveUnusedPureVisitor extends BaseVisitor
 
         if ($node instanceof Node\Expr\ArrayDimFetch) {
             return $this->isPure($node->var) && (!$node->dim instanceof \PhpParser\Node\Expr || $this->isPure($node->dim));
+        }
+
+        // Dead object creation: if the variable is never read, the allocation is removable
+        if ($node instanceof Node\Expr\New_) {
+            return true;
         }
 
         if ($node instanceof Node\Expr\Ternary) {

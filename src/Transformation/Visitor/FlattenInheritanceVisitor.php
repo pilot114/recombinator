@@ -60,15 +60,19 @@ class FlattenInheritanceVisitor extends BaseVisitor
             if (!$child->extends instanceof Node\Name) {
                 continue;
             }
+
             $parent = $this->classMap[$child->extends->toString()] ?? null;
             if ($parent === null) {
                 continue; // внешний родитель — не достать тело
             }
+
             if ($parent->extends instanceof Node\Name) {
                 continue; // ждём, пока родитель сам станет плоским
             }
+
             $this->flatten($child, $parent);
         }
+
         return null;
     }
 
@@ -80,6 +84,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
                 $this->classMap[$node->name->name] = $node;
                 continue;
             }
+
             if ($node instanceof Node\Stmt\Namespace_) {
                 $this->collectClasses($node->stmts);
             }
@@ -109,11 +114,13 @@ class FlattenInheritanceVisitor extends BaseVisitor
                         $kept[] = $const;
                     }
                 }
+
                 if ($kept !== []) {
                     $copy = $this->deepClone($stmt);
                     $copy->consts = $kept;
                     $copied[] = $copy;
                 }
+
                 continue;
             }
 
@@ -125,15 +132,21 @@ class FlattenInheritanceVisitor extends BaseVisitor
                         $childProps[$prop->name->name] = true;
                     }
                 }
+
                 if ($kept !== []) {
                     $copy = $this->deepClone($stmt);
                     $copy->props = $kept;
                     $copied[] = $copy;
                 }
+
                 continue;
             }
 
-            if (!$stmt instanceof Node\Stmt\ClassMethod || $stmt->isAbstract()) {
+            if (!$stmt instanceof Node\Stmt\ClassMethod) {
+                continue;
+            }
+
+            if ($stmt->isAbstract()) {
                 continue;
             }
 
@@ -183,7 +196,12 @@ class FlattenInheritanceVisitor extends BaseVisitor
             if ($param->flags === 0) {
                 continue;
             }
-            if (!$param->var instanceof Node\Expr\Variable || !is_string($param->var->name)) {
+
+            if (!$param->var instanceof Node\Expr\Variable) {
+                continue;
+            }
+
+            if (!is_string($param->var->name)) {
                 continue;
             }
 
@@ -220,6 +238,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
                 $names[$stmt->name->name] = true;
             }
         }
+
         return $names;
     }
 
@@ -232,8 +251,10 @@ class FlattenInheritanceVisitor extends BaseVisitor
                 foreach ($stmt->props as $prop) {
                     $names[$prop->name->name] = true;
                 }
+
                 continue;
             }
+
             if (
                 $stmt instanceof Node\Stmt\ClassMethod
                 && $stmt->name instanceof Node\Identifier
@@ -250,6 +271,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
                 }
             }
         }
+
         return $names;
     }
 
@@ -264,6 +286,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
                 }
             }
         }
+
         return $names;
     }
 
@@ -284,6 +307,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
                 ) {
                     $this->targets[$n->name->name] = true;
                 }
+
                 return null;
             }
         };
@@ -304,6 +328,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
                 $map[$stmt->name->name] = $stmt->isStatic();
             }
         }
+
         return $map;
     }
 
@@ -353,6 +378,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
                         $n->getAttributes(),
                     );
                 }
+
                 return new Node\Expr\MethodCall(
                     new Node\Expr\Variable('this'),
                     $synthetic,
@@ -364,6 +390,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
 
         $traverser = new NodeTraverser();
         $traverser->addVisitor($rewriter);
+
         $child->stmts = $traverser->traverse($child->stmts);
     }
 
@@ -371,13 +398,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
     {
         foreach ($parent->implements as $impl) {
             $name = $impl->toString();
-            $duplicate = false;
-            foreach ($child->implements as $existing) {
-                if ($existing->toString() === $name) {
-                    $duplicate = true;
-                    break;
-                }
-            }
+            $duplicate = array_any($child->implements, fn($existing): bool => $existing->toString() === $name);
             if (!$duplicate) {
                 $child->implements[] = $impl;
             }

@@ -31,11 +31,19 @@ class FunctionBodyCollectorVisitor extends BaseVisitor
         }
 
         $stmts = $node->stmts ?? [];
-        if (count($stmts) !== 1 || !($stmts[0] instanceof Node\Stmt\Return_)) {
+
+        // Filter out `global` declarations — after variable inlining they're often dead code.
+        // We still only handle functions whose effective body is a single return.
+        $effectiveStmts = array_values(array_filter(
+            $stmts,
+            static fn(\PhpParser\Node\Stmt $s): bool => !($s instanceof Node\Stmt\Global_),
+        ));
+
+        if (count($effectiveStmts) !== 1 || !($effectiveStmts[0] instanceof Node\Stmt\Return_)) {
             return null;
         }
 
-        $returnExpr = $stmts[0]->expr;
+        $returnExpr = $effectiveStmts[0]->expr;
         if (!$returnExpr instanceof \PhpParser\Node\Expr) {
             return null;
         }

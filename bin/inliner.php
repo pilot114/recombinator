@@ -16,6 +16,7 @@ use Recombinator\Transformation\Visitor\CoalesceNullRemoveVisitor;
 use Recombinator\Transformation\Visitor\ConcatAssertVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\ConstFoldVisitor;
+use Recombinator\Transformation\Visitor\PrintNormalizeVisitor;
 use Recombinator\Transformation\Visitor\SingleUseInlinerVisitor;
 use Recombinator\Transformation\Visitor\ConstructorAndMethodsVisitor;
 use Recombinator\Transformation\Visitor\EvalStandardFunction;
@@ -73,6 +74,7 @@ $steps = [
     PreExecutionVisitor::class,
     VarToScalarVisitor::class,
     ConstFoldVisitor::class,
+    PrintNormalizeVisitor::class,
     SingleUseInlinerVisitor::class,
 
     // ── Разбивка на скоупы (подготовка кеша) ───────────────────────────────

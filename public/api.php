@@ -89,34 +89,58 @@ use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
 use Recombinator\Domain\ScopeStore;
 use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
+use Recombinator\Transformation\Visitor\BoundedWhileUnrollerVisitor;
+use Recombinator\Transformation\Visitor\CallFunctionVisitor;
+use Recombinator\Transformation\Visitor\ClassInlinerVisitor;
 use Recombinator\Transformation\Visitor\CoalesceNullRemoveVisitor;
 use Recombinator\Transformation\Visitor\CodeBlockVisitor;
-use Recombinator\Transformation\Visitor\CallFunctionVisitor;
 use Recombinator\Transformation\Visitor\ConcatAssertVisitor;
 use Recombinator\Transformation\Visitor\ConcatInterpolateVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
 use Recombinator\Transformation\Visitor\ConstFoldVisitor;
+use Recombinator\Transformation\Visitor\PrintNormalizeVisitor;
 use Recombinator\Transformation\Visitor\ConstructorAndMethodsVisitor;
+use Recombinator\Transformation\Visitor\DeadBranchVisitor;
+use Recombinator\Transformation\Visitor\DestructuringExpandVisitor;
+use Recombinator\Transformation\Visitor\EnumCaseInlinerVisitor;
 use Recombinator\Transformation\Visitor\EvalStandardFunction;
+use Recombinator\Transformation\Visitor\FileMapIncludeVisitor;
+use Recombinator\Transformation\Visitor\FlattenInheritanceVisitor;
+use Recombinator\Transformation\Visitor\ForeachLiteralUnrollerVisitor;
 use Recombinator\Transformation\Visitor\FunctionBodyCollectorVisitor;
 use Recombinator\Transformation\Visitor\FunctionScopeVisitor;
+use Recombinator\Transformation\Visitor\IndexedPropGetterResolverVisitor;
+use Recombinator\Transformation\Visitor\InlineEmptySubclassVisitor;
+use Recombinator\Transformation\Visitor\InstanceofSimplifierVisitor;
 use Recombinator\Transformation\Visitor\MethodToSingleReturnVisitor;
+use Recombinator\Transformation\Visitor\MutablePropertyTrackerVisitor;
+use Recombinator\Transformation\Visitor\ObjectArrayTrackerVisitor;
 use Recombinator\Transformation\Visitor\PreExecutionVisitor;
 use Recombinator\Transformation\Visitor\PropertyAccessVisitor;
-use Recombinator\Transformation\Visitor\RemoveUnusedClassVisitor;
-use Recombinator\Transformation\Visitor\DeadBranchVisitor;
+use Recombinator\Transformation\Visitor\PropertyStateTrackerVisitor;
 use Recombinator\Transformation\Visitor\PureFunctionEvaluatorVisitor;
 use Recombinator\Transformation\Visitor\ReadabilityVisitor;
-use Recombinator\Transformation\Visitor\FileMapIncludeVisitor;
-use Recombinator\Transformation\Visitor\UseImportVisitor;
-use Recombinator\Transformation\Visitor\FlattenInheritanceVisitor;
-use Recombinator\Transformation\Visitor\RemoveGlobalUseVisitor;
+use Recombinator\Transformation\Visitor\ReadonlyPropertyAccessVisitor;
 use Recombinator\Transformation\Visitor\RemoveCommentsVisitor;
+use Recombinator\Transformation\Visitor\RemoveDeadCodeAfterJumpVisitor;
+use Recombinator\Transformation\Visitor\RemoveDeadLoopVisitor;
+use Recombinator\Transformation\Visitor\RemoveGlobalUseVisitor;
 use Recombinator\Transformation\Visitor\RemoveInterfacesVisitor;
+use Recombinator\Transformation\Visitor\RemoveSplAutoloadVisitor;
+use Recombinator\Transformation\Visitor\RemoveUnusedClassVisitor;
+use Recombinator\Transformation\Visitor\RemoveUnusedClosureCapturesVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedFunctionVisitor;
+use Recombinator\Transformation\Visitor\RemoveUnusedPropWriteVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedPureVisitor;
+use Recombinator\Transformation\Visitor\ScopeVisitor;
+use Recombinator\Transformation\Visitor\SimpleMethodCallInlinerVisitor;
 use Recombinator\Transformation\Visitor\SingleUseInlinerVisitor;
+use Recombinator\Transformation\Visitor\StaticArrayStateVisitor;
+use Recombinator\Transformation\Visitor\StaticMethodInlinerVisitor;
+use Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor;
 use Recombinator\Transformation\Visitor\TernarReturnVisitor;
+use Recombinator\Transformation\Visitor\TraitInlinerVisitor;
+use Recombinator\Transformation\Visitor\UseImportVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 use Recombinator\Transformation\Visitor\VisitorMeta;
 use SebastianBergmann\Diff\Differ;
@@ -269,30 +293,72 @@ $makeMainVisitors = static function () use ($ss, $fileMap, $entryRel): array {
     }
     return array_merge($visitors, [
         new RemoveGlobalUseVisitor(),
+        new RemoveSplAutoloadVisitor(),
+
+        // Упрощение выражений
         new RemoveCommentsVisitor(),
-        new RemoveInterfacesVisitor(),
-        new FlattenInheritanceVisitor(),
         new BinaryAndIssetVisitor(),
         new CoalesceNullRemoveVisitor(),
+        new ReadonlyPropertyAccessVisitor(),
+        new SimpleMethodCallInlinerVisitor(),
+        new PropertyStateTrackerVisitor(),
+        new StaticArrayStateVisitor(),
+        new BoundedWhileUnrollerVisitor(),
+        new ForeachLiteralUnrollerVisitor(),
+        new MutablePropertyTrackerVisitor(),
         new ConcatAssertVisitor(),
         new EvalStandardFunction(),
-        new VarToScalarVisitor($ss),
-        new RemoveUnusedPureVisitor(),
         new PreExecutionVisitor($ss),
+        new VarToScalarVisitor($ss),
         new ConstFoldVisitor(),
+        new PrintNormalizeVisitor(),
         new DeadBranchVisitor(),
+        new DestructuringExpandVisitor(),
+        new InstanceofSimplifierVisitor(),
         new SingleUseInlinerVisitor(),
+
+        // Инлайнинг иерархии классов
+        new RemoveInterfacesVisitor(),
+        new TraitInlinerVisitor(),
+        new FlattenInheritanceVisitor(),
+
+        // Разворачивание getter-цепочек
+        new IndexedPropGetterResolverVisitor(),
+
+        // Инлайнинг enum и статических методов
+        new EnumCaseInlinerVisitor(),
+        new StaticMethodInlinerVisitor(),
+
+        // Инлайнинг функций
+        new ScopeVisitor(),
         new FunctionBodyCollectorVisitor($ss),
         new FunctionScopeVisitor($ss),
         new CallFunctionVisitor($ss),
         new PureFunctionEvaluatorVisitor(),
         new RemoveUnusedFunctionVisitor(),
+
+        // Инлайнинг классов
         new MethodToSingleReturnVisitor(),
         new ConstructorAndMethodsVisitor($ss),
         new PropertyAccessVisitor($ss),
         new ConstClassVisitor($ss),
         new TernarReturnVisitor(),
+        new ClassInlinerVisitor(),
+
+        // Удаление type-hints локальных классов и мёртвых prop-записей
+        new StripLocalClassTypeHintsVisitor(),
+        new RemoveUnusedPropWriteVisitor(),
+
+        // Отслеживание коллекций объектов
+        new ObjectArrayTrackerVisitor(),
+
+        // Удаление неиспользуемых сущностей
+        new InlineEmptySubclassVisitor(),
+        new RemoveDeadCodeAfterJumpVisitor(),
+        new RemoveUnusedClosureCapturesVisitor(),
         new RemoveUnusedClassVisitor(),
+        new RemoveUnusedPureVisitor(),
+        new RemoveDeadLoopVisitor(),
     ]);
 };
 

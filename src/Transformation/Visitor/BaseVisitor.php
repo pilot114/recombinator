@@ -204,18 +204,12 @@ class BaseVisitor extends NodeVisitorAbstract
                 continue;
             }
 
-            $default = null;
-            if (
-                $param->default instanceof Node\Scalar\LNumber
-                || $param->default instanceof Node\Scalar\DNumber
-                || $param->default instanceof Node\Scalar\String_
-            ) {
-                $default = $param->default->value;
-            }
+            $default = $param->default instanceof Node\Expr ? $param->default : null;
 
             $params[$var->name] = [
                 'index' => $i,
                 'default' => $default,
+                'variadic' => $param->variadic,
             ];
         }
 
@@ -228,6 +222,7 @@ class BaseVisitor extends NodeVisitorAbstract
             if ($var instanceof Node\Expr\Variable && is_string($var->name) && isset($params[$var->name])) {
                 $var->setAttribute('arg_index', $params[$var->name]['index']);
                 $var->setAttribute('arg_default', $params[$var->name]['default']);
+                $var->setAttribute('arg_variadic', $params[$var->name]['variadic']);
             }
         }
 

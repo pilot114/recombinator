@@ -20,10 +20,25 @@ class ParametersToArgsVisitor extends BaseVisitor
     {
         if ($var instanceof Node\Expr\Variable) {
             $i = $var->getAttribute('arg_index');
-            if (is_int($i) && isset($this->node->args[$i])) {
-                $arg = $this->node->args[$i];
-                if ($arg instanceof Node\Arg) {
-                    return $arg->value;
+            if (is_int($i)) {
+                if ($var->getAttribute('arg_variadic')) {
+                    $items = [];
+                    $counter = count($this->node->args);
+                    for ($j = $i; $j < $counter; $j++) {
+                        $arg = $this->node->args[$j];
+                        if ($arg instanceof Node\Arg) {
+                            $items[] = new Node\ArrayItem($arg->value);
+                        }
+                    }
+
+                    return new Node\Expr\Array_($items);
+                }
+
+                if (isset($this->node->args[$i])) {
+                    $arg = $this->node->args[$i];
+                    if ($arg instanceof Node\Arg) {
+                        return $arg->value;
+                    }
                 }
             }
 

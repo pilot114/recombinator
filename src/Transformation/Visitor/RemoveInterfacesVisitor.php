@@ -30,6 +30,10 @@ class RemoveInterfacesVisitor extends BaseVisitor
             $node->implements = [];
         }
 
+        if ($node instanceof Node\Stmt\Enum_ && $node->implements !== []) {
+            $node->implements = [];
+        }
+
         return null;
     }
 }
