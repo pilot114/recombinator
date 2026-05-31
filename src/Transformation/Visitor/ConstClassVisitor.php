@@ -37,6 +37,15 @@ class ConstClassVisitor extends BaseVisitor
             // In php-parser 5.x, use toString() method
             $className = $node->class instanceof Node\Name ? $node->class->toString() : null;
 
+            // ClassName::class → 'ClassName' (PHP pseudo-constant)
+            if (
+                $node->name->name === 'class'
+                && $className !== null
+                && !in_array($className, ['self', 'static', 'parent'], true)
+            ) {
+                return new Node\Scalar\String_($className);
+            }
+
             if ($className === 'self') {
                 $replace = $this->scopeStore->getConstFromScope($node->name->name);
                 $node->setAttribute('replace', $replace);

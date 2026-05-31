@@ -75,7 +75,7 @@ class UseImportVisitor extends BaseVisitor
     /** @param array<string, string> $fileMap relative-path → source code */
     public function __construct(private readonly array $fileMap)
     {
-        $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $this->parser = new ParserFactory()->createForNewestSupportedVersion();
     }
 
     #[\Override]
@@ -95,7 +95,7 @@ class UseImportVisitor extends BaseVisitor
     private function buildFileIndex(): void
     {
         $this->fileIndex = [];
-        foreach ($this->fileMap as $key => $_) {
+        foreach (array_keys($this->fileMap) as $key) {
             $parts = explode('/', $key);
             $n     = count($parts);
             for ($i = 0; $i < $n; $i++) {
@@ -145,7 +145,7 @@ class UseImportVisitor extends BaseVisitor
 
         // Применяем накопленный aliasMap к replacement-нодам, чтобы короткие имена
         // внутри тел классов были переименованы прямо сейчас, а не в следующих проходах.
-        if (!empty($replacements) && !empty($this->aliasMap)) {
+        if ($replacements !== [] && $this->aliasMap !== []) {
             $replacements = $this->applyAliasMap($replacements);
         }
 
@@ -181,6 +181,7 @@ class UseImportVisitor extends BaseVisitor
                 if (isset($this->filesInProgress[$key])) {
                     continue;
                 }
+
                 $this->filesInProgress[$key] = true;
                 $raw                         = $this->extractFromFile($key, $shortName, $fqcn);
                 if ($raw !== null) {
@@ -188,6 +189,7 @@ class UseImportVisitor extends BaseVisitor
                     unset($this->filesInProgress[$key]);
                     return $result;
                 }
+
                 unset($this->filesInProgress[$key]);
             }
 
@@ -236,6 +238,7 @@ class UseImportVisitor extends BaseVisitor
                     // Внешняя зависимость (не найдена в fileMap) — оставляем use как есть
                     $output[] = new Node\Stmt\Use_([$use], Node\Stmt\Use_::TYPE_NORMAL);
                 }
+
                 // Иначе: in-progress (предок в стеке рекурсии) — use не нужен,
                 // класс будет инлайнен на уровне выше.
             }
@@ -288,6 +291,11 @@ class UseImportVisitor extends BaseVisitor
      * Парсит файл (с кэшированием) и возвращает [use-декларации..., переименованный ClassLike].
      * Namespace-обёртка отбрасывается. ClassLike глубоко клонируется, чтобы не мутировать кэш.
      *
+     * Дополнительно извлекает «компаньонов» — все другие class/interface/trait/enum,
+     * объявленные в том же файле (например, Trackable-трейт в Animal.php).
+     * Компаньоны переименовываются по схеме Namespace_ShortName и регистрируются
+     * в aliasMap, чтобы ссылки внутри тел классов корректно переписались.
+     *
      * @return array<Node\Stmt>|null
      */
     private function extractFromFile(string $key, string $shortName, string $fqcn): ?array
@@ -305,11 +313,21 @@ class UseImportVisitor extends BaseVisitor
             return null;
         }
 
-        // Ищем в плоском файле или внутри namespace-блока
-        $useStmts  = [];
-        $classNode = null;
+        // Определяем namespace файла (если есть)
+        $fileNamespace = null;
+        foreach ($ast as $node) {
+            if ($node instanceof Node\Stmt\Namespace_ && $node->name instanceof \PhpParser\Node\Name) {
+                $fileNamespace = $node->name->toString();
+                break;
+            }
+        }
 
-        $scan = static function (array $stmts) use (&$useStmts, &$classNode, $shortName): void {
+        // Ищем в плоском файле или внутри namespace-блока
+        $useStmts       = [];
+        $classNode      = null;
+        $companionNodes = [];
+
+        $scan = function (array $stmts) use (&$useStmts, &$classNode, &$companionNodes, $shortName, $fileNamespace): void {
             foreach ($stmts as $stmt) {
                 if ($stmt instanceof Node\Stmt\Use_) {
                     $useStmts[] = $stmt;
@@ -318,14 +336,33 @@ class UseImportVisitor extends BaseVisitor
 
             foreach ($stmts as $stmt) {
                 if (
-                    ($stmt instanceof Node\Stmt\Class_ ||
-                     $stmt instanceof Node\Stmt\Interface_ ||
-                     $stmt instanceof Node\Stmt\Trait_ ||
-                     $stmt instanceof Node\Stmt\Enum_) &&
-                    $stmt->name instanceof Node\Identifier &&
-                    $stmt->name->toString() === $shortName
+                    !($stmt instanceof Node\Stmt\Class_ ||
+                    $stmt instanceof Node\Stmt\Interface_ ||
+                    $stmt instanceof Node\Stmt\Trait_ ||
+                    $stmt instanceof Node\Stmt\Enum_)
                 ) {
+                    continue;
+                }
+
+                if (!$stmt->name instanceof Node\Identifier) {
+                    continue;
+                }
+
+                $name = $stmt->name->toString();
+
+                if ($name === $shortName) {
                     $classNode = $stmt;
+                    continue;
+                }
+
+                // Компаньон: другой class-like в том же файле
+                $companionFqcn = $fileNamespace !== null ? sprintf('%s\%s', $fileNamespace, $name) : $name;
+                if (!isset($this->inlined[$companionFqcn]) && !isset($this->notInFileMap[$companionFqcn])) {
+                    $this->inlined[$companionFqcn] = true;
+                    $clone       = $this->deepClone($stmt);
+                    $clone->name = new Node\Identifier(strtr($companionFqcn, ['\\' => '_']));
+                    $companionNodes[] = $clone;
+                    $this->aliasMap[strtolower($name)] = strtr($companionFqcn, ['\\' => '_']);
                 }
             }
         };
@@ -346,6 +383,6 @@ class UseImportVisitor extends BaseVisitor
         $classNode       = $this->deepClone($classNode);
         $classNode->name = new Node\Identifier(strtr($fqcn, ['\\' => '_']));
 
-        return [...$useStmts, $classNode];
+        return [...$useStmts, ...$companionNodes, $classNode];
     }
 }

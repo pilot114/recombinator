@@ -24,12 +24,35 @@ class CoalesceNullRemoveVisitor extends BaseVisitor
     #[\Override]
     public function leaveNode(Node $node): int|Node|array|null
     {
-        if (
-            $node instanceof Node\Expr\BinaryOp\Coalesce
-            && $node->right instanceof Node\Expr\ConstFetch
-            && strtolower($node->right->name->toString()) === 'null'
-        ) {
-            return $node->left;
+        if ($node instanceof Node\Expr\BinaryOp\Coalesce) {
+            // X ?? null → X
+            if (
+                $node->right instanceof Node\Expr\ConstFetch
+                && strtolower($node->right->name->toString()) === 'null'
+            ) {
+                return $node->left;
+            }
+
+            // null ?? X → X  (null is always null, so right side is always taken)
+            if (
+                $node->left instanceof Node\Expr\ConstFetch
+                && strtolower($node->left->name->toString()) === 'null'
+            ) {
+                return $node->right;
+            }
+
+            // scalar ?? anything → scalar  (scalars are never null)
+            if ($node->left instanceof Node\Scalar) {
+                return $node->left;
+            }
+
+            // true/false ?? anything → true/false  (never null)
+            if (
+                $node->left instanceof Node\Expr\ConstFetch
+                && in_array(strtolower($node->left->name->toString()), ['true', 'false'], true)
+            ) {
+                return $node->left;
+            }
         }
 
         return parent::leaveNode($node);

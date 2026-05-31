@@ -6,6 +6,7 @@ use PhpParser\Node;
 use PhpParser\ParserFactory;
 use Recombinator\Core\ExecutionCache;
 use Recombinator\Support\Sandbox;
+use Recombinator\Support\SandboxResult;
 
 beforeEach(
     function (): void {
@@ -24,7 +25,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(42);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(42);
     }
 );
 
@@ -37,7 +39,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe('hello');
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe('hello');
     }
 );
 
@@ -50,7 +53,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(5);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(5);
     }
 );
 
@@ -63,7 +67,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(42);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(42);
     }
 );
 
@@ -76,7 +81,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(3);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(3);
     }
 );
 
@@ -89,7 +95,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe('HELLO');
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe('HELLO');
     }
 );
 
@@ -102,7 +109,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(['a', 'b', 'c']);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(['a', 'b', 'c']);
     }
 );
 
@@ -160,9 +168,11 @@ it(
         $result2 = $this->sandbox->execute($node);
         $stats2 = $this->sandbox->getCacheStats();
 
-        expect($result1)->toBe(5)
-            ->and($result2)->toBe(5)
-            ->and($stats2['hits'])->toBeGreaterThan($stats1['hits']);
+        expect($result1)->toBeInstanceOf(SandboxResult::class);
+        expect($result2)->toBeInstanceOf(SandboxResult::class);
+        expect($result1->value)->toBe(5);
+        expect($result2->value)->toBe(5);
+        expect($stats2['hits'])->toBeGreaterThan($stats1['hits']);
     }
 );
 
@@ -175,7 +185,8 @@ it(
 
         $result = $this->sandbox->execute($node, ['str' => 'hello world']);
 
-        expect($result)->toBe(11);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(11);
     }
 );
 
@@ -188,7 +199,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(3);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(3);
     }
 );
 
@@ -201,7 +213,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(1);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(1);
     }
 );
 
@@ -214,7 +227,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBeTrue();
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBeTrue();
     }
 );
 
@@ -227,7 +241,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe('{"a":1,"b":2}');
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe('{"a":1,"b":2}');
     }
 );
 
@@ -240,7 +255,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(base64_encode('hello'));
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(base64_encode('hello'));
     }
 );
 
@@ -281,7 +297,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(5);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(5);
     }
 );
 
@@ -295,7 +312,8 @@ it(
 
         $result = $this->sandbox->execute($node);
 
-        expect($result)->toBe(14);
+        expect($result)->toBeInstanceOf(SandboxResult::class);
+        expect($result->value)->toBe(14);
         // If we got here, the main process was not affected
     }
 );

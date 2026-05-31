@@ -6,8 +6,10 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
 use PhpParser\Node\Scalar;
+use PhpParser\PrettyPrinter\Standard as Printer;
 use Recombinator\Core\ExecutionCache;
 use Recombinator\Support\Sandbox;
+use Recombinator\Support\SandboxResult;
 use Recombinator\Domain\ScopeStore;
 
 /**
@@ -54,6 +56,21 @@ class PreExecutionVisitor extends BaseVisitor
             return $this->handleFunctionCall($node);
         }
 
+        // (new ReadonlyClass(constArgs))->method(constArgs) → sandbox
+        if ($node instanceof Node\Expr\MethodCall) {
+            return $this->handleMethodCall($node);
+        }
+
+        // (new ClassName(constArgs))->prop → sandbox evaluate
+        if ($node instanceof Node\Expr\PropertyFetch) {
+            return $this->handleInlineNewPropertyFetch($node);
+        }
+
+        // ClassName::method(constArgs) → sandbox (only pure multi-stmt static methods)
+        if ($node instanceof Node\Expr\StaticCall) {
+            return $this->handleStaticCall($node);
+        }
+
         return null;
     }
 
@@ -68,12 +85,78 @@ class PreExecutionVisitor extends BaseVisitor
         }
 
         // Пытаемся выполнить функцию
-        $result = $this->sandbox->execute($node, $this->buildContext());
+        $preamble = $this->extractClassPreamble($node);
+        $result   = $this->sandbox->execute($node, $this->buildContext(), $preamble);
 
         // Если выполнение успешно, заменяем вызов на результат
-        if ($result !== null && !$this->sandbox->isError($result)) {
+        if ($result instanceof SandboxResult) {
             $this->executedCount++;
-            return $this->convertToNode($result);
+            return $this->convertToNode($result->value);
+        }
+
+        $this->failedCount++;
+        return null;
+    }
+
+    /**
+     * Выполняет (new ReadonlyClass(constArgs))->method(constArgs) через sandbox.
+     */
+    private function handleMethodCall(Node\Expr\MethodCall $node): ?Node
+    {
+        if (!$node->var instanceof Node\Expr\New_) {
+            return null;
+        }
+
+        if (!$this->isConstant($node->var)) {
+            return null;
+        }
+
+        if (!array_all($node->args, fn($arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value))) {
+            return null;
+        }
+
+        $preamble = $this->extractClassPreamble($node);
+        $result   = $this->sandbox->execute($node, $this->buildContext(), $preamble);
+
+        if ($result instanceof SandboxResult) {
+            $this->executedCount++;
+            return $this->convertToNode($result->value);
+        }
+
+        $this->failedCount++;
+        return null;
+    }
+
+    /**
+     * Evaluates (new ClassName(constArgs))->prop via sandbox.
+     */
+    private function handleInlineNewPropertyFetch(Node\Expr\PropertyFetch $node): ?Node
+    {
+        if (!$node->var instanceof Node\Expr\New_) {
+            return null;
+        }
+
+        if (!$node->name instanceof Node\Identifier) {
+            return null;
+        }
+
+        if (!$this->isConstant($node->var)) {
+            return null;
+        }
+
+        $preamble = $this->extractClassPreamble($node->var);
+        $result   = $this->sandbox->execute($node, $this->buildContext(), $preamble);
+
+        if ($result instanceof SandboxResult) {
+            $this->executedCount++;
+            $replacement = $this->convertToNode($result->value);
+            // Inside Encapsed strings, String_ must become InterpolatedStringPart
+            $parent = $node->getAttribute('parent');
+            if ($parent instanceof Node\Scalar\Encapsed && $replacement instanceof Node\Scalar\String_) {
+                return new Node\InterpolatedStringPart($replacement->value);
+            }
+
+            return $replacement;
         }
 
         $this->failedCount++;
@@ -137,7 +220,169 @@ class PreExecutionVisitor extends BaseVisitor
             return $this->isConstant($node->left) && $this->isConstant($node->right);
         }
 
+        // Стрелочная функция без захвата внешних переменных — передаём в sandbox
+        if ($node instanceof Node\Expr\ArrowFunction) {
+            return true;
+        }
+
+        // Замыкание без use-захватов — самодостаточно, можно передать в sandbox
+        if ($node instanceof Node\Expr\Closure && $node->uses === []) {
+            return true;
+        }
+
+        // new ClassName(constantArgs) — можно попытаться выполнить в sandbox
+        if ($node instanceof Node\Expr\New_ && $node->class instanceof Node\Name) {
+            return array_all(
+                $node->args,
+                fn($arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value)
+            );
+        }
+
         return false;
+    }
+
+    /**
+     * Sandbox-evaluates multi-statement static methods that are side-effect-free.
+     * Single-statement methods are already handled by StaticMethodInlinerVisitor.
+     */
+    private function handleStaticCall(Node\Expr\StaticCall $node): ?Node
+    {
+        if (!$node->class instanceof Node\Name || !$node->name instanceof Node\Identifier) {
+            return null;
+        }
+
+        if (!array_all($node->args, fn($a): bool => $a instanceof Node\Arg && $this->isConstant($a->value))) {
+            return null;
+        }
+
+        $className  = $node->class->toString();
+        $methodName = $node->name->toString();
+
+        $method = $this->findStaticClassMethod($className, $methodName);
+        if (!$method instanceof \PhpParser\Node\Stmt\ClassMethod) {
+            return null;
+        }
+
+        // Single Return_ methods are handled by StaticMethodInlinerVisitor — skip to avoid duplicate work
+        if (
+            $method->stmts !== null
+            && count($method->stmts) === 1
+            && $method->stmts[0] instanceof Node\Stmt\Return_
+        ) {
+            return null;
+        }
+
+        if (!$this->isPureStaticMethod($method)) {
+            return null;
+        }
+
+        $preamble = $this->buildClassPreambleByName($className);
+        if ($preamble === '') {
+            return null;
+        }
+
+        $result = $this->sandbox->execute($node, $this->buildContext(), $preamble);
+        if ($result instanceof SandboxResult) {
+            $this->executedCount++;
+            return $this->convertToNode($result->value);
+        }
+
+        $this->failedCount++;
+        return null;
+    }
+
+    private function findStaticClassMethod(string $className, string $methodName): ?Node\Stmt\ClassMethod
+    {
+        foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
+            if (
+                $class->name instanceof Node\Identifier
+                && $class->name->toString() === $className
+            ) {
+                foreach ($class->stmts as $stmt) {
+                    if (
+                        $stmt instanceof Node\Stmt\ClassMethod
+                        && $stmt->isStatic()
+                        && $stmt->name->toString() === $methodName
+                    ) {
+                        return $stmt;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function isPureStaticMethod(Node\Stmt\ClassMethod $method): bool
+    {
+        $body = $method->stmts ?? [];
+
+        // Bail if any static property is written: self::$x = ... / static::$x[...] = ...
+        foreach ($this->findNode(Node\Expr\Assign::class, $body) as $assign) {
+            $var = $assign->var;
+            if (
+                $var instanceof Node\Expr\StaticPropertyFetch
+                || ($var instanceof Node\Expr\ArrayDimFetch && $var->var instanceof Node\Expr\StaticPropertyFetch)
+            ) {
+                return false;
+            }
+        }
+
+        // Bail on echo / print
+        if (
+            $this->findNode(Node\Stmt\Echo_::class, $body) !== []
+            || $this->findNode(Node\Expr\Print_::class, $body) !== []
+        ) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function buildClassPreambleByName(string $className): string
+    {
+        $printer = new Printer();
+        foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
+            if (
+                $class->name instanceof Node\Identifier
+                && $class->name->toString() === $className
+            ) {
+                return $printer->prettyPrint([$class]);
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Извлекает определения классов, на которые ссылается выражение через new ClassName(),
+     * и возвращает их в виде PHP-кода для вставки в preamble sandbox.
+     */
+    private function extractClassPreamble(Node $node): string
+    {
+        $classNames = [];
+        foreach ($this->findNode(Node\Expr\New_::class, [$node]) as $new) {
+            if ($new->class instanceof Node\Name) {
+                $classNames[] = $new->class->toString();
+            }
+        }
+
+        if ($classNames === []) {
+            return '';
+        }
+
+        $printer  = new Printer();
+        $preamble = '';
+        foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
+            if (
+                $class->name instanceof Node\Identifier
+                && in_array($class->name->toString(), $classNames, true)
+            ) {
+                $preamble .= $printer->prettyPrint([$class]) . "\n";
+            }
+        }
+
+        return $preamble;
     }
 
     /**

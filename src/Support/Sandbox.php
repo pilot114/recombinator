@@ -107,7 +107,7 @@ class Sandbox
         'array_filter', 'array_flip', 'array_intersect', 'array_intersect_assoc',
         'array_intersect_key', 'array_key_exists', 'array_keys', 'array_map',
         'array_merge', 'array_merge_recursive', 'array_pad', 'array_product',
-        'array_reverse', 'array_search', 'array_slice', 'array_sum', 'array_unique',
+        'array_reduce', 'array_reverse', 'array_search', 'array_slice', 'array_sum', 'array_unique',
         'array_values', 'arsort', 'asort', 'compact', 'count', 'current',
         'each', 'end', 'extract', 'in_array', 'key', 'key_exists', 'krsort',
         'ksort', 'list', 'natcasesort', 'natsort', 'next', 'pos', 'prev',
@@ -155,12 +155,13 @@ class Sandbox
      *                                       (переменные, константы)
      * @return mixed Результат выполнения или null в случае ошибки
      */
-    public function execute(Node $node, array $context = []): mixed
+    public function execute(Node $node, array $context = [], string $preamble = ''): mixed
     {
-        // Проверяем кеш
-        $cacheKey = $this->generateCacheKey($node, $context);
+        // Проверяем кеш (кешируем только SandboxResult-объекты)
+        $cacheKey = $this->generateCacheKey($node, $context, $preamble);
         if ($this->cache->has($cacheKey)) {
-            return $this->cache->get($cacheKey);
+            $cached = $this->cache->get($cacheKey);
+            return $cached instanceof SandboxResult ? $cached : null;
         }
 
         // Проверяем безопасность кода
@@ -169,13 +170,13 @@ class Sandbox
         }
 
         // Генерируем код для выполнения
-        $code = $this->generateExecutableCode($node, $context);
+        $code = $this->generateExecutableCode($node, $context, $preamble);
 
         // Выполняем в изолированном окружении
         $result = $this->executeInIsolation($code);
 
-        // Кешируем результат если выполнение успешно
-        if ($result !== null && !($result instanceof SandboxError)) {
+        // Кешируем результат если выполнение успешно (SandboxResult, не ошибка)
+        if ($result instanceof SandboxResult) {
             $this->cache->set($cacheKey, $result);
         }
 
@@ -246,17 +247,22 @@ class Sandbox
      *
      * @param array<string, mixed> $context
      */
-    private function generateExecutableCode(Node $node, array $context): string
+    private function generateExecutableCode(Node $node, array $context, string $preamble = ''): string
     {
         $code = "<?php\n";
+
+        if ($preamble !== '') {
+            $code .= $preamble . "\n";
+        }
 
         // Добавляем контекст (переменные)
         foreach ($context as $varName => $value) {
             $code .= sprintf('$%s = %s;' . "\n", $varName, var_export($value, true));
         }
 
-        // Добавляем код для выполнения
-        $code .= 'return ' . $this->printer->prettyPrint([$node]) . ';';
+        // Оборачиваем результат в объект с ключом 'v', чтобы null-результат
+        // был отличим от «нет вывода / ошибка». Поддерживает многострочные выражения.
+        $code .= 'echo json_encode(["v" => (' . $this->printer->prettyPrint([$node]) . ')]);';
 
         return $code;
     }
@@ -266,23 +272,12 @@ class Sandbox
      */
     private function executeInIsolation(string $code): mixed
     {
-        // Оборачиваем: заменяем "return expr;" на "echo json_encode(expr);"
-        $wrappedCode = preg_replace(
-            '/return\s+(.+);$/',
-            'echo json_encode($1);',
-            $code
-        );
-
-        if (!is_string($wrappedCode)) {
-            return new SandboxError('Failed to prepare code for execution');
-        }
-
         $tmpFile = tempnam(sys_get_temp_dir(), 'sandbox_');
         if ($tmpFile === false) {
             return new SandboxError('Failed to create temporary file');
         }
 
-        file_put_contents($tmpFile, $wrappedCode);
+        file_put_contents($tmpFile, $code);
 
         try {
             $process = new Process(
@@ -301,7 +296,12 @@ class Sandbox
                 return null;
             }
 
-            return json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+            $decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+            if (!is_array($decoded) || !array_key_exists('v', $decoded)) {
+                return null;
+            }
+
+            return new SandboxResult($decoded['v']);
         } catch (\Symfony\Component\Process\Exception\ProcessTimedOutException) {
             return new SandboxError('Execution timed out after ' . self::MAX_EXECUTION_TIME . ' seconds');
         } catch (\JsonException $e) {
@@ -319,11 +319,11 @@ class Sandbox
      *
      * @param array<string, mixed> $context
      */
-    private function generateCacheKey(Node $node, array $context): string
+    private function generateCacheKey(Node $node, array $context, string $preamble = ''): string
     {
         $nodeCode = $this->printer->prettyPrint([$node]);
         $contextSerialized = serialize($context);
-        return md5($nodeCode . $contextSerialized);
+        return md5($nodeCode . $contextSerialized . $preamble);
     }
 
     /**

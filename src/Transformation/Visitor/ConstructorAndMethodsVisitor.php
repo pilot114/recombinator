@@ -97,6 +97,10 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $properties = $this->findNode(Node\Stmt\Property::class, $node);
             $optimizeProperties = [];
             foreach ($properties as $property) {
+                if (($property->flags & \PhpParser\Modifiers::STATIC) !== 0) {
+                    continue;
+                }
+
                 $prop = $property->props[0] ?? null;
                 if ($prop instanceof Node\PropertyItem) {
                     $optimizeProperties[$prop->name->name] = $prop;
@@ -208,7 +212,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         // Обработка тела конструктора (непромоутед-присваивания, прочая логика)
         if (isset($class['methods']['__construct'])) {
             $constructor = $class['methods']['__construct'];
-            $constructorStmts = $this->inlineConstructor($constructor, $node, $instanceValue);
+            $constructorStmts = $this->inlineConstructor($constructor, $node, $instanceValue, $className);
             $stmts = array_merge($stmts, $constructorStmts);
         }
 
@@ -231,7 +235,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
      *
      * @return array<mixed>
      */
-    protected function inlineConstructor(Node\Stmt\ClassMethod $constructor, Node\Expr\New_ $newExpr, array $instance): array
+    protected function inlineConstructor(Node\Stmt\ClassMethod $constructor, Node\Expr\New_ $newExpr, array $instance, string $className = ''): array
     {
         $stmts = [];
 
@@ -242,6 +246,10 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $traverser = new NodeTraverser();
             $traverser->addVisitor(new ThisPropertyReplacer($instance));
             $traverser->addVisitor(new ParametersToArgsVisitor($newExpr));
+            if ($className !== '') {
+                $traverser->addVisitor(new SelfStaticReplacer($className));
+            }
+
             $result = $traverser->traverse([$clonedStmt]);
             $stmts = array_merge($stmts, $result);
         }
@@ -293,7 +301,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         // Ищем метод в классе
         if (isset($class['methods'][$methodName])) {
             $method = $class['methods'][$methodName];
-            return $this->replaceCallToBody($node, $method, $instance);
+            return $this->replaceCallToBody($node, $method, $instance, $className);
         }
 
         // Если метод не найден, проверяем родительский класс
@@ -301,14 +309,14 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $parentClass = $this->scopeStore->getClassFromGlobal($class['parent']);
             if ($parentClass !== null && isset($parentClass['methods'][$methodName])) {
                 $method = $parentClass['methods'][$methodName];
-                return $this->replaceCallToBody($node, $method, $instance);
+                return $this->replaceCallToBody($node, $method, $instance, $className);
             }
         }
 
         return null;
     }
 
-    protected function replaceCallToBody(Node\Expr\MethodCall $call, Node\Stmt\ClassMethod $method, array $instance): ?\PhpParser\Node\Expr
+    protected function replaceCallToBody(Node\Expr\MethodCall $call, Node\Stmt\ClassMethod $method, array $instance, string $className = ''): ?\PhpParser\Node\Expr
     {
         if (count($method->stmts) === 1 && $method->stmts[0] instanceof Node\Stmt\Return_) {
             // Глубокая копия тела обязательна: иначе каждая последующая подстановка
@@ -318,6 +326,10 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $traverser = new NodeTraverser();
             $traverser->addVisitor(new ThisPropertyReplacer($instance));
             $traverser->addVisitor(new ParametersToArgsVisitor($call));
+            if ($className !== '') {
+                $traverser->addVisitor(new SelfStaticReplacer($className));
+            }
+
             $result = $traverser->traverse([$cloned]);
 
             // Возвращаем выражение из return (без самого return)

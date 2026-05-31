@@ -26,6 +26,7 @@ use PhpParser\Node;
 #[VisitorMeta('Удаление use function / use const для глобальных символов')]
 class RemoveGlobalUseVisitor extends BaseVisitor
 {
+    #[\Override]
     public function leaveNode(Node $node): int|Node|array|null
     {
         if (
@@ -33,7 +34,7 @@ class RemoveGlobalUseVisitor extends BaseVisitor
             && ($node->type === Node\Stmt\Use_::TYPE_FUNCTION || $node->type === Node\Stmt\Use_::TYPE_CONSTANT)
         ) {
             $parent = $node->getAttribute('parent');
-            if (!($parent instanceof Node\Stmt\Namespace_ && $parent->name !== null)) {
+            if (!($parent instanceof Node\Stmt\Namespace_ && $parent->name instanceof \PhpParser\Node\Name)) {
                 $kept = [];
                 foreach ($node->uses as $use) {
                     if (!$this->isRedundant($use)) {
@@ -62,6 +63,6 @@ class RemoveGlobalUseVisitor extends BaseVisitor
             return false;
         }
 
-        return $use->alias === null;
+        return !$use->alias instanceof \PhpParser\Node\Identifier;
     }
 }
