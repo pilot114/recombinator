@@ -10,7 +10,7 @@ use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\PrettyPrinter\Standard as Printer;
 use SebastianBergmann\Diff\Differ;
-use SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder;
+use SebastianBergmann\Diff\Output\StrictUnifiedDiffOutputBuilder;
 
 /**
  * Вспомогательный класс для консольного вывода конвейера трансформаций.
@@ -103,7 +103,7 @@ class PipelineConsole
      */
     public function colorDiff(string $before, string $after): array
     {
-        $differ = new Differ(new UnifiedDiffOutputBuilder(''));
+        $differ = new Differ(new StrictUnifiedDiffOutputBuilder(['addLineNumbers' => false, 'header' => '']));
         $raw    = $differ->diff($before, $after);
 
         $text  = '';
