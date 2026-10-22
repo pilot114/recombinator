@@ -301,7 +301,7 @@ class NamingSuggester
         ];
 
         $nameLower = strtolower($name);
-        return array_any($meaningfulWords, fn($word): bool => str_contains($nameLower, (string) $word));
+        return array_any($meaningfulWords, fn(string $word): bool => str_contains($nameLower, (string) $word));
     }
 
     private function toCamelCase(string $str): string

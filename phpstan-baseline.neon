@@ -1,0 +1,445 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Parameter \#1 \$code of method PhpParser\\Parser\:\:parse\(\) expects string, string\|false given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/Inliner.php
+
+		-
+			message: '#^Property PhpParser\\Node\\Expr\\ClassConstFetch\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Support/Inliner.php
+
+		-
+			message: '#^Property PhpParser\\Node\\Expr\\Instanceof_\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Support/Inliner.php
+
+		-
+			message: '#^Property PhpParser\\Node\\Expr\\New_\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\|PhpParser\\Node\\Stmt\\Class_\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Support/Inliner.php
+
+		-
+			message: '#^Property PhpParser\\Node\\Expr\\StaticCall\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Support/Inliner.php
+
+		-
+			message: '#^Property PhpParser\\Node\\Expr\\StaticPropertyFetch\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\) does not accept mixed\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Support/Inliner.php
+
+		-
+			message: '#^Access to an uninitialized property Recombinator\\Support\\Window\:\:\$height\.$#'
+			identifier: property.uninitialized
+			count: 4
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Access to an uninitialized property Recombinator\\Support\\Window\:\:\$width\.$#'
+			identifier: property.uninitialized
+			count: 4
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Cannot use array destructuring on mixed\.$#'
+			identifier: offsetAccess.nonArray
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Class Recombinator\\Support\\Window has an uninitialized property \$height\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Class Recombinator\\Support\\Window has an uninitialized property \$width\. Give it default value or assign it in the constructor\.$#'
+			identifier: property.uninitialized
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \#1 \$width of method Recombinator\\Support\\Window\:\:setFixedDimensions\(\) expects int, int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \#2 \$callback of function usort expects callable\(mixed, mixed\)\: int, Closure\(Recombinator\\Support\\Window, Recombinator\\Support\\Window\)\: int\<\-1, 1\> given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \#2 \$count of function array_fill expects int, int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \#2 \$height of method Recombinator\\Support\\Window\:\:setFixedDimensions\(\) expects int, int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \#2 \$start of function mb_substr expects int, \(float\|int\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \#2 \$times of function str_repeat expects int, int\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \#3 \$height of method Recombinator\\Support\\WindowComposer\:\:addVerticalSeparator\(\) expects int, int\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \#3 \$length of function mb_substr expects int\|null, \(float\|int\) given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \#3 \$width of method Recombinator\\Support\\WindowComposer\:\:addHorizontalSeparator\(\) expects int, int\|null given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \$terminalHeight of class Recombinator\\Support\\Window constructor expects int, int\|null given\.$#'
+			identifier: argument.type
+			count: 4
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Parameter \$terminalWidth of class Recombinator\\Support\\Window constructor expects int, int\|null given\.$#'
+			identifier: argument.type
+			count: 4
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Property Recombinator\\Support\\Window\:\:\$position type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Property Recombinator\\Support\\WindowComposer\:\:\$separators type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Property Recombinator\\Support\\WindowComposer\:\:\$windows type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Support/WindowComposer.php
+
+		-
+			message: '#^Cannot use \+\+ on mixed\.$#'
+			identifier: postInc.type
+			count: 2
+			path: src/Transformation/Visitor/BoundedWhileUnrollerVisitor.php
+
+		-
+			message: '#^Cannot use \-\- on mixed\.$#'
+			identifier: postDec.type
+			count: 2
+			path: src/Transformation/Visitor/BoundedWhileUnrollerVisitor.php
+
+		-
+			message: '#^Unary operation "\-" on bool\|float\|int\|string results in an error\.$#'
+			identifier: unaryOp.invalid
+			count: 1
+			path: src/Transformation/Visitor/BoundedWhileUnrollerVisitor.php
+
+		-
+			message: '#^PHPDoc tag @param references unknown parameter\: \$args$#'
+			identifier: parameter.notFound
+			count: 1
+			path: src/Transformation/Visitor/ClassInlinerVisitor.php
+
+		-
+			message: '#^PHPDoc tag @var with type array\<string, int\> is not subtype of native type array\<int\<1, max\>\>\.$#'
+			identifier: varTag.nativeType
+			count: 1
+			path: src/Transformation/Visitor/ClassInlinerVisitor.php
+
+		-
+			message: '#^Method Recombinator\\Transformation\\Visitor\\CodeBlockVisitor\:\:afterTraverse\(\) never returns null so it can be removed from the return type\.$#'
+			identifier: return.unusedType
+			count: 1
+			path: src/Transformation/Visitor/CodeBlockVisitor.php
+
+		-
+			message: '#^Cannot use \+\+ on mixed\.$#'
+			identifier: postInc.type
+			count: 1
+			path: src/Transformation/Visitor/DeadBranchVisitor.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\Identifier and PhpParser\\Node\\Identifier will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 2
+			path: src/Transformation/Visitor/EnumCaseInlinerVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\EnumCaseInlinerVisitor\:\:\$enums \(array\<string, array\{cases\: array\<string, PhpParser\\Node\\Scalar\\Int_\|PhpParser\\Node\\Scalar\\String_\>, methods\: array\<string, PhpParser\\Node\\Stmt\\ClassMethod\>\}\>\) does not accept non\-empty\-array\<string, array\{cases\: array\<string, PhpParser\\Node\\Expr\>, methods\: array\<string, PhpParser\\Node\\Stmt\\ClassMethod\>\}\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/EnumCaseInlinerVisitor.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\Identifier and PhpParser\\Node\\Identifier will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 3
+			path: src/Transformation/Visitor/FlattenInheritanceVisitor.php
+
+		-
+			message: '#^Property PhpParser\\Node\\Stmt\\ClassLike\:\:\$stmts \(array\<PhpParser\\Node\\Stmt\>\) does not accept array\<PhpParser\\Node\>\.$#'
+			identifier: assign.propertyType
+			count: 2
+			path: src/Transformation/Visitor/FlattenInheritanceVisitor.php
+
+		-
+			message: '#^Class PhpParser\\Node\\Expr\\YieldFrom_ not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Transformation/Visitor/ForeachLiteralUnrollerVisitor.php
+
+		-
+			message: '#^Class PhpParser\\Node\\Stmt\\Throw_ not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Transformation/Visitor/ForeachLiteralUnrollerVisitor.php
+
+		-
+			message: '#^Parameter \#3 \$replacement of method Recombinator\\Transformation\\Visitor\\ForeachLiteralUnrollerVisitor\:\:substitute\(\) expects PhpParser\\Node\\Expr, PhpParser\\Node given\.$#'
+			identifier: argument.type
+			count: 2
+			path: src/Transformation/Visitor/ForeachLiteralUnrollerVisitor.php
+
+		-
+			message: '#^Cannot access offset ''keyIdx'' on int\|string\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Cannot access offset ''keyName'' on int\|string\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Cannot access offset ''prop'' on int\|string\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 2
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Cannot access offset ''valIdx'' on int\|string\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Cannot access offset ''valName'' on int\|string\.$#'
+			identifier: offsetAccess.nonOffsetAccessible
+			count: 1
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\Identifier and PhpParser\\Node\\Identifier will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\IndexedPropGetterResolverVisitor\:\:\$getterInfo \(array\<string, array\{prop\: string, keyIdx\: int, keyName\: string\}\>\) does not accept non\-empty\-array\<string, non\-empty\-array\<non\-empty\-string, array\{prop\: non\-empty\-string, keyIdx\: \(int\|string\), keyName\: string\}\|int\|string\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\IndexedPropGetterResolverVisitor\:\:\$guardedSetterInfo \(array\<string, array\<string, array\{prop\: string, keyIdx\: int, keyName\: string, valIdx\: int, valName\: string\}\>\>\) does not accept non\-empty\-array\<string, array\<string, array\{prop\: string, keyIdx\: int\|string, keyName\: string, valIdx\: int\|string, valName\: string\}\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\IndexedPropGetterResolverVisitor\:\:\$propArrayState \(array\<string, array\<string, array\<string, PhpParser\\Node\\Expr\>\>\>\) does not accept array\<string, array\<array\<string, PhpParser\\Node\\Expr\>\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\IndexedPropGetterResolverVisitor\:\:\$setterInfo \(array\<string, array\{prop\: string, keyIdx\: int, keyName\: string, valIdx\: int, valName\: string\}\>\) does not accept non\-empty\-array\<string, non\-empty\-array\<non\-empty\-string, array\{prop\: non\-empty\-string, keyIdx\: int\|string, keyName\: string, valIdx\: int\|string, valName\: string\}\|int\|string\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/IndexedPropGetterResolverVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\ListSingleUseInlinerVisitor\:\:\$inlineable \(array\<string, array\{expr\: PhpParser\\Node\\Expr, index\: int, stmtNode\: PhpParser\\Node\\Stmt\\Expression\}\>\) does not accept non\-empty\-array\<string, array\{expr\: PhpParser\\Node\\Expr, index\: mixed, stmtNode\: PhpParser\\Node\\Stmt\\Expression, assignNode\?\: PhpParser\\Node\\Expr\\Assign\}\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/ListSingleUseInlinerVisitor.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\Expr\\Variable and PhpParser\\Node\\Expr\\Variable will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Transformation/Visitor/MethodToSingleReturnVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\MutablePropertyTrackerVisitor\:\:\$effectMethods \(array\<string, array\<string, array\{prop\: string, op\: string, paramIndex\: int, paramName\: string, default\: mixed\}\>\>\) does not accept non\-empty\-array\<string, array\<string, array\{prop\: string, op\: string, paramIndex\: \(int\|string\), paramName\: string, default\: mixed\}\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/MutablePropertyTrackerVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\ObjectArrayTrackerVisitor\:\:\$arrayPropNames is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Transformation/Visitor/ObjectArrayTrackerVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\ObjectArrayTrackerVisitor\:\:\$generatorMethods \(array\<string, array\<string, array\{type\: ''all''\|''filtered'', filterParamIdx\: int\|null\}\>\>\) does not accept non\-empty\-array\<string, array\<string, array\{type\: ''all''\|''filtered'', filterParamIdx\: int\|string\|null\}\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/ObjectArrayTrackerVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\ObjectArrayTrackerVisitor\:\:\$resolvedVars is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: src/Transformation/Visitor/ObjectArrayTrackerVisitor.php
+
+		-
+			message: '#^Offset ''parentNode'' does not exist on array\{before\: PhpParser\\Node\\Stmt, varName\: string, call\: PhpParser\\Node\\Expr\\FuncCall, parentStmts\: PhpParser\\Node\}\.$#'
+			identifier: offsetAccess.notFound
+			count: 2
+			path: src/Transformation/Visitor/PureFunctionCacheVisitor.php
+
+		-
+			message: '#^Parameter \#2 \$expr of class PhpParser\\Node\\Expr\\Assign constructor expects PhpParser\\Node\\Expr, PhpParser\\Node given\.$#'
+			identifier: argument.type
+			count: 1
+			path: src/Transformation/Visitor/PureFunctionCacheVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\PureFunctionCacheVisitor\:\:\$toHoist \(list\<array\{before\: PhpParser\\Node\\Stmt, varName\: string, call\: PhpParser\\Node\\Expr\\FuncCall, parentStmts\: PhpParser\\Node\}\>\) does not accept non\-empty\-list\<array\{before\: PhpParser\\Node\\Stmt, varName\: non\-falsy\-string, call\: PhpParser\\Node\\Expr\\FuncCall, parentNode\: PhpParser\\Node\\Stmt\\ClassMethod\|PhpParser\\Node\\Stmt\\Function_\}\|array\{before\: PhpParser\\Node\\Stmt, varName\: string, call\: PhpParser\\Node\\Expr\\FuncCall, parentStmts\: PhpParser\\Node\}\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/PureFunctionCacheVisitor.php
+
+		-
+			message: '#^Unary operation "\+" on mixed results in an error\.$#'
+			identifier: unaryOp.invalid
+			count: 1
+			path: src/Transformation/Visitor/PureFunctionEvaluatorVisitor.php
+
+		-
+			message: '#^Unary operation "\-" on mixed results in an error\.$#'
+			identifier: unaryOp.invalid
+			count: 1
+			path: src/Transformation/Visitor/PureFunctionEvaluatorVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\ReadonlyPropertyAccessVisitor\:\:\$promotedProps \(array\<string, array\<string, int\>\>\) does not accept array\<string, array\<string, \(int\|string\)\>\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/ReadonlyPropertyAccessVisitor.php
+
+		-
+			message: '#^Class PhpParser\\Node\\Stmt\\Throw_ not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Transformation/Visitor/RemoveDeadCodeAfterJumpVisitor.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\ClosureUse and PhpParser\\Node\\ClosureUse will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Transformation/Visitor/RemoveUnusedClosureCapturesVisitor.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\Expr\\Variable and PhpParser\\Node\\Expr\\Variable will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Transformation/Visitor/RemoveUnusedClosureCapturesVisitor.php
+
+		-
+			message: '#^Result of && is always true\.$#'
+			identifier: booleanAnd.alwaysTrue
+			count: 1
+			path: src/Transformation/Visitor/RemoveUnusedClosureCapturesVisitor.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\ArrayItem and PhpParser\\Node\\ArrayItem will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Transformation/Visitor/RemoveUnusedPropWriteVisitor.php
+
+		-
+			message: '#^Access to property \$expr on an unknown class PhpParser\\Node\\Expr\\UnaryOp\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Transformation/Visitor/RemoveUnusedPureVisitor.php
+
+		-
+			message: '#^Class PhpParser\\Node\\Expr\\UnaryOp not found\.$#'
+			identifier: class.notFound
+			count: 1
+			path: src/Transformation/Visitor/RemoveUnusedPureVisitor.php
+
+		-
+			message: '#^PHPDoc tag @var above a method has no effect\.$#'
+			identifier: varTag.misplaced
+			count: 1
+			path: src/Transformation/Visitor/RemoveUnusedPureVisitor.php
+
+		-
+			message: '#^Property Recombinator\\Transformation\\Visitor\\RemoveUnusedPureVisitor\:\:\$readVars type has no value type specified in iterable type array\.$#'
+			identifier: missingType.iterableValue
+			count: 1
+			path: src/Transformation/Visitor/RemoveUnusedPureVisitor.php
+
+		-
+			message: '#^PHPDoc type for property PhpParser\\NodeVisitorAbstract@anonymous/Transformation/Visitor/SimpleMethodCallInlinerVisitor\.php\:289\:\:\$deepClone with type callable is not subtype of native type Closure\.$#'
+			identifier: property.phpDocType
+			count: 1
+			path: src/Transformation/Visitor/SimpleMethodCallInlinerVisitor.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\Identifier and PhpParser\\Node\\Identifier will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: src/Transformation/Visitor/StaticMethodInlinerVisitor.php
+
+		-
+			message: '#^Instanceof between PhpParser\\Node\\Identifier and PhpParser\\Node\\Identifier will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 2
+			path: src/Transformation/Visitor/TraitInlinerVisitor.php
+
+		-
+			message: '#^Property PhpParser\\Node\\Stmt\\ClassLike\:\:\$stmts \(array\<PhpParser\\Node\\Stmt\>\) does not accept array\<PhpParser\\Node\>\.$#'
+			identifier: assign.propertyType
+			count: 1
+			path: src/Transformation/Visitor/TraitInlinerVisitor.php

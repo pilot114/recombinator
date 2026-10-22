@@ -288,9 +288,7 @@ class ClassInlinerVisitor extends BaseVisitor
                             && is_string($param->var->name)
                         ) {
                             $propName = $param->var->name;
-                            if (!isset($props[$propName])) {
-                                $props[$propName] = $param->default;
-                            }
+                            $props[$propName] ??= $param->default;
 
                             $promotedParams[$propName] = $i;
                         }

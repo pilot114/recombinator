@@ -94,7 +94,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
                 continue;
             }
 
-            $hasGetterCalls = array_any($this->findNode(Node\Expr\MethodCall::class, $nodes), fn($call): bool => $call->var instanceof Node\Expr\Variable
+            $hasGetterCalls = array_any($this->findNode(Node\Expr\MethodCall::class, $nodes), fn(\PhpParser\Node\Expr\MethodCall $call): bool => $call->var instanceof Node\Expr\Variable
             && $call->var->name === $varName
             && $call->name instanceof Node\Identifier
             && isset($this->getterInfo[$cls][$call->name->toString()]));

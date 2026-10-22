@@ -251,7 +251,7 @@ class RemoveUnusedPureVisitor extends BaseVisitor
         if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name) {
             $name = strtolower($node->name->toString());
             if (isset(self::PURE_FUNCTIONS[$name])) {
-                return array_all($node->args, fn($arg): bool => !($arg instanceof Node\Arg && !$this->isPure($arg->value)));
+                return array_all($node->args, fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $arg): bool => !$arg instanceof Node\Arg || $this->isPure($arg->value));
             }
         }
 

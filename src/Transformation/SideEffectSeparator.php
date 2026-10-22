@@ -192,9 +192,7 @@ class SideEffectSeparator
             $fromType = $boundary->fromEffect->value;
             $toType = $boundary->toEffect->value;
 
-            if (!isset($transitionCounts[$fromType])) {
-                $transitionCounts[$fromType] = 0;
-            }
+            $transitionCounts[$fromType] ??= 0;
 
             $transitionCounts[$fromType]++;
         }

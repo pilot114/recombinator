@@ -149,18 +149,14 @@ class EffectDependencyGraph
      */
     public function addEdge(string $fromId, string $toId): void
     {
-        if (!isset($this->edges[$fromId])) {
-            $this->edges[$fromId] = [];
-        }
+        $this->edges[$fromId] ??= [];
 
         if (!in_array($toId, $this->edges[$fromId], true)) {
             $this->edges[$fromId][] = $toId;
         }
 
         // Обновляем обратные ребра
-        if (!isset($this->reverseEdges[$toId])) {
-            $this->reverseEdges[$toId] = [];
-        }
+        $this->reverseEdges[$toId] ??= [];
 
         if (!in_array($fromId, $this->reverseEdges[$toId], true)) {
             $this->reverseEdges[$toId][] = $fromId;
@@ -326,9 +322,7 @@ class EffectDependencyGraph
             $effect = $nodeData['effect'];
             $effectName = $effect->value;
 
-            if (!isset($groups[$effectName])) {
-                $groups[$effectName] = [];
-            }
+            $groups[$effectName] ??= [];
 
             $groups[$effectName][] = $id;
         }

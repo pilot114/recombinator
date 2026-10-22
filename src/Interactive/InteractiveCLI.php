@@ -35,7 +35,7 @@ class InteractiveCLI
     /**
      * @var array<string, callable(string): void>
      */
-    private array $commands = [];
+    private array $commands;
 
     /**
      * @param Node[] $ast

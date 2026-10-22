@@ -327,9 +327,7 @@ class InteractiveEditVisitor extends NodeVisitorAbstract
         $this->editCandidates[] = $candidate;
 
         // Обновляем статистику
-        if (!isset($this->issueStats[$issueType])) {
-            $this->issueStats[$issueType] = 0;
-        }
+        $this->issueStats[$issueType] ??= 0;
 
         $this->issueStats[$issueType]++;
     }

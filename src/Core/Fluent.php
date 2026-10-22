@@ -39,7 +39,6 @@ class Fluent
 
     /**
      * @param  array<int, NodeVisitor> $visitors
-     * @return $this
      */
     public function withVisitors(array $visitors): self
     {

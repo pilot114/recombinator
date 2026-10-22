@@ -28,12 +28,16 @@ return RectorConfig::configure()
 
         // PHPUnit improvements
         PHPUnitSetList::PHPUNIT_CODE_QUALITY,
-        PHPUnitSetList::PHPUNIT_110,
     ])
     ->withSkip([
         // Skip RemoveNonExistingVarAnnotationRector to preserve PHPStan type hints
         RemoveNonExistingVarAnnotationRector::class,
+        // входы и ожидаемые выходы тестов: их содержимое и есть проверка
+        __DIR__ . '/tests/Feature/fixtures',
+        __DIR__ . '/tests/Feature/snapshots',
+        __DIR__ . '/tests/code',
     ])
+    ->withComposerBased(phpunit: true)
     ->withPhpSets(
         php84: true
     );
