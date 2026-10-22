@@ -1,6 +1,4 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# recombinator — для агентов
 
 ## Project Overview
 
@@ -68,3 +66,15 @@ Extend `BaseVisitor` in `src/Transformation/Visitor/`, implement `enterNode`/`le
 - PSR-12 with 150 char line limit (200 absolute)
 - PHPStan max level
 - Pest for testing (feature tests use fixtures in `tests/Feature/fixtures/` and snapshots in `tests/Feature/snapshots/`)
+
+## Команды
+
+Цели Makefile одинаковые во всех проектах `~/projects` (`make help` — список):
+
+- `make install` — поставить зависимости
+- `make dev` — запустить для разработки
+- `make test` — тесты
+- `make lint` — статический анализ
+- `make build` — сборка
+- `make audit` — уязвимости в зависимостях
+- `make outdated` — устаревшие зависимости
