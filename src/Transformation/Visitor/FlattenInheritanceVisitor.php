@@ -398,7 +398,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
     {
         foreach ($parent->implements as $impl) {
             $name = $impl->toString();
-            $duplicate = array_any($child->implements, fn($existing): bool => $existing->toString() === $name);
+            $duplicate = array_any($child->implements, fn(\PhpParser\Node\Name $existing): bool => $existing->toString() === $name);
             if (!$duplicate) {
                 $child->implements[] = $impl;
             }

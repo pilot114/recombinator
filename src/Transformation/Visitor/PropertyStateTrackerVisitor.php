@@ -98,7 +98,7 @@ class PropertyStateTrackerVisitor extends BaseVisitor
                         continue; // not a promoted property
                     }
 
-                    if (!($param->var instanceof Node\Expr\Variable && is_string($param->var->name))) {
+                    if (!$param->var instanceof Node\Expr\Variable || !is_string($param->var->name)) {
                         continue;
                     }
 
@@ -126,7 +126,7 @@ class PropertyStateTrackerVisitor extends BaseVisitor
     {
         $map = [];
         foreach ($params as $i => $param) {
-            if (!($param->var instanceof Node\Expr\Variable && is_string($param->var->name))) {
+            if (!$param->var instanceof Node\Expr\Variable || !is_string($param->var->name)) {
                 continue;
             }
 

@@ -83,7 +83,7 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
         }
 
         if ($type instanceof Node\UnionType) {
-            return array_all($type->types, fn($t): bool => $this->isLocalType($t));
+            return array_all($type->types, fn(\PhpParser\Node\Identifier|\PhpParser\Node\Name|\PhpParser\Node\IntersectionType $t): bool => $this->isLocalType($t));
         }
 
         return false;

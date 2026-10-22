@@ -34,7 +34,7 @@ class RemoveGlobalUseVisitor extends BaseVisitor
             && ($node->type === Node\Stmt\Use_::TYPE_FUNCTION || $node->type === Node\Stmt\Use_::TYPE_CONSTANT)
         ) {
             $parent = $node->getAttribute('parent');
-            if (!($parent instanceof Node\Stmt\Namespace_ && $parent->name instanceof \PhpParser\Node\Name)) {
+            if (!$parent instanceof Node\Stmt\Namespace_ || !$parent->name instanceof \PhpParser\Node\Name) {
                 $kept = [];
                 foreach ($node->uses as $use) {
                     if (!$this->isRedundant($use)) {

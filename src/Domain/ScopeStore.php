@@ -109,13 +109,9 @@ class ScopeStore implements \Recombinator\Contract\SymbolTableInterface
     private function setScopedValue(string $section, string $name, mixed $value): void
     {
         $scope = $this->currentScope ?? '';
-        if (!isset($this->scopes[$scope])) {
-            $this->scopes[$scope] = [];
-        }
+        $this->scopes[$scope] ??= [];
 
-        if (!isset($this->scopes[$scope][$section])) {
-            $this->scopes[$scope][$section] = [];
-        }
+        $this->scopes[$scope][$section] ??= [];
 
         $this->scopes[$scope][$section][$name] = $value;
     }
@@ -128,9 +124,7 @@ class ScopeStore implements \Recombinator\Contract\SymbolTableInterface
 
     private function setGlobalValue(string $section, string $name, mixed $value): void
     {
-        if (!isset($this->global[$section])) {
-            $this->global[$section] = [];
-        }
+        $this->global[$section] ??= [];
 
         $this->global[$section][$name] = $value;
     }
@@ -145,22 +139,16 @@ class ScopeStore implements \Recombinator\Contract\SymbolTableInterface
      */
     public function setInstanceToScope(string $instanceName, string $className, array $instanceData): void
     {
-        if (!isset($this->global['classes'])) {
-            $this->global['classes'] = [];
-        }
+        $this->global['classes'] ??= [];
 
-        if (!isset($this->global['classes'][$className])) {
-            $this->global['classes'][$className] = [];
-        }
+        $this->global['classes'][$className] ??= [];
 
         $classData = $this->global['classes'][$className];
         if (!is_array($classData)) {
             $classData = [];
         }
 
-        if (!isset($classData['instances'])) {
-            $classData['instances'] = [];
-        }
+        $classData['instances'] ??= [];
 
         $instances = $classData['instances'];
         if (!is_array($instances)) {

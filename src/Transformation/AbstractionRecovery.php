@@ -158,8 +158,7 @@ class AbstractionRecovery
             size: $size,
             complexity: $complexity,
             usedVariables: $variables['used'],
-            definedVariables: $variables['defined'],
-            returnVariable: null, // Блоки с эффектами обычно не возвращают значения
+            definedVariables: $variables['defined'], // Блоки с эффектами обычно не возвращают значения
             startLine: $this->getStartLine($nodes),
             endLine: $this->getEndLine($nodes),
         );

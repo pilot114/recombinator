@@ -72,9 +72,7 @@ class EditSession
 
         // Обновляем статистику
         $type = $change->getType();
-        if (!isset($this->appliedChangesStats[$type])) {
-            $this->appliedChangesStats[$type] = 0;
-        }
+        $this->appliedChangesStats[$type] ??= 0;
 
         $this->appliedChangesStats[$type]++;
 
@@ -116,9 +114,7 @@ class EditSession
 
         // Обновляем статистику
         $type = $change->getType();
-        if (!isset($this->appliedChangesStats[$type])) {
-            $this->appliedChangesStats[$type] = 0;
-        }
+        $this->appliedChangesStats[$type] ??= 0;
 
         $this->appliedChangesStats[$type]++;
 

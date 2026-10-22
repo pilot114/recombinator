@@ -189,7 +189,7 @@ class SimpleMethodCallInlinerVisitor extends BaseVisitor
      */
     private function bodyHasThisPropArrayAccess(Node\Expr $body): bool
     {
-        return array_any($this->findNode(Node\Expr\ArrayDimFetch::class, [$body]), fn($fetch): bool => $fetch->var instanceof Node\Expr\PropertyFetch
+        return array_any($this->findNode(Node\Expr\ArrayDimFetch::class, [$body]), fn(\PhpParser\Node\Expr\ArrayDimFetch $fetch): bool => $fetch->var instanceof Node\Expr\PropertyFetch
         && $fetch->var->var instanceof Node\Expr\Variable
         && $fetch->var->var->name === 'this');
     }

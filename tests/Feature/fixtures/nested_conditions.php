@@ -21,7 +21,7 @@ function validateOrder(array $order, array $inventory, array $payment): string
         return "rejected";
     }
 
-    if (!($inventory["available"] && $payment["verified"])) {
+    if (!$inventory["available"] || !$payment["verified"]) {
         return "rejected";
     }
 

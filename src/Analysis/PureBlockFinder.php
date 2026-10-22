@@ -217,9 +217,7 @@ class PureBlockFinder
 
             // Ищем составные statement'ы
             if ($node instanceof Node\Stmt\If_) {
-                if (!isset($nestedBlocks['if'])) {
-                    $nestedBlocks['if'] = [];
-                }
+                $nestedBlocks['if'] ??= [];
 
                 $nestedBlocks['if'][] = $this->findBlocksInContext($node->stmts, 'if_then');
                 if ($node->else instanceof \PhpParser\Node\Stmt\Else_) {
@@ -230,40 +228,22 @@ class PureBlockFinder
                     $nestedBlocks['if'][] = $this->findBlocksInContext($elseif->stmts, 'if_elseif');
                 }
             } elseif ($node instanceof Node\Stmt\While_) {
-                if (!isset($nestedBlocks['while'])) {
-                    $nestedBlocks['while'] = [];
-                }
-
+                $nestedBlocks['while'] ??= [];
                 $nestedBlocks['while'][] = $this->findBlocksInContext($node->stmts, 'while_body');
             } elseif ($node instanceof Node\Stmt\For_) {
-                if (!isset($nestedBlocks['for'])) {
-                    $nestedBlocks['for'] = [];
-                }
-
+                $nestedBlocks['for'] ??= [];
                 $nestedBlocks['for'][] = $this->findBlocksInContext($node->stmts, 'for_body');
             } elseif ($node instanceof Node\Stmt\Foreach_) {
-                if (!isset($nestedBlocks['foreach'])) {
-                    $nestedBlocks['foreach'] = [];
-                }
-
+                $nestedBlocks['foreach'] ??= [];
                 $nestedBlocks['foreach'][] = $this->findBlocksInContext($node->stmts, 'foreach_body');
             } elseif ($node instanceof Node\Stmt\Function_) {
-                if (!isset($nestedBlocks['function'])) {
-                    $nestedBlocks['function'] = [];
-                }
-
+                $nestedBlocks['function'] ??= [];
                 $nestedBlocks['function'][] = $this->findBlocksInContext($node->stmts, 'function_' . ($node->name->name ?? 'anonymous'));
             } elseif ($node instanceof Node\Stmt\ClassMethod) {
-                if (!isset($nestedBlocks['method'])) {
-                    $nestedBlocks['method'] = [];
-                }
-
+                $nestedBlocks['method'] ??= [];
                 $nestedBlocks['method'][] = $this->findBlocksInContext($node->stmts ?? [], 'method_' . $node->name->name);
             } elseif ($node instanceof Node\Stmt\TryCatch) {
-                if (!isset($nestedBlocks['try'])) {
-                    $nestedBlocks['try'] = [];
-                }
-
+                $nestedBlocks['try'] ??= [];
                 $nestedBlocks['try'][] = $this->findBlocksInContext($node->stmts, 'try_block');
                 foreach ($node->catches as $catch) {
                     $nestedBlocks['try'][] = $this->findBlocksInContext($catch->stmts, 'catch_block');

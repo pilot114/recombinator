@@ -111,7 +111,7 @@ class PreExecutionVisitor extends BaseVisitor
             return null;
         }
 
-        if (!array_all($node->args, fn($arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value))) {
+        if (!array_all($node->args, fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value))) {
             return null;
         }
 
@@ -168,7 +168,7 @@ class PreExecutionVisitor extends BaseVisitor
      */
     private function hasConstantArgs(Node\Expr\FuncCall $node): bool
     {
-        return array_all($node->args, fn($arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value));
+        return array_all($node->args, fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value));
     }
 
     /**
@@ -234,7 +234,7 @@ class PreExecutionVisitor extends BaseVisitor
         if ($node instanceof Node\Expr\New_ && $node->class instanceof Node\Name) {
             return array_all(
                 $node->args,
-                fn($arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value)
+                fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value)
             );
         }
 
@@ -251,7 +251,7 @@ class PreExecutionVisitor extends BaseVisitor
             return null;
         }
 
-        if (!array_all($node->args, fn($a): bool => $a instanceof Node\Arg && $this->isConstant($a->value))) {
+        if (!array_all($node->args, fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $a): bool => $a instanceof Node\Arg && $this->isConstant($a->value))) {
             return null;
         }
 

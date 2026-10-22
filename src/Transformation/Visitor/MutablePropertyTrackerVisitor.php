@@ -226,9 +226,7 @@ class MutablePropertyTrackerVisitor extends BaseVisitor
                         }
                     }
 
-                    if ($argValue === null) {
-                        $argValue = $effect['default'];
-                    }
+                    $argValue ??= $effect['default'];
 
                     if (is_numeric($argValue)) {
                         $current  = $this->state[$varName][$effect['prop']] ?? 0;

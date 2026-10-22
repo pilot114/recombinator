@@ -367,6 +367,6 @@ class BoundedWhileUnrollerVisitor extends BaseVisitor
 
     private function varReadInStmts(string $varName, array $stmts): bool
     {
-        return array_any($this->findNode(Node\Expr\Variable::class, $stmts), fn($var): bool => $var->name === $varName);
+        return array_any($this->findNode(Node\Expr\Variable::class, $stmts), fn(\PhpParser\Node\Expr\Variable $var): bool => $var->name === $varName);
     }
 }
