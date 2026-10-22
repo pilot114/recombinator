@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Support;
 
 use SebastianBergmann\Diff\Differ;
-use SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder;
+use SebastianBergmann\Diff\Output\StrictUnifiedDiffOutputBuilder;
 
 /**
  * Утилита для цветного форматирования diff вывода
@@ -63,7 +63,7 @@ class ColorDiffer
         $this->backgroundColors['cyan'] = '46';
         $this->backgroundColors['light_gray'] = '47';
 
-        $this->differ = new Differ(new UnifiedDiffOutputBuilder());
+        $this->differ = new Differ(new StrictUnifiedDiffOutputBuilder(['addLineNumbers' => false, 'header' => "--- Original\n+++ New\n"]));
     }
 
     public function getColoredString(string $string, ?string $foreground_color = null, ?string $background_color = null): string
@@ -101,7 +101,8 @@ class ColorDiffer
     {
         $out = $this->differ->diff($a, $b);
         $noDiffResult = "--- Original+++ New";
-        $this->hasDiff = str_replace("\n", "", $out) !== $noDiffResult;
+        // без различий StrictUnifiedDiffOutputBuilder отдаёт пустую строку, а не голый заголовок
+        $this->hasDiff = $out !== '' && str_replace("\n", "", $out) !== $noDiffResult;
 
         $colorOut = "";
         foreach (explode("\n", $out) as $line) {
