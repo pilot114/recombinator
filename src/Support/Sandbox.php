@@ -7,8 +7,6 @@ namespace Recombinator\Support;
 use PhpParser\Node;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Core\ExecutionCache;
-use Symfony\Component\Process\Process;
-use Throwable;
 
 /**
  * Безопасный sandbox для выполнения "чистого" кода в compile-time
@@ -141,9 +139,12 @@ class Sandbox
 
     private readonly StandardPrinter $printer;
 
-    public function __construct(private readonly ExecutionCache $cache)
+    private readonly SandboxRunner $runner;
+
+    public function __construct(private readonly ExecutionCache $cache, ?SandboxRunner $runner = null)
     {
         $this->printer = new StandardPrinter();
+        $this->runner  = $runner ?? SandboxRunner::shared();
     }
 
     /**
@@ -157,11 +158,11 @@ class Sandbox
      */
     public function execute(Node $node, array $context = [], string $preamble = ''): mixed
     {
-        // Проверяем кеш (кешируем только SandboxResult-объекты)
+        // Проверяем кеш: в нём и успешные результаты, и детерминированные ошибки
         $cacheKey = $this->generateCacheKey($node, $context, $preamble);
         if ($this->cache->has($cacheKey)) {
             $cached = $this->cache->get($cacheKey);
-            return $cached instanceof SandboxResult ? $cached : null;
+            return $cached instanceof SandboxResult || $cached instanceof SandboxError ? $cached : null;
         }
 
         // Проверяем безопасность кода
@@ -175,8 +176,8 @@ class Sandbox
         // Выполняем в изолированном окружении
         $result = $this->executeInIsolation($code);
 
-        // Кешируем результат если выполнение успешно (SandboxResult, не ошибка)
-        if ($result instanceof SandboxResult) {
+        // Ошибка выполнения того же кода повторится, а таймаут может зависеть от нагрузки
+        if ($result instanceof SandboxResult || ($result instanceof SandboxError && !$result->isTimeout())) {
             $this->cache->set($cacheKey, $result);
         }
 
@@ -268,50 +269,26 @@ class Sandbox
     }
 
     /**
-     * Выполняет код в изолированном окружении через subprocess
+     * Выполняет код в изолированном процессе
      */
-    private function executeInIsolation(string $code): mixed
+    private function executeInIsolation(string $code): SandboxResult|SandboxError|null
     {
-        $tmpFile = tempnam(sys_get_temp_dir(), 'sandbox_');
-        if ($tmpFile === false) {
-            return new SandboxError('Failed to create temporary file');
+        $output = $this->runner->run($code, self::MAX_EXECUTION_TIME, self::MAX_MEMORY);
+        if ($output instanceof SandboxError || $output === '') {
+            return $output === '' ? null : $output;
         }
-
-        file_put_contents($tmpFile, $code);
 
         try {
-            $process = new Process(
-                ['php', '-d', 'memory_limit=' . self::MAX_MEMORY, $tmpFile],
-                timeout: self::MAX_EXECUTION_TIME
-            );
-            $process->run();
-
-            if (!$process->isSuccessful()) {
-                $errorOutput = $process->getErrorOutput();
-                return new SandboxError($errorOutput ?: 'Subprocess execution failed');
-            }
-
-            $output = $process->getOutput();
-            if ($output === '') {
-                return null;
-            }
-
             $decoded = json_decode($output, true, 512, JSON_THROW_ON_ERROR);
-            if (!is_array($decoded) || !array_key_exists('v', $decoded)) {
-                return null;
-            }
-
-            return new SandboxResult($decoded['v']);
-        } catch (\Symfony\Component\Process\Exception\ProcessTimedOutException) {
-            return new SandboxError('Execution timed out after ' . self::MAX_EXECUTION_TIME . ' seconds');
-        } catch (\JsonException $e) {
-            return new SandboxError('Failed to decode result: ' . $e->getMessage());
-        } catch (Throwable $throwable) {
-            $errorCode = $throwable->getCode();
-            return new SandboxError($throwable->getMessage(), is_int($errorCode) ? $errorCode : 0, $throwable);
-        } finally {
-            @unlink($tmpFile);
+        } catch (\JsonException $jsonException) {
+            return new SandboxError('Failed to decode result: ' . $jsonException->getMessage());
         }
+
+        if (!is_array($decoded) || !array_key_exists('v', $decoded)) {
+            return null;
+        }
+
+        return new SandboxResult($decoded['v']);
     }
 
     /**

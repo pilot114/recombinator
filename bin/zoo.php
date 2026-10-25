@@ -7,8 +7,10 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Core\ExecutionCache;
 use Recombinator\Support\ColorDiffer;
 use Recombinator\Support\PipelineConsole;
+use Recombinator\Support\Sandbox;
 use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\DeadBranchVisitor;
 use Recombinator\Transformation\Visitor\CallFunctionVisitor;
@@ -107,6 +109,9 @@ $meta = static function (object $visitor): VisitorMeta {
 // Transformation pipeline
 // ════════════════════════════════════════════════════════════════════════════
 
+// Один sandbox на весь прогон: кеш предвыполнения переживает пересоздание визиторов
+$sandbox = new Sandbox(new ExecutionCache());
+
 $steps = [
     // ── Импорт классов из use SyntaxZoo\... ─────────────────────────────────
     fn() => new UseImportVisitor($fileMap),
@@ -129,7 +134,7 @@ $steps = [
     fn() => new MutablePropertyTrackerVisitor(),
     fn() => new ConcatAssertVisitor(),
     fn() => new EvalStandardFunction(),
-    fn() => new PreExecutionVisitor(),
+    fn() => new PreExecutionVisitor(null, $sandbox),
     fn() => new VarToScalarVisitor(),
     fn() => new ConstFoldVisitor(),
     fn() => new PrintNormalizeVisitor(),
@@ -144,7 +149,7 @@ $steps = [
     fn() => new FlattenInheritanceVisitor(),
 
     // ── Разворачивание getter-цепочек через отслеживание сеттеров ───────────
-    fn() => new IndexedPropGetterResolverVisitor(),
+    fn() => new IndexedPropGetterResolverVisitor($sandbox),
 
     // ── Инлайнинг enum ──────────────────────────────────────────────────────
     fn() => new EnumCaseInlinerVisitor(),

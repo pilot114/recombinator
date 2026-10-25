@@ -16,6 +16,10 @@
         "squizlabs/php_codesniffer": "^4.0"
     },
     "scripts": {
+      "serve": [
+        "Composer\\Config::disableProcessTimeout",
+        "@php -d xdebug.mode=off -S localhost:8085 -t public"
+      ],
       "test": "pest --compact",
       "coverage": "XDEBUG_MODE=coverage pest --compact --coverage",
       "check": [

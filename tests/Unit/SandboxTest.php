@@ -6,6 +6,7 @@ use PhpParser\Node;
 use PhpParser\ParserFactory;
 use Recombinator\Core\ExecutionCache;
 use Recombinator\Support\Sandbox;
+use Recombinator\Support\SandboxError;
 use Recombinator\Support\SandboxResult;
 
 beforeEach(
@@ -315,5 +316,20 @@ it(
         expect($result)->toBeInstanceOf(SandboxResult::class);
         expect($result->value)->toBe(14);
         // If we got here, the main process was not affected
+    }
+);
+
+it(
+    'caches deterministic execution errors',
+    function (): void {
+        // str_repeat с отрицательным счётчиком бросает ValueError
+        $node = $this->parser->parse('<?php str_repeat("x", -1);')[0]->expr;
+
+        $result1 = $this->sandbox->execute($node);
+        $result2 = $this->sandbox->execute($node);
+
+        expect($result1)->toBeInstanceOf(SandboxError::class)
+            ->and($result2)->toBe($result1)
+            ->and($this->sandbox->getCacheStats()['hits'])->toBe(1);
     }
 );

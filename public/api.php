@@ -87,7 +87,10 @@ use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Core\ExecutionCache;
 use Recombinator\Domain\ScopeStore;
+use Recombinator\Support\LineDiffer;
+use Recombinator\Support\Sandbox;
 use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\BoundedWhileUnrollerVisitor;
 use Recombinator\Transformation\Visitor\CallFunctionVisitor;
@@ -143,8 +146,7 @@ use Recombinator\Transformation\Visitor\TraitInlinerVisitor;
 use Recombinator\Transformation\Visitor\UseImportVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 use Recombinator\Transformation\Visitor\VisitorMeta;
-use SebastianBergmann\Diff\Differ;
-use SebastianBergmann\Diff\Output\UnifiedDiffOutputBuilder;
+use SebastianBergmann\Diff\Output\StrictUnifiedDiffOutputBuilder;
 
 $timeout = 60;
 set_time_limit($timeout);
@@ -230,7 +232,7 @@ if (!str_starts_with(ltrim($code), '<?')) {
 
 $phpParser = new ParserFactory()->createForNewestSupportedVersion();
 $printer   = new Printer();
-$differ    = new Differ(new UnifiedDiffOutputBuilder(''));
+$differ    = new LineDiffer(new StrictUnifiedDiffOutputBuilder(['addLineNumbers' => false, 'header' => '', 'emitNoLineEndEofWarning' => false]));
 
 try {
     $ast = $phpParser->parse($code) ?? [];
@@ -284,8 +286,10 @@ function getVisitorMeta(NodeVisitorAbstract $visitor): array
 }
 
 $ss = new ScopeStore();
+// Один sandbox на запрос: визиторы пересоздаются на каждом проходе, а кеш предвыполнения — нет
+$sandbox = new Sandbox(new ExecutionCache());
 
-$makeMainVisitors = static function () use ($ss, $fileMap, $entryRel): array {
+$makeMainVisitors = static function () use ($ss, $sandbox, $fileMap, $entryRel): array {
     $visitors = [];
     if (!empty($fileMap)) {
         $visitors[] = new FileMapIncludeVisitor($fileMap, $entryRel);
@@ -308,7 +312,7 @@ $makeMainVisitors = static function () use ($ss, $fileMap, $entryRel): array {
         new MutablePropertyTrackerVisitor(),
         new ConcatAssertVisitor(),
         new EvalStandardFunction(),
-        new PreExecutionVisitor($ss),
+        new PreExecutionVisitor($ss, $sandbox),
         new VarToScalarVisitor($ss),
         new ConstFoldVisitor(),
         new PrintNormalizeVisitor(),
@@ -323,7 +327,7 @@ $makeMainVisitors = static function () use ($ss, $fileMap, $entryRel): array {
         new FlattenInheritanceVisitor(),
 
         // Разворачивание getter-цепочек
-        new IndexedPropGetterResolverVisitor(),
+        new IndexedPropGetterResolverVisitor($sandbox),
 
         // Инлайнинг enum и статических методов
         new EnumCaseInlinerVisitor(),
@@ -375,8 +379,13 @@ $readabilityPass = false;
 $deadline = $requestStart + ($timeout - 10);
 
 // ── Phase 1: optimisation loop ────────────────────────────────────────────────
-// Цикл продолжается до полной сходимости (ни один visitor не изменил AST)
-// или до исчерпания лимита времени.
+// Цикл продолжается до полной сходимости или до исчерпания лимита времени.
+// Сходимость — полный круг visitor'ов подряд без изменений, даже если он начался
+// в середине прохода: visitor'ы после последнего изменения уже видели текущий код,
+// и повторный прогон для них ничего не даст.
+$visitorCount = count($makeMainVisitors());
+$idleRuns     = 0;
+
 for ($pass = 1; ; $pass++) {
     if (microtime(true) >= $deadline) {
         break;
@@ -397,11 +406,16 @@ for ($pass = 1; ; $pass++) {
         $reconnect = $changed; // следующий visitor нуждается в reconnect только при изменении AST
 
         if (!$changed) {
+            if (++$idleRuns >= $visitorCount) {
+                break 2;
+            }
+
             continue;
         }
 
-        $diff = $differ->diff($prevCode, $currentCode);
-        $meta = getVisitorMeta($visitor);
+        $idleRuns = 0;
+        $diff     = $differ->diff($prevCode, $currentCode);
+        $meta     = getVisitorMeta($visitor);
 
         $steps[] = [
             'pass'    => $pass,

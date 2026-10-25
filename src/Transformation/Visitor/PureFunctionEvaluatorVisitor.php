@@ -6,7 +6,8 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
-use Symfony\Component\Process\Process;
+use Recombinator\Support\SandboxError;
+use Recombinator\Support\SandboxRunner;
 
 /**
  * Вычисляет чистые пользовательские функции в compile-time, если все аргументы известны.
@@ -258,29 +259,15 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
 
         $code = "<?php\n" . $fnCode . "\necho json_encode(" . $call . ');';
 
-        $tmp = tempnam(sys_get_temp_dir(), 'pfev_');
-        if ($tmp === false) {
+        $output = SandboxRunner::shared()->run($code, self::TIMEOUT, self::MEMORY_LIMIT);
+        if ($output instanceof SandboxError || $output === '') {
             return null;
         }
 
-        file_put_contents($tmp, $code);
-
         try {
-            $proc = new Process(
-                ['php', '-d', 'memory_limit=' . self::MEMORY_LIMIT, $tmp],
-                timeout: self::TIMEOUT
-            );
-            $proc->run();
-
-            if (!$proc->isSuccessful() || $proc->getOutput() === '') {
-                return null;
-            }
-
-            return json_decode($proc->getOutput(), true, 512, JSON_THROW_ON_ERROR);
-        } catch (\Throwable) {
+            return json_decode($output, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
             return null;
-        } finally {
-            @unlink($tmp);
         }
     }
 

@@ -262,7 +262,12 @@ class VarToScalarVisitor extends BaseVisitor
         }
 
         // Target of ++/-- operators
-        return !(($parent instanceof Node\Expr\PostInc || $parent instanceof Node\Expr\PreInc || $parent instanceof Node\Expr\PostDec || $parent instanceof Node\Expr\PreDec) && $parent->var instanceof Node\Expr\Variable && $parent->var->name === $varName);
+        $isIncDec = $parent instanceof Node\Expr\PostInc
+            || $parent instanceof Node\Expr\PreInc
+            || $parent instanceof Node\Expr\PostDec
+            || $parent instanceof Node\Expr\PreDec;
+
+        return !($isIncDec && $parent->var instanceof Node\Expr\Variable && $parent->var->name === $varName);
     }
 
     /**

@@ -50,7 +50,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
      */
     protected function processClass(Node\Stmt\Class_ $node): void
     {
-        if (!$node->name instanceof \PhpParser\Node\Identifier) {
+        if (!$node->name instanceof Node\Identifier) {
             return; // анонимный класс — не инлайним
         }
 
@@ -122,7 +122,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
 
             // Обработка наследования
             $parentClass = null;
-            if ($node->extends instanceof \PhpParser\Node\Name) {
+            if ($node->extends instanceof Node\Name) {
                 $parentClass = $node->extends->toString();
             }
 
@@ -154,7 +154,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
 
         // $node->class может быть Name, выражением (new $cls(), new static::$x())
         // или анонимным классом. Инлайнить можем только по статически известному имени.
-        if (!$node->class instanceof \PhpParser\Node\Name) {
+        if (!$node->class instanceof Node\Name) {
             return null;
         }
 
@@ -316,8 +316,12 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         return null;
     }
 
-    protected function replaceCallToBody(Node\Expr\MethodCall $call, Node\Stmt\ClassMethod $method, array $instance, string $className = ''): ?\PhpParser\Node\Expr
-    {
+    protected function replaceCallToBody(
+        Node\Expr\MethodCall $call,
+        Node\Stmt\ClassMethod $method,
+        array $instance,
+        string $className = ''
+    ): ?Node\Expr {
         if (count($method->stmts) === 1 && $method->stmts[0] instanceof Node\Stmt\Return_) {
             // Глубокая копия тела обязательна: иначе каждая последующая подстановка
             // аргументов будет видеть изменения предыдущей (общие поддеревья).
@@ -333,7 +337,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $result = $traverser->traverse([$cloned]);
 
             // Возвращаем выражение из return (без самого return)
-            if ($result[0] instanceof Node\Stmt\Return_ && $result[0]->expr instanceof \PhpParser\Node\Expr) {
+            if ($result[0] instanceof Node\Stmt\Return_ && $result[0]->expr instanceof Node\Expr) {
                 return $result[0]->expr;
             }
         }

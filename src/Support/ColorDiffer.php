@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Recombinator\Support;
 
-use SebastianBergmann\Diff\Differ;
 use SebastianBergmann\Diff\Output\StrictUnifiedDiffOutputBuilder;
 
 /**
@@ -33,7 +32,7 @@ class ColorDiffer
      */
     private array $backgroundColors = [];
 
-    private readonly Differ $differ;
+    private readonly LineDiffer $differ;
 
     public function __construct()
     {
@@ -63,7 +62,7 @@ class ColorDiffer
         $this->backgroundColors['cyan'] = '46';
         $this->backgroundColors['light_gray'] = '47';
 
-        $this->differ = new Differ(new StrictUnifiedDiffOutputBuilder(['addLineNumbers' => false, 'header' => "--- Original\n+++ New\n"]));
+        $this->differ = new LineDiffer(new StrictUnifiedDiffOutputBuilder(['addLineNumbers' => false, 'header' => "--- Original\n+++ New\n"]));
     }
 
     public function getColoredString(string $string, ?string $foreground_color = null, ?string $background_color = null): string

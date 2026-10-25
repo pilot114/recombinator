@@ -108,7 +108,7 @@ class RemoveUnusedPropWriteVisitor extends BaseVisitor
         }
 
         if ($node instanceof Node\Expr\Array_) {
-            return array_all($node->items, fn(\PhpParser\Node\ArrayItem $item): bool => !$item instanceof \PhpParser\Node\ArrayItem || $this->isPure($item->value));
+            return array_all($node->items, fn(Node\ArrayItem $item): bool => !$item instanceof Node\ArrayItem || $this->isPure($item->value));
         }
 
         if ($node instanceof Node\Expr\BinaryOp) {

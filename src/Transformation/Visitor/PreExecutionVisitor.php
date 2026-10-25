@@ -39,11 +39,13 @@ class PreExecutionVisitor extends BaseVisitor
 
     private readonly ScopeStore $scopeStore;
 
-    public function __construct(?ScopeStore $scopeStore = null)
+    /**
+     * @param Sandbox|null $sandbox общий sandbox позволяет переиспользовать кеш между проходами пайплайна
+     */
+    public function __construct(?ScopeStore $scopeStore = null, ?Sandbox $sandbox = null)
     {
         $this->scopeStore = $scopeStore ?? ScopeStore::default();
-        $cache = new ExecutionCache();
-        $this->sandbox = new Sandbox($cache);
+        $this->sandbox    = $sandbox ?? new Sandbox(new ExecutionCache());
     }
 
     /**
@@ -111,7 +113,7 @@ class PreExecutionVisitor extends BaseVisitor
             return null;
         }
 
-        if (!array_all($node->args, fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value))) {
+        if (!$this->allArgsConstant($node->args)) {
             return null;
         }
 
@@ -168,7 +170,21 @@ class PreExecutionVisitor extends BaseVisitor
      */
     private function hasConstantArgs(Node\Expr\FuncCall $node): bool
     {
-        return array_all($node->args, fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value));
+        return $this->allArgsConstant($node->args);
+    }
+
+    /**
+     * Проверяет, что все аргументы вызова — константные выражения (без распаковки и first-class callable)
+     *
+     * @param array<Node\Arg|Node\VariadicPlaceholder|Node\ArgPlaceholder> $args
+     */
+    private function allArgsConstant(array $args): bool
+    {
+        return array_all(
+            $args,
+            fn(Node\Arg|Node\VariadicPlaceholder|Node\ArgPlaceholder $arg): bool
+                => $arg instanceof Node\Arg && $this->isConstant($arg->value)
+        );
     }
 
     /**
@@ -232,10 +248,7 @@ class PreExecutionVisitor extends BaseVisitor
 
         // new ClassName(constantArgs) — можно попытаться выполнить в sandbox
         if ($node instanceof Node\Expr\New_ && $node->class instanceof Node\Name) {
-            return array_all(
-                $node->args,
-                fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $arg): bool => $arg instanceof Node\Arg && $this->isConstant($arg->value)
-            );
+            return $this->allArgsConstant($node->args);
         }
 
         return false;
@@ -251,7 +264,7 @@ class PreExecutionVisitor extends BaseVisitor
             return null;
         }
 
-        if (!array_all($node->args, fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $a): bool => $a instanceof Node\Arg && $this->isConstant($a->value))) {
+        if (!$this->allArgsConstant($node->args)) {
             return null;
         }
 
@@ -259,7 +272,7 @@ class PreExecutionVisitor extends BaseVisitor
         $methodName = $node->name->toString();
 
         $method = $this->findStaticClassMethod($className, $methodName);
-        if (!$method instanceof \PhpParser\Node\Stmt\ClassMethod) {
+        if (!$method instanceof Node\Stmt\ClassMethod) {
             return null;
         }
 

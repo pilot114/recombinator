@@ -58,10 +58,12 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
 
     private readonly Sandbox $sandbox;
 
-    public function __construct()
+    /**
+     * @param Sandbox|null $sandbox общий sandbox позволяет переиспользовать кеш между проходами пайплайна
+     */
+    public function __construct(?Sandbox $sandbox = null)
     {
-        $cache         = new ExecutionCache();
-        $this->sandbox = new Sandbox($cache);
+        $this->sandbox = $sandbox ?? new Sandbox(new ExecutionCache());
     }
 
     #[\Override]
@@ -94,10 +96,13 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
                 continue;
             }
 
-            $hasGetterCalls = array_any($this->findNode(Node\Expr\MethodCall::class, $nodes), fn(\PhpParser\Node\Expr\MethodCall $call): bool => $call->var instanceof Node\Expr\Variable
-            && $call->var->name === $varName
-            && $call->name instanceof Node\Identifier
-            && isset($this->getterInfo[$cls][$call->name->toString()]));
+            $hasGetterCalls = array_any(
+                $this->findNode(Node\Expr\MethodCall::class, $nodes),
+                fn(Node\Expr\MethodCall $call): bool => $call->var instanceof Node\Expr\Variable
+                    && $call->var->name === $varName
+                    && $call->name instanceof Node\Identifier
+                    && isset($this->getterInfo[$cls][$call->name->toString()])
+            );
 
             if ($hasGetterCalls) {
                 continue;
@@ -238,7 +243,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
         }
 
         if (
-            $dimFetch instanceof \PhpParser\Node\Expr\ArrayDimFetch
+            $dimFetch instanceof Node\Expr\ArrayDimFetch
             && $dimFetch->var instanceof Node\Expr\PropertyFetch
             && $dimFetch->var->var instanceof Node\Expr\Variable
             && $dimFetch->var->var->name === 'this'
@@ -368,7 +373,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
             || !$first->cond->expr instanceof Node\Expr\Isset_
             || count($first->cond->expr->vars) !== 1
             || $first->elseifs !== []
-            || $first->else instanceof \PhpParser\Node\Stmt\Else_
+            || $first->else instanceof Node\Stmt\Else_
             || count($first->stmts) !== 1
             || !$first->stmts[0] instanceof Node\Stmt\Return_
         ) {
@@ -496,7 +501,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
                 $keyArg = $this->getArg($expr->args, $setter['keyIdx'], $setter['keyName']);
                 $valArg = $this->getArg($expr->args, $setter['valIdx'], $setter['valName']);
 
-                if ($keyArg instanceof Node\Scalar\String_ && $valArg instanceof \PhpParser\Node\Expr) {
+                if ($keyArg instanceof Node\Scalar\String_ && $valArg instanceof Node\Expr) {
                     $this->propArrayState[$varName][$setter['prop']][$keyArg->value] = $valArg;
                 }
             }
@@ -555,7 +560,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
 
                     if ($trackedValue !== null) {
                         $result = $this->resolveMethodOnValue($trackedValue, $chainedMethod);
-                        if ($result instanceof \PhpParser\Node\Expr) {
+                        if ($result instanceof Node\Expr) {
                             return $result;
                         }
                     }
@@ -670,7 +675,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
         }
 
         $arg = $args[$paramIdx] ?? null;
-        return $arg instanceof Node\Arg && !$arg->name instanceof \PhpParser\Node\Identifier ? $arg->value : null;
+        return $arg instanceof Node\Arg && !$arg->name instanceof Node\Identifier ? $arg->value : null;
     }
 
     private function scalarToNode(mixed $value): ?Node\Expr

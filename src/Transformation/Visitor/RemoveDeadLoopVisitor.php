@@ -154,7 +154,7 @@ class RemoveDeadLoopVisitor extends BaseVisitor
                 $expr->class instanceof Node\Name
                 && array_all(
                     $expr->args,
-                    fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $a): bool => $a instanceof Node\Arg && $this->isLoopExprPure($a->value)
+                    fn(Node\Arg|Node\VariadicPlaceholder|Node\ArgPlaceholder $a): bool => $a instanceof Node\Arg && $this->isLoopExprPure($a->value)
                 ),
 
             default                                => false,

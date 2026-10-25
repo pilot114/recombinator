@@ -141,13 +141,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   border: 1px solid var(--border); border-radius: var(--radius);
   font-family: var(--mono); font-size: 11px; padding: 5px 8px;
 }
-#proj-run-btn {
-  flex-shrink: 0; padding: 6px 18px; background: var(--accent); color: #000;
-  border: none; border-radius: var(--radius); font-size: 12px; font-weight: 700;
-  cursor: pointer; transition: opacity .15s;
-}
-#proj-run-btn:hover { opacity: .85; }
-#proj-run-btn:disabled { opacity: .45; cursor: default; }
 
 /* ── Editor ── */
 .editor-wrap { display: flex; flex: 1; overflow: hidden; font-family: var(--mono); font-size: 13px; line-height: 1.65; }
@@ -435,7 +428,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
   .proj-entry-row { flex-direction: column; align-items: stretch; }
   #proj-entry-select { width: 100%; }
-  #proj-run-btn { width: 100%; padding: 10px; }
 }
 
 @media (max-width: 420px) {
@@ -614,18 +606,20 @@ function plural(n, one, two, five) {
 // ── Examples ──────────────────────────────────────────────────────────────────
 
 let EXAMPLES = [];
+// Выбранный пример-проект: кнопка Transform в шапке запускает его вместо редактора
+let currentProject = null;
 
 function showEditorMode() {
+  currentProject = null;
   $('project-desc').classList.remove('show');
   document.querySelector('.editor-wrap').style.display = '';
   $('tab-bar').style.display = '';
-  $('run-btn').disabled = false;
 }
 
 function showProjectMode(ex) {
+  currentProject = ex;
   document.querySelector('.editor-wrap').style.display = 'none';
   $('tab-bar').style.display = 'none';
-  $('run-btn').disabled = true;
 
   const entries = ex.entries || [];
   const opts = entries.map(f => `<option value="${esc(f)}">${esc(f)}</option>`).join('');
@@ -642,12 +636,9 @@ function showProjectMode(ex) {
     <div class="proj-entry-row">
       <label>Энтрипоинт</label>
       <select id="proj-entry-select">${opts}</select>
-      <button id="proj-run-btn">Transform</button>
     </div>
   `;
   pd.classList.add('show');
-
-  $('proj-run-btn').addEventListener('click', () => runProject(ex));
 }
 
 function loadExample(id) {
@@ -1034,6 +1025,10 @@ function renderResults(data) {
 // ── Transform ─────────────────────────────────────────────────────────────────
 
 async function run() {
+  if (currentProject) {
+    return runProject(currentProject);
+  }
+
   saveCode();
 
   let bodyObj;
@@ -1087,7 +1082,7 @@ async function run() {
 // ── Project transform ─────────────────────────────────────────────────────────
 
 async function runProject(ex) {
-  const btn = $('proj-run-btn');
+  const btn = $('run-btn');
   const st  = $('status');
   const entry = $('proj-entry-select')?.value || (ex.entries || [])[0] || '';
 

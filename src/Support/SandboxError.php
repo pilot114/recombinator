@@ -15,6 +15,11 @@ use Throwable;
  */
 readonly class SandboxError implements \Stringable
 {
+    /**
+     * Код ошибки «превышено время выполнения» (как у утилиты timeout)
+     */
+    public const int CODE_TIMEOUT = 124;
+
     public function __construct(
         private string $message,
         private int $code = 0,
@@ -35,6 +40,11 @@ readonly class SandboxError implements \Stringable
     public function getPrevious(): ?Throwable
     {
         return $this->previous;
+    }
+
+    public function isTimeout(): bool
+    {
+        return $this->code === self::CODE_TIMEOUT;
     }
 
     public function __toString(): string

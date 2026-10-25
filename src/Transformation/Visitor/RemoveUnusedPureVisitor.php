@@ -234,7 +234,7 @@ class RemoveUnusedPureVisitor extends BaseVisitor
         }
 
         if ($node instanceof Node\Expr\ArrayDimFetch) {
-            return $this->isPure($node->var) && (!$node->dim instanceof \PhpParser\Node\Expr || $this->isPure($node->dim));
+            return $this->isPure($node->var) && (!$node->dim instanceof Node\Expr || $this->isPure($node->dim));
         }
 
         // Dead object creation: if the variable is never read, the allocation is removable
@@ -244,14 +244,18 @@ class RemoveUnusedPureVisitor extends BaseVisitor
 
         if ($node instanceof Node\Expr\Ternary) {
             return $this->isPure($node->cond)
-                && (!$node->if instanceof \PhpParser\Node\Expr || $this->isPure($node->if))
+                && (!$node->if instanceof Node\Expr || $this->isPure($node->if))
                 && $this->isPure($node->else);
         }
 
         if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name) {
             $name = strtolower($node->name->toString());
             if (isset(self::PURE_FUNCTIONS[$name])) {
-                return array_all($node->args, fn(\PhpParser\Node\Arg|\PhpParser\Node\VariadicPlaceholder|\PhpParser\Node\ArgPlaceholder $arg): bool => !$arg instanceof Node\Arg || $this->isPure($arg->value));
+                return array_all(
+                    $node->args,
+                    fn(Node\Arg|Node\VariadicPlaceholder|Node\ArgPlaceholder $arg): bool
+                        => !$arg instanceof Node\Arg || $this->isPure($arg->value)
+                );
             }
         }
 

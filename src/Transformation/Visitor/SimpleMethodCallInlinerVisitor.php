@@ -147,7 +147,7 @@ class SimpleMethodCallInlinerVisitor extends BaseVisitor
         }
 
         $method = $this->findMethod($this->varTypes[$varName], $methodName);
-        if (!$method instanceof \PhpParser\Node\Stmt\ClassMethod) {
+        if (!$method instanceof Node\Stmt\ClassMethod) {
             return parent::leaveNode($node);
         }
 
@@ -156,7 +156,7 @@ class SimpleMethodCallInlinerVisitor extends BaseVisitor
             $method->stmts === null
             || count($method->stmts) !== 1
             || !$method->stmts[0] instanceof Node\Stmt\Return_
-            || !$method->stmts[0]->expr instanceof \PhpParser\Node\Expr
+            || !$method->stmts[0]->expr instanceof Node\Expr
         ) {
             return parent::leaveNode($node);
         }
@@ -189,9 +189,12 @@ class SimpleMethodCallInlinerVisitor extends BaseVisitor
      */
     private function bodyHasThisPropArrayAccess(Node\Expr $body): bool
     {
-        return array_any($this->findNode(Node\Expr\ArrayDimFetch::class, [$body]), fn(\PhpParser\Node\Expr\ArrayDimFetch $fetch): bool => $fetch->var instanceof Node\Expr\PropertyFetch
-        && $fetch->var->var instanceof Node\Expr\Variable
-        && $fetch->var->var->name === 'this');
+        return array_any(
+            $this->findNode(Node\Expr\ArrayDimFetch::class, [$body]),
+            fn(Node\Expr\ArrayDimFetch $fetch): bool => $fetch->var instanceof Node\Expr\PropertyFetch
+                && $fetch->var->var instanceof Node\Expr\Variable
+                && $fetch->var->var->name === 'this'
+        );
     }
 
     private function findMethod(string $className, string $methodName): ?Node\Stmt\ClassMethod
@@ -252,15 +255,15 @@ class SimpleMethodCallInlinerVisitor extends BaseVisitor
             }
 
             // Positional arg
-            if (!$argValue instanceof \PhpParser\Node\Expr) {
+            if (!$argValue instanceof Node\Expr) {
                 $arg = $callArgs[$i] ?? null;
-                if ($arg instanceof Node\Arg && !$arg->name instanceof \PhpParser\Node\Identifier) {
+                if ($arg instanceof Node\Arg && !$arg->name instanceof Node\Identifier) {
                     $argValue = $arg->value;
                 }
             }
 
             // Default
-            if (!$argValue instanceof \PhpParser\Node\Expr) {
+            if (!$argValue instanceof Node\Expr) {
                 $argValue = $param->default;
             }
 
@@ -291,7 +294,7 @@ class SimpleMethodCallInlinerVisitor extends BaseVisitor
             public function __construct(
                 private readonly Node\Expr $selfExpr,
                 private readonly array $paramToArg,
-                /** @var callable(Node): Node */
+                /** @var \Closure(Node): Node */
                 private readonly \Closure $deepClone,
                 private readonly string $className,
             ) {

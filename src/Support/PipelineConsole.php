@@ -9,7 +9,6 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\PrettyPrinter\Standard as Printer;
-use SebastianBergmann\Diff\Differ;
 use SebastianBergmann\Diff\Output\StrictUnifiedDiffOutputBuilder;
 
 /**
@@ -103,7 +102,7 @@ class PipelineConsole
      */
     public function colorDiff(string $before, string $after): array
     {
-        $differ = new Differ(new StrictUnifiedDiffOutputBuilder(['addLineNumbers' => false, 'header' => '']));
+        $differ = new LineDiffer(new StrictUnifiedDiffOutputBuilder(['addLineNumbers' => false, 'header' => '']));
         $raw    = $differ->diff($before, $after);
 
         $text  = '';

@@ -421,12 +421,6 @@ parameters:
 			path: src/Transformation/Visitor/RemoveUnusedPureVisitor.php
 
 		-
-			message: '#^PHPDoc type for property PhpParser\\NodeVisitorAbstract@anonymous/Transformation/Visitor/SimpleMethodCallInlinerVisitor\.php\:289\:\:\$deepClone with type callable is not subtype of native type Closure\.$#'
-			identifier: property.phpDocType
-			count: 1
-			path: src/Transformation/Visitor/SimpleMethodCallInlinerVisitor.php
-
-		-
 			message: '#^Instanceof between PhpParser\\Node\\Identifier and PhpParser\\Node\\Identifier will always evaluate to true\.$#'
 			identifier: instanceof.alwaysTrue
 			count: 1

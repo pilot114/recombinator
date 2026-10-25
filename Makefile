@@ -37,8 +37,8 @@ install: ## поставить зависимости
 	composer install
 
 .PHONY: dev
-dev: ## запустить для разработки
-	@echo "запускать нечего: это библиотека"
+dev: ## запустить для разработки (веб-интерфейс из ./public на http://localhost:8085)
+	composer serve
 
 .PHONY: build
 build: ## сборка

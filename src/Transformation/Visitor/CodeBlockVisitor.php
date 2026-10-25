@@ -120,7 +120,10 @@ class CodeBlockVisitor extends BaseVisitor
 
     private function containsSuperglobal(Node $node): bool
     {
-        return array_any($this->findNode(Node\Expr\Variable::class, $node), fn(\PhpParser\Node\Expr\Variable $var): bool => is_string($var->name) && in_array($var->name, self::SUPERGLOBALS, true));
+        return array_any(
+            $this->findNode(Node\Expr\Variable::class, $node),
+            fn(Node\Expr\Variable $var): bool => is_string($var->name) && in_array($var->name, self::SUPERGLOBALS, true)
+        );
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
