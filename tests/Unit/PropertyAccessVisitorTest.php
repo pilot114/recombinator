@@ -210,3 +210,15 @@ $result = $calc->value + 10;';
         expect($result)->toContain('$result = $var_value + 10');
     }
 );
+
+it(
+    'skips dynamic property names',
+    function (): void {
+        $this->store->setInstanceToScope('obj', 'TestClass', ['properties' => ['name' => 'var_name_123']]);
+
+        $ast = $this->parser->parse('<?php echo $obj->{"name"};');
+        $ast = new NodeTraverser($this->visitor)->traverse($ast);
+
+        expect($this->printer->prettyPrint($ast))->toContain('$obj->{"name"}');
+    }
+);

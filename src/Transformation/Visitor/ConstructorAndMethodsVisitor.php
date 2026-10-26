@@ -7,10 +7,15 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\CloningVisitor;
 use Recombinator\Core\Config;
 use Recombinator\Domain\ScopeStore;
+use Recombinator\Transformation\BodyInliner;
 
 /**
  * Вызовы конструктора и методов заменяем на инстанцирование переменных из скопа класса
  * и тело конструктора
+ *
+ * Объект разворачивается в переменные свойств, только если его переменная
+ * присваивается в своей области один раз: у `$c = $c->inc()` в цикле каждая запись —
+ * новый объект, а свойства всех копий должны остаться одной переменной.
  */
 #[VisitorMeta('Инлайн конструкторов и методов: New_/MethodCall → тело из ScopeStore')]
 class ConstructorAndMethodsVisitor extends BaseVisitor
@@ -19,10 +24,22 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
 
     protected Config $config;
 
+    /** @var array<int, array<string, int>> id области → переменная → число присваиваний */
+    private array $assignCounts = [];
+
     public function __construct(?ScopeStore $scopeStore = null, ?Config $config = null)
     {
         $this->scopeStore = $scopeStore ?? ScopeStore::default();
         $this->config = $config ?? new Config();
+    }
+
+    #[\Override]
+    public function beforeTraverse(array $nodes): ?array
+    {
+        parent::beforeTraverse($nodes);
+        $this->assignCounts = [];
+
+        return null;
     }
 
     public function enterNode(Node $node): ?Node
@@ -152,6 +169,10 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             return null;
         }
 
+        if (!$assign->getAttribute('parent') instanceof Node\Stmt\Expression || $this->assignCount($assign) !== 1) {
+            return null;
+        }
+
         // $node->class может быть Name, выражением (new $cls(), new static::$x())
         // или анонимным классом. Инлайнить можем только по статически известному имени.
         if (!$node->class instanceof Node\Name) {
@@ -162,7 +183,7 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         $className = $node->class->toString();
         $class = $this->scopeStore->getClassFromGlobal($className);
 
-        if ($class === null) {
+        if ($class === null || !$this->canScalarize($assign, $class)) {
             return null;
         }
 
@@ -192,7 +213,9 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
             $varName = sprintf('%s_%s_%s', $assign->var->name, $propName, $uid);
             $var = new Node\Expr\Variable($varName);
 
-            $initExpr = $prop->default;
+            // Свойство без значения по умолчанию: нетипизированное равно null,
+            // типизированное не инициализировано — чтение до записи всё равно ошибка
+            $initExpr = $prop->default ?? new Node\Expr\ConstFetch(new Node\Name('null'));
             if (isset($promotedArgIndex[$propName])) {
                 $i = $promotedArgIndex[$propName];
                 if (isset($node->args[$i]) && $node->args[$i] instanceof Node\Arg) {
@@ -343,6 +366,114 @@ class ConstructorAndMethodsVisitor extends BaseVisitor
         }
 
         return null;
+    }
+
+    /**
+     * Объект можно заменить переменными свойств, только если после этого не останется
+     * ссылок на сам объект:
+     * - присваивание на верхнем уровне (в методе `$this` тела конструктора — чужой объект);
+     * - конструктор только записывает свои свойства (без parent::, вызовов $this->m());
+     * - переменная используется лишь как `$var->prop` или `$var->m()`, где m — один
+     *   return, тоже читающий только свои свойства (такие вызовы встраиваются).
+     *
+     * @param array<string, mixed> $class слепок класса из ScopeStore
+     */
+    private function canScalarize(Node\Expr\Assign $assign, array $class): bool
+    {
+        for ($scope = $assign->getAttribute('parent'); $scope instanceof Node; $scope = $scope->getAttribute('parent')) {
+            if ($scope instanceof Node\FunctionLike || $scope instanceof Node\Stmt\ClassLike) {
+                return false;
+            }
+        }
+
+        $methods = is_array($class['methods'] ?? null) ? $class['methods'] : [];
+        $parent  = is_string($class['parent'] ?? null) ? $this->scopeStore->getClassFromGlobal($class['parent']) : null;
+        if (is_array($parent) && is_array($parent['methods'] ?? null)) {
+            $methods += $parent['methods'];
+        }
+
+        $ctor = $methods['__construct'] ?? null;
+        if ($ctor instanceof Node\Stmt\ClassMethod && !$this->usesOnlyOwnProps($ctor->stmts ?? [])) {
+            return false;
+        }
+
+        $name = $assign->var instanceof Node\Expr\Variable ? $assign->var->name : null;
+        $ok   = true;
+        BodyInliner::walkOwnScope($this->ast, function (Node $node) use ($name, $assign, $methods, &$ok): void {
+            if (!$node instanceof Node\Expr\Variable || $node->name !== $name || $node === $assign->var) {
+                return;
+            }
+
+            $use = $node->getAttribute('parent');
+            if ($use instanceof Node\Expr\PropertyFetch && $use->var === $node && $use->name instanceof Node\Identifier) {
+                return;
+            }
+
+            $method = $use instanceof Node\Expr\MethodCall && $use->var === $node && $use->name instanceof Node\Identifier
+                ? $methods[$use->name->toString()] ?? null
+                : null;
+            if (
+                $method instanceof Node\Stmt\ClassMethod
+                && count($method->stmts ?? []) === 1
+                && ($method->stmts[0] ?? null) instanceof Node\Stmt\Return_
+                && $this->usesOnlyOwnProps($method->stmts ?? [])
+            ) {
+                return;
+            }
+
+            $ok = false;
+        });
+
+        return $ok;
+    }
+
+    /**
+     * `$this` только как `$this->prop`, без parent::.
+     *
+     * @param array<Node\Stmt> $stmts
+     */
+    private function usesOnlyOwnProps(array $stmts): bool
+    {
+        foreach ($this->findNode(Node::class, $stmts) as $node) {
+            if ($node instanceof Node\Expr\Variable && $node->name === 'this') {
+                $use = $node->getAttribute('parent');
+                if (!$use instanceof Node\Expr\PropertyFetch || !$use->name instanceof Node\Identifier) {
+                    return false;
+                }
+            }
+
+            if (
+                (
+                    $node instanceof Node\Expr\StaticCall
+                    || $node instanceof Node\Expr\StaticPropertyFetch
+                    || $node instanceof Node\Expr\ClassConstFetch
+                )
+                && $node->class instanceof Node\Name
+                && strtolower($node->class->toString()) === 'parent'
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** Сколько раз переменная присваивания записывается в своей области видимости. */
+    private function assignCount(Node\Expr\Assign $assign): int
+    {
+        $scope = $assign->getAttribute('parent');
+        while ($scope instanceof Node && !$scope instanceof Node\FunctionLike || $scope instanceof Node\Expr\ArrowFunction) {
+            $scope = $scope->getAttribute('parent');
+        }
+
+        $key = $scope instanceof Node ? spl_object_id($scope) : 0;
+        $this->assignCounts[$key] ??= ObjectMethodInlinerVisitor::topLevelAssignCounts(
+            $scope instanceof Node\FunctionLike ? $scope->getStmts() ?? [] : $this->ast,
+        );
+
+        return $assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)
+            ? $this->assignCounts[$key][$assign->var->name] ?? 0
+            : 0;
     }
 
     #[\Override]

@@ -81,11 +81,21 @@ class RemoveUnusedPureVisitor extends BaseVisitor
 
     private array $readVars = [];
 
+    /** @var array<string, Node\Stmt\Class_>|null lowercase имя → класс, собирается при первой нужде */
+    private ?array $classes = null;
+
+    /** Встроенные классы, конструктор которых не трогает внешний мир. */
+    private const array PURE_BUILTIN_CLASSES = [
+        'stdclass' => true, 'arrayobject' => true, 'arrayiterator' => true, 'splobjectstorage' => true,
+        'splstack' => true, 'splqueue' => true, 'datetime' => true, 'datetimeimmutable' => true,
+    ];
+
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
         $this->readVars = $this->collectReadVars($nodes);
+        $this->classes  = null;
         return null;
     }
 
@@ -142,6 +152,14 @@ class RemoveUnusedPureVisitor extends BaseVisitor
         return null;
     }
 
+    private function isStatementLevel(Node $expr): bool
+    {
+        $parent = $expr->getAttribute('parent');
+
+        return $parent instanceof Node\Stmt\Expression
+            || $parent instanceof Node\Stmt\For_ && in_array($expr, [...$parent->init, ...$parent->loop], true);
+    }
+
     /**
      * Собирает имена переменных, которые встречаются в позиции чтения
      * (всё кроме прямой левой части Assign).
@@ -161,8 +179,10 @@ class RemoveUnusedPureVisitor extends BaseVisitor
             }
         }
 
+        // `$x += 1;` и `$i++;` отдельным оператором — только запись; внутри выражения
+        // (`bindValue($i++, ...)`) их значение читается
         foreach ($this->findNode(Node\Expr\AssignOp::class, $nodes) as $assignOp) {
-            if ($assignOp->var instanceof Node\Expr\Variable) {
+            if ($assignOp->var instanceof Node\Expr\Variable && $this->isStatementLevel($assignOp)) {
                 $mutationLhsIds[spl_object_id($assignOp->var)] = true;
             }
         }
@@ -174,7 +194,7 @@ class RemoveUnusedPureVisitor extends BaseVisitor
             ] as $cls
         ) {
             foreach ($this->findNode($cls, $nodes) as $mut) {
-                if ($mut->var instanceof Node\Expr\Variable) {
+                if ($mut->var instanceof Node\Expr\Variable && $this->isStatementLevel($mut)) {
                     $mutationLhsIds[spl_object_id($mut->var)] = true;
                 }
             }
@@ -187,6 +207,46 @@ class RemoveUnusedPureVisitor extends BaseVisitor
         }
 
         return $readVars;
+    }
+
+    private function isPureConstruction(string $className, int $depth): bool
+    {
+        $lower = strtolower(ltrim($className, '\\'));
+        if (isset(self::PURE_BUILTIN_CLASSES[$lower])) {
+            return true;
+        }
+
+        if ($this->classes === null) {
+            $this->classes = [];
+            foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
+                if ($class->name instanceof Node\Identifier) {
+                    $this->classes[strtolower($class->name->toString())] = $class;
+                }
+            }
+        }
+
+        $class = $this->classes[$lower] ?? null;
+        if (!$class instanceof Node\Stmt\Class_ || $depth > 8 || $class->getMethod('__destruct') instanceof Node\Stmt\ClassMethod) {
+            return false;
+        }
+
+        $ctor = $class->getMethod('__construct');
+        if (!$ctor instanceof Node\Stmt\ClassMethod) {
+            return !$class->extends instanceof Node\Name || $this->isPureConstruction($class->extends->toString(), $depth + 1);
+        }
+
+        // Тело — только записи в свои свойства чистыми выражениями
+        return array_all($ctor->stmts ?? [], $this->isPureOwnPropWrite(...));
+    }
+
+    private function isPureOwnPropWrite(Node\Stmt $stmt): bool
+    {
+        return $stmt instanceof Node\Stmt\Expression
+            && $stmt->expr instanceof Node\Expr\Assign
+            && $stmt->expr->var instanceof Node\Expr\PropertyFetch
+            && $stmt->expr->var->var instanceof Node\Expr\Variable
+            && $stmt->expr->var->var->name === 'this'
+            && $this->isPure($stmt->expr->expr);
     }
 
     private function isPure(Node $node): bool
@@ -237,9 +297,15 @@ class RemoveUnusedPureVisitor extends BaseVisitor
             return $this->isPure($node->var) && (!$node->dim instanceof Node\Expr || $this->isPure($node->dim));
         }
 
-        // Dead object creation: if the variable is never read, the allocation is removable
+        // Создание объекта удаляемо, только если конструктор не трогает ничего, кроме
+        // своих свойств: `static::$registry[...]++` в конструкторе — побочный эффект
         if ($node instanceof Node\Expr\New_) {
-            return true;
+            return $node->class instanceof Node\Name
+                && array_all(
+                    $node->args,
+                    fn(Node\Arg|Node\VariadicPlaceholder|Node\ArgPlaceholder $arg): bool => $arg instanceof Node\Arg && $this->isPure($arg->value),
+                )
+                && $this->isPureConstruction($node->class->toString(), 0);
         }
 
         if ($node instanceof Node\Expr\Ternary) {

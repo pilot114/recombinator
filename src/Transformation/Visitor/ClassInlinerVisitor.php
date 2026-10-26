@@ -4,8 +4,10 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor;
 use PhpParser\NodeVisitorAbstract;
 use Recombinator\Core\Config;
+use Recombinator\Transformation\BodyInliner;
 
 /**
  * Инлайнинг классов:
@@ -41,9 +43,20 @@ class ClassInlinerVisitor extends BaseVisitor
 
     private readonly Config $config;
 
+    /** @var array<string, true> имена переменных в коде */
+    private array $usedVars = [];
+
+    /**
+     * Вызовы методов, стоящие отдельным оператором (`$obj->m();`).
+     *
+     * @var \SplObjectStorage<Node\Expr\MethodCall, true>
+     */
+    private \SplObjectStorage $statementCalls;
+
     public function __construct(?Config $config = null)
     {
         $this->config = $config ?? new Config();
+        $this->statementCalls = new \SplObjectStorage();
     }
 
     #[\Override]
@@ -51,6 +64,13 @@ class ClassInlinerVisitor extends BaseVisitor
     {
         parent::beforeTraverse($nodes);
         $this->safeClasses = [];
+        $this->statementCalls = new \SplObjectStorage();
+        $this->usedVars       = BodyInliner::ownScopeVars($nodes);
+        foreach ($this->findNode(Node\Stmt\Expression::class, $nodes) as $stmt) {
+            if ($stmt->expr instanceof Node\Expr\MethodCall) {
+                $this->statementCalls[$stmt->expr] = true;
+            }
+        }
 
         // Build varName → className map from $var = new ClassName(...) patterns
         /** @var array<string, string> $varToClass */
@@ -188,8 +208,7 @@ class ClassInlinerVisitor extends BaseVisitor
                     continue;
                 }
 
-                $stmts = $method->stmts;
-                if ($stmts === null || count($stmts) !== 1 || !($stmts[0] instanceof Node\Stmt\Return_)) {
+                if (!$this->isCallInlinable($method, $call)) {
                     unset($this->safeClasses[$className]);
                     break;
                 }
@@ -197,6 +216,106 @@ class ClassInlinerVisitor extends BaseVisitor
         }
 
         return null;
+    }
+
+    /**
+     * Вызов можно встроить, если метод — единственный return (подставляется как выражение)
+     * или процедура без return, вызванная отдельным оператором (подставляется телом).
+     */
+    private function isCallInlinable(Node\Stmt\ClassMethod $method, Node\Expr\MethodCall $call): bool
+    {
+        $stmts = $method->stmts;
+        if ($stmts !== null && count($stmts) === 1 && $stmts[0] instanceof Node\Stmt\Return_) {
+            return true;
+        }
+
+        return isset($this->statementCalls[$call]) && $this->isInlinableProcedure($method);
+    }
+
+    /**
+     * Процедура, тело которой можно встроить на место вызова-оператора:
+     * нет return (поток управления линейный), $this используется только как $this->prop
+     * (сам объект после инлайна не существует), нет динамического доступа к переменным.
+     */
+    private function isInlinableProcedure(Node\Stmt\ClassMethod $method): bool
+    {
+        if ($method->stmts === null || $method->byRef || $method->isStatic()) {
+            return false;
+        }
+
+        foreach ($method->params as $param) {
+            if ($param->byRef || $param->variadic) {
+                return false;
+            }
+        }
+
+        $ok = true;
+        $traverser = new NodeTraverser(new class ($ok) extends NodeVisitorAbstract {
+            private int $functionDepth = 0;
+
+            /**
+             * Узлы-переменные this в разрешённой позиции this->prop.
+             *
+             * @var \SplObjectStorage<Node\Expr\Variable, true>
+             */
+            private readonly \SplObjectStorage $propThis;
+
+            public function __construct(private bool &$ok)
+            {
+                $this->propThis = new \SplObjectStorage();
+            }
+
+            public function enterNode(Node $node): ?int
+            {
+                if ($node instanceof Node\FunctionLike) {
+                    $this->functionDepth++;
+                }
+
+                if (
+                    $node instanceof Node\Expr\PropertyFetch
+                    && $node->var instanceof Node\Expr\Variable
+                    && $node->var->name === 'this'
+                    && $node->name instanceof Node\Identifier
+                ) {
+                    $this->propThis[$node->var] = true;
+                }
+
+                // return во вложенной функции не прерывает метод, но $this в замыкании
+                // ссылается на объект — проверяем его и там
+                if ($node instanceof Node\Stmt\Return_ && $this->functionDepth === 0) {
+                    $this->ok = false;
+                } elseif ($node instanceof Node\Expr\Variable && !is_string($node->name)) {
+                    $this->ok = false;
+                } elseif (
+                    $node instanceof Node\Expr\FuncCall
+                    && $node->name instanceof Node\Name
+                    && in_array(strtolower($node->name->toString()), ['compact', 'extract', 'get_defined_vars', 'func_get_args'], true)
+                ) {
+                    $this->ok = false;
+                } elseif (
+                    $node instanceof Node\Expr\Variable
+                    && $node->name === 'this'
+                    // во вложенном замыкании $obj__prop не был бы захвачен
+                    && ($this->functionDepth > 0 || !isset($this->propThis[$node]))
+                ) {
+                    $this->ok = false;
+                }
+
+                return $this->ok ? null : NodeVisitor::STOP_TRAVERSAL;
+            }
+
+            public function leaveNode(Node $node): null
+            {
+                if ($node instanceof Node\FunctionLike) {
+                    $this->functionDepth--;
+                }
+
+                return null;
+            }
+        });
+        $traverser->traverse($method->stmts);
+
+        return $ok;
     }
 
     public function enterNode(Node $node): int|Node|array|null
@@ -235,7 +354,24 @@ class ClassInlinerVisitor extends BaseVisitor
             return null;
         }
 
-        // 3. $obj->method($args)
+        // 3. $obj->procedure($args); — вызов-оператор метода без return
+        if (
+            $node instanceof Node\Stmt\Expression
+            && $node->expr instanceof Node\Expr\MethodCall
+            && $node->expr->var instanceof Node\Expr\Variable
+            && is_string($node->expr->var->name)
+            && $node->expr->name instanceof Node\Identifier
+        ) {
+            $stmts = $this->processProcedureCall($node->expr);
+            if ($stmts !== null) {
+                $node->setAttribute('replace', $stmts);
+                return NodeVisitor::DONT_TRAVERSE_CHILDREN;
+            }
+
+            return null;
+        }
+
+        // 4. $obj->method($args)
         if (
             $node instanceof Node\Expr\MethodCall
             && $node->var instanceof Node\Expr\Variable
@@ -245,7 +381,7 @@ class ClassInlinerVisitor extends BaseVisitor
             return $this->processMethodCall($node);
         }
 
-        // 4. $obj->prop
+        // 5. $obj->prop
         if (
             $node instanceof Node\Expr\PropertyFetch
             && $node->var instanceof Node\Expr\Variable
@@ -336,8 +472,7 @@ class ClassInlinerVisitor extends BaseVisitor
                 continue;
             }
 
-            $stmts = $method->stmts;
-            if ($stmts === null || count($stmts) !== 1 || !($stmts[0] instanceof Node\Stmt\Return_)) {
+            if (!$this->isCallInlinable($method, $call)) {
                 return false;
             }
         }
@@ -438,6 +573,72 @@ class ClassInlinerVisitor extends BaseVisitor
 
         $method = $this->classRegistry[$className]['methods'][$methodName];
         return $this->inlineMethodExpr($method, $node->args, $propVars, $className);
+    }
+
+    /**
+     * Встраивает тело процедуры на место вызова-оператора:
+     *   $b->set('a', $x);  →  $set_k_1 = 'a'; $set_v_1 = $x; $b__items[$set_k_1] = $set_v_1;
+     * Аргументы вычисляются в прежнем порядке до тела; локальные переменные метода
+     * переименовываются, чтобы не пересечься с переменными вызывающего кода.
+     *
+     * @return array<Node\Stmt>|null
+     */
+    private function processProcedureCall(Node\Expr\MethodCall $call): ?array
+    {
+        $varName = $call->var->name;
+        if (!is_string($varName) || !isset($this->instanceRegistry[$varName]) || !$call->name instanceof Node\Identifier) {
+            return null;
+        }
+
+        ['className' => $className, 'propVars' => $propVars] = $this->instanceRegistry[$varName];
+        $method = $this->classRegistry[$className]['methods'][$call->name->name] ?? null;
+        if ($method === null || !$this->isInlinableProcedure($method)) {
+            return null;
+        }
+
+        // $this->prop → $obj__prop; после этого $this в теле не остаётся
+        $body = [];
+        foreach ($method->stmts ?? [] as $stmt) {
+            [$cloned] = new NodeTraverser(new class ($propVars) extends NodeVisitorAbstract {
+                /** @param array<string, string> $propVars */
+                public function __construct(private readonly array $propVars)
+                {
+                }
+
+                public function leaveNode(Node $node): ?Node
+                {
+                    if (
+                        $node instanceof Node\Expr\PropertyFetch
+                        && $node->var instanceof Node\Expr\Variable
+                        && $node->var->name === 'this'
+                        && $node->name instanceof Node\Identifier
+                        && isset($this->propVars[$node->name->name])
+                    ) {
+                        return new Node\Expr\Variable($this->propVars[$node->name->name]);
+                    }
+
+                    return null;
+                }
+            })->traverse([$this->deepClone($stmt)]);
+            if ($cloned instanceof Node\Stmt) {
+                $body[] = $cloned;
+            }
+        }
+
+        if (BodyInliner::usesThis($body)) {
+            return null;
+        }
+
+        return BodyInliner::inline(
+            $method->params,
+            $call->args,
+            $body,
+            $call->name->name,
+            null,
+            $className,
+            $this->usedVars,
+            array_fill_keys(array_values($propVars), true),
+        );
     }
 
     private function processPropertyFetch(string $varName, string $propName): ?Node\Expr
@@ -621,13 +822,23 @@ class ClassInlinerVisitor extends BaseVisitor
             ) {
             }
 
-            public function enterNode(Node $node): ?Node
+            /**
+             * Параметр подставляется в leaveNode: подставленный аргумент не обходится
+             * повторно (иначе `m($x->a())` при параметре `$x` подставил бы узел сам в себя).
+             */
+            public function leaveNode(Node $node): ?Node
             {
-                // Replace parameter variables: $param → arg value
                 if ($node instanceof Node\Expr\Variable && is_string($node->name) && isset($this->paramMap[$node->name])) {
-                    return $this->paramMap[$node->name];
+                    [$clone] = new NodeTraverser(new \PhpParser\NodeVisitor\CloningVisitor())->traverse([$this->paramMap[$node->name]]);
+
+                    return $clone instanceof Node\Expr ? $clone : null;
                 }
 
+                return null;
+            }
+
+            public function enterNode(Node $node): ?Node
+            {
                 // Replace $this->prop → $generatedVarName
                 if (
                     $node instanceof Node\Expr\PropertyFetch

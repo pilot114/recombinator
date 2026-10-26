@@ -198,3 +198,30 @@ class Math {
         expect($result)->not->toContain('const PI');
     }
 );
+
+it('takes the constant of its own class, not a same-named one', function (): void {
+    $code = '<?php class A { const STRING = 1; } class B { const STRING = 2; } $x = [A::STRING, B::STRING];';
+    $ast  = new NodeTraverser($this->visitor)->traverse($this->parser->parse($code));
+
+    expect($this->printer->prettyPrint($ast))->toContain('$x = [1, 2];');
+});
+
+it('finds inherited constants and leaves enum cases and static:: with subclasses', function (): void {
+    $code = '<?php interface I { const V = "i"; } class P implements I { const W = self::V . "p"; function f() { return static::W; } }
+        class C extends P { const W = "c"; } enum E: int { case A = 1; const B = self::A; }
+        $x = [C::V, P::W, E::A, E::B];';
+    $ast    = new NodeTraverser($this->visitor)->traverse($this->parser->parse($code));
+    $result = $this->printer->prettyPrint($ast);
+
+    expect($result)
+        ->toContain('$x = ["i", "i" . "p", E::A, E::A];')
+        ->toContain('return static::W;')
+        ->toContain('const W = "c";');
+});
+
+it('keeps constants when names are built at runtime', function (): void {
+    $code = '<?php class M { const TYPE_AUTO = 1; } $x = constant("M::TYPE_" . $s);';
+    $ast  = new NodeTraverser($this->visitor)->traverse($this->parser->parse($code));
+
+    expect($this->printer->prettyPrint($ast))->toContain('const TYPE_AUTO = 1;');
+});

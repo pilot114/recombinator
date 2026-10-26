@@ -1,20 +1,35 @@
 <?php
 
-# Прочее
-declare (strict_types=1);
-
 # Вывод
-echo 'Admitted: 3' . PHP_EOL . ('rex says Woof! (canidae)' . PHP_EOL) . ('milo says Woof! (canidae)' . PHP_EOL) . ('Whiskers purrs softly...
-' . ('Dog #0: Rex' . PHP_EOL . ('Dog #1: Milo' . PHP_EOL)) . ('Total: 3' . PHP_EOL)) . ('Split: 7/8' . PHP_EOL . 'tick 4
+echo 'Admitted: 3
+rex says Woof! (canidae)
+milo says Woof! (canidae)
+Whiskers purrs softly...
+Dog #0: Rex
+Dog #1: Milo
+Total: 3
+Split: 7/16
+tick 4
 tick 2
-') . ("greater" . PHP_EOL);
-
-# Вычисления
-print 'is animal' . PHP_EOL;
-
-# Вывод
-echo <<<'NOWDOC'
+greater
+is animal
 no $interpolation here, literal {$placeholder}
-NOWDOC . PHP_EOL . (42 . PHP_EOL) . (42 . PHP_EOL) . ('Whiskers the cat, age 7' . PHP_EOL) . ('Whiskers performs jump' . PHP_EOL) . ('Result: null' . PHP_EOL) . ('Rex the dog, age 4' . PHP_EOL) . ('>> tagged' . PHP_EOL) . (15 . PHP_EOL) . ('empty' . PHP_EOL) . ('Berlin' . PHP_EOL) . ('Rex II the dog, age 4' . PHP_EOL . 'terminal' . PHP_EOL . ('--- Shelter log ---
-
---- end ---' . PHP_EOL));
+42
+42
+Whiskers the cat, age 7
+Whiskers performs jump
+Result: null
+Rex the dog, age 4
+>> tagged
+15
+empty
+Berlin
+Rex II the dog, age 4
+terminal
+--- Shelter log ---
+[ERROR] No such animal
+[INFO] guarded call completed
+--- end ---
+SyntaxZoo_Dog=3 
+SyntaxZoo_Cat=1 
+';

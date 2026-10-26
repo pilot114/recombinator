@@ -139,3 +139,33 @@ if (isset($value)) {
         expect($result)->toContain('$default = $value ?? $default');
     }
 );
+
+it('keeps false in strict comparison', function (): void {
+    $ast = $this->parser->parse('<?php if ($result === false) { return null; }');
+    $traverser = new NodeTraverser();
+    $traverser->addVisitor($this->visitor);
+
+    $result = $this->printer->prettyPrint($traverser->traverse($ast));
+
+    expect($result)->toContain('$result === false');
+});
+
+it('casts bool in arithmetic', function (): void {
+    $ast = $this->parser->parse('<?php $x = 2 + true;');
+    $traverser = new NodeTraverser();
+    $traverser->addVisitor($this->visitor);
+
+    $result = $this->printer->prettyPrint($traverser->traverse($ast));
+
+    expect($result)->toContain('$x = 3;');
+});
+
+it('keeps an isset guard around an assignment of a different value', function (): void {
+    $code = '<?php if (isset($d["min"])) { $c[] = "CHECK " . $d["min"]; } if (isset($x)) { $y = $x . "!"; }';
+    $ast  = new PhpParser\ParserFactory()->createForNewestSupportedVersion()->parse($code) ?? [];
+    $ast  = new PhpParser\NodeTraverser(new Recombinator\Transformation\Visitor\BinaryAndIssetVisitor())->traverse($ast);
+
+    $out  = new PhpParser\PrettyPrinter\Standard()->prettyPrint($ast);
+
+    expect($out)->toContain('if (isset($d["min"]))')->toContain('if (isset($x))');
+});

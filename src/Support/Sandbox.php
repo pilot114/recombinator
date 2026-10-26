@@ -109,7 +109,7 @@ class Sandbox
         'array_values', 'arsort', 'asort', 'compact', 'count', 'current',
         'each', 'end', 'extract', 'in_array', 'key', 'key_exists', 'krsort',
         'ksort', 'list', 'natcasesort', 'natsort', 'next', 'pos', 'prev',
-        'range', 'reset', 'rsort', 'shuffle', 'sizeof', 'sort', 'uasort',
+        'range', 'reset', 'rsort', 'sizeof', 'sort', 'uasort',
         'uksort', 'usort',
 
         // Типы и проверки
@@ -138,6 +138,12 @@ class Sandbox
     ];
 
     private readonly StandardPrinter $printer;
+
+    /** Детерминированная встроенная функция без побочных эффектов. */
+    public static function isPureFunction(string $name): bool
+    {
+        return in_array(strtolower($name), self::ALLOWED_PURE_FUNCTIONS, true);
+    }
 
     private readonly SandboxRunner $runner;
 
@@ -263,7 +269,15 @@ class Sandbox
 
         // Оборачиваем результат в объект с ключом 'v', чтобы null-результат
         // был отличим от «нет вывода / ошибка». Поддерживает многострочные выражения.
-        $code .= 'echo json_encode(["v" => (' . $this->printer->prettyPrint([$node]) . ')]);';
+        // JSON_THROW_ON_ERROR: несериализуемый результат (например, chr(200) — не UTF-8)
+        // становится детерминированной ошибкой, которая кешируется, а не пустым выводом.
+        // Объект в JSON превратился бы в массив: `Builder::make()->build()` → `[]->build()`.
+        // Результат с объектом (или ресурсом) — ошибка выполнения, а не значение
+        $code .= '$__v = (' . $this->printer->prettyPrint([$node]) . ');' . "\n"
+            . '$__plain = static function ($v) use (&$__plain): bool { '
+            . 'return is_array($v) ? array_all($v, $__plain) : !is_object($v) && !is_resource($v); };' . "\n"
+            . 'if (!$__plain($__v)) { throw new \\LogicException("Result is not a plain value"); }' . "\n"
+            . 'echo json_encode(["v" => $__v], JSON_THROW_ON_ERROR);';
 
         return $code;
     }

@@ -28,7 +28,18 @@ class BinaryAndIssetVisitor extends BaseVisitor
             $firstStmt = $node->stmts[0];
             if ($firstStmt instanceof Expression) {
                 $expr = $firstStmt->expr;
-                if ($expr instanceof Assign) {
+                // Только `$y = $x` с тем же $x, что в isset: иначе условие теряется
+                // (`if (isset($d['min'])) $c[] = 'CHECK ' . $d['min'];` выполнялось бы всегда).
+                // `$c[] = …` справа от ?? прочитать нельзя.
+                $printer = new \PhpParser\PrettyPrinter\Standard();
+                if (
+                    $expr instanceof Assign
+                    && count($node->cond->vars) === 1
+                    && $node->elseifs === []
+                    && !$node->else instanceof Node\Stmt\Else_
+                    && $printer->prettyPrintExpr($node->cond->vars[0]) === $printer->prettyPrintExpr($expr->expr)
+                    && (!$expr->var instanceof Node\Expr\ArrayDimFetch || $expr->var->dim instanceof Node\Expr)
+                ) {
                     // Safe default: var ?? null prevents "Undefined variable" warning
                     // when $var had no prior assignment, while still preserving an
                     // existing value when $source is absent.
@@ -58,6 +69,19 @@ class BinaryAndIssetVisitor extends BaseVisitor
          *  Process on leave (bottom-up) so nested operations are calculated first
          */
         if ($node instanceof Node\Expr\BinaryOp) {
+            // true/false → 1/0 и '1'/'' корректно только там, где PHP сам приводит тип:
+            // в арифметике и конкатенации. В сравнениях (`$x === false`) и логике — нельзя.
+            $coercesBool = $node instanceof Node\Expr\BinaryOp\Concat
+                || $node instanceof Node\Expr\BinaryOp\Plus
+                || $node instanceof Node\Expr\BinaryOp\Minus
+                || $node instanceof Node\Expr\BinaryOp\Mul
+                || $node instanceof Node\Expr\BinaryOp\Div
+                || $node instanceof Node\Expr\BinaryOp\Mod
+                || $node instanceof Node\Expr\BinaryOp\Pow;
+            if (!$coercesBool) {
+                return parent::leaveNode($node);
+            }
+
             if ($node->right instanceof Node\Expr\ConstFetch) {
                 $node->right = $this->booleanBinaryTyping($node, $node->right);
             }

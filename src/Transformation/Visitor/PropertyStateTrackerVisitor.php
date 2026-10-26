@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Transformation\BodyInliner;
 
 /**
  * Отслеживает значения свойств объектов, назначенных на верхнем уровне,
@@ -18,6 +19,12 @@ use PhpParser\Node;
  *
  * Работает только с присваиваниями на верхнем уровне файла (не внутри условий/циклов),
  * и только для позиций чтения (не LHS присваивания).
+ *
+ * Значение известно, только пока ни переменная, ни свойство не перезаписаны:
+ * переменная должна присваиваться в своей области ровно один раз (иначе
+ * `$c = $c->inc()` в цикле читал бы начальное значение), в свойство не должно быть
+ * других записей. Подстановка — только в коде верхнего уровня: в функциях и методах
+ * `$var` — другая переменная, а замыкание может выполниться позже записи.
  */
 #[VisitorMeta('Подстановка значений свойств объектов из топ-уровневых присваиваний')]
 class PropertyStateTrackerVisitor extends BaseVisitor
@@ -25,11 +32,15 @@ class PropertyStateTrackerVisitor extends BaseVisitor
     /** @var array<string, array<string, Node\Expr>> varName → propName → expr */
     private array $propValues = [];
 
+    /** Глубина вложенных функций, методов, замыканий и классов. */
+    private int $scopeDepth = 0;
+
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
         $this->propValues = [];
+        $this->scopeDepth = 0;
 
         foreach ($nodes as $stmt) {
             if (!$stmt instanceof Node\Stmt\Expression) {
@@ -66,7 +77,76 @@ class PropertyStateTrackerVisitor extends BaseVisitor
             }
         }
 
+        $this->dropOverwritten($nodes);
+
         return null;
+    }
+
+    /**
+     * Убирает переменные, присвоенные больше одного раза, и свойства, в которые
+     * пишут не только в отслеживаемом присваивании.
+     *
+     * @param array<Node> $nodes
+     */
+    private function dropOverwritten(array $nodes): void
+    {
+        if ($this->propValues === []) {
+            return;
+        }
+
+        foreach (ObjectMethodInlinerVisitor::topLevelAssignCounts($nodes) as $var => $count) {
+            if ($count > 1) {
+                unset($this->propValues[$var]);
+            }
+        }
+
+        $propWrites = [];
+        BodyInliner::walkOwnScope($nodes, static function (Node $node) use (&$propWrites): void {
+            $target = match (true) {
+                $node instanceof Node\Expr\Assign, $node instanceof Node\Expr\AssignOp, $node instanceof Node\Expr\AssignRef,
+                $node instanceof Node\Expr\PreInc, $node instanceof Node\Expr\PreDec,
+                $node instanceof Node\Expr\PostInc, $node instanceof Node\Expr\PostDec => $node->var,
+                default => null,
+            };
+            while ($target instanceof Node\Expr\ArrayDimFetch) {
+                $target = $target->var;
+            }
+
+            if (
+                $target instanceof Node\Expr\PropertyFetch
+                && $target->var instanceof Node\Expr\Variable
+                && is_string($target->var->name)
+                && $target->name instanceof Node\Identifier
+            ) {
+                $key              = $target->var->name . '->' . $target->name->toString();
+                $propWrites[$key] = ($propWrites[$key] ?? 0) + ($node instanceof Node\Expr\Assign && $target === $node->var ? 1 : 2);
+            }
+        });
+
+        foreach ($propWrites as $key => $count) {
+            [$var, $prop] = explode('->', $key, 2);
+            if ($count > 1) {
+                unset($this->propValues[$var][$prop]);
+            }
+        }
+    }
+
+    #[\Override]
+    public function enterNode(Node $node): int|Node|array|null
+    {
+        if ($this->isScope($node)) {
+            $this->scopeDepth++;
+        }
+
+        return null;
+    }
+
+    private function isScope(Node $node): bool
+    {
+        return $node instanceof Node\Stmt\ClassLike
+            || $node instanceof Node\Stmt\Function_
+            || $node instanceof Node\Stmt\ClassMethod
+            || $node instanceof Node\Expr\Closure;
     }
 
     /**
@@ -245,8 +325,13 @@ class PropertyStateTrackerVisitor extends BaseVisitor
     #[\Override]
     public function leaveNode(Node $node): int|Node|array|null
     {
+        if ($this->isScope($node)) {
+            $this->scopeDepth--;
+        }
+
         if (
-            ($node instanceof Node\Expr\PropertyFetch || $node instanceof Node\Expr\NullsafePropertyFetch)
+            $this->scopeDepth === 0
+            && ($node instanceof Node\Expr\PropertyFetch || $node instanceof Node\Expr\NullsafePropertyFetch)
             && $node->name instanceof Node\Identifier
         ) {
             // Resolve both $var->prop and (clone $var)->prop with the same known value

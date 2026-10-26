@@ -57,8 +57,8 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
                 is_string($stmt->expr->var->name)
             ) {
                 try {
-                    $this->knownVars[$stmt->expr->var->name] = $this->resolveToValue($stmt->expr->expr);
-                } catch (\RuntimeException) {
+                    $this->knownVars[$stmt->expr->var->name] = $this->resolveStrict($stmt->expr->expr);
+                } catch (\RuntimeException | \Error) {
                     // не константное выражение — пропускаем
                 }
             }
@@ -93,9 +93,9 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
                     return null; // spread/variadic — пропускаем
                 }
 
-                $resolvedArgs[] = $this->resolveToValue($arg->value);
+                $resolvedArgs[] = $this->resolveStrict($arg->value);
             }
-        } catch (\RuntimeException) {
+        } catch (\RuntimeException | \Error) {
             return null;
         }
 
@@ -155,6 +155,24 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
         }
 
         return true;
+    }
+
+    /**
+     * Как resolveToValue, но предупреждение PHP (например, конкатенация массива
+     * со строкой) считается неконстантным выражением, а не даёт неверное значение.
+     *
+     * @throws \RuntimeException
+     */
+    private function resolveStrict(Node $node): mixed
+    {
+        set_error_handler(static function (int $errno, string $message): never {
+            throw new \RuntimeException($message);
+        });
+        try {
+            return $this->resolveToValue($node);
+        } finally {
+            restore_error_handler();
+        }
     }
 
     /**

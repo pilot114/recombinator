@@ -28,10 +28,14 @@ function applyCoalesceRemove(string $code): string
     return $printer->prettyPrint($ast);
 }
 
-it('removes trailing ?? null from variable', function (): void {
-    $result = applyCoalesceRemove('<?php $x = $a ?? null;');
-    expect($result)->toContain('$x = $a');
-    expect($result)->not->toContain('?? null');
+it('keeps ?? null that guards an undefined variable, key or property', function (string $expr): void {
+    $result = applyCoalesceRemove('<?php $x = ' . $expr . ' ?? null;');
+    expect($result)->toContain('?? null');
+})->with(['$a', '$a["k"]', '$o->p', 'C::$p', '$a ?? $b']);
+
+it('removes trailing ?? null from a call result', function (): void {
+    $result = applyCoalesceRemove('<?php $x = f() ?? null;');
+    expect($result)->toContain('$x = f();');
 });
 
 it('removes trailing ?? null from scalar', function (): void {
@@ -41,9 +45,8 @@ it('removes trailing ?? null from scalar', function (): void {
 });
 
 it('removes nested trailing ?? null in one pass', function (): void {
-    // $a ?? ($b ?? null) → $a ?? $b
-    $result = applyCoalesceRemove('<?php $x = $a ?? $b ?? null;');
-    expect($result)->toContain('$x = $a ?? $b');
+    $result = applyCoalesceRemove('<?php $x = $a ?? f() ?? null;');
+    expect($result)->toContain('$x = $a ?? f()');
     expect($result)->not->toContain('?? null');
 });
 
@@ -58,14 +61,13 @@ it('does not remove ?? when right side is a variable', function (): void {
 });
 
 it('removes ?? null in function argument', function (): void {
-    $result = applyCoalesceRemove('<?php foo($a ?? null);');
-    expect($result)->toContain('foo($a)');
+    $result = applyCoalesceRemove('<?php foo(bar() ?? null);');
+    expect($result)->toContain('foo(bar())');
     expect($result)->not->toContain('?? null');
 });
 
-it('removes ?? null produced by BinaryAndIsset pattern', function (): void {
-    // Simulates: $username = $source ?? ($username ?? null)
+it('keeps ?? null produced by BinaryAndIsset pattern', function (): void {
+    // $username может быть не определена: без ?? null — «Undefined variable»
     $result = applyCoalesceRemove('<?php $username = $source ?? ($username ?? null);');
-    expect($result)->toContain('$username = $source ?? $username');
-    expect($result)->not->toContain('?? null');
+    expect($result)->toContain('$username = $source ?? $username ?? null');
 });

@@ -32,21 +32,21 @@ it('removes interface declaration', function (): void {
 });
 
 it('removes implements from class', function (): void {
-    $result = applyRemoveInterfaces('<?php class Foo implements Bar { }');
+    $result = applyRemoveInterfaces('<?php interface Bar {} class Foo implements Bar { }');
     expect($result)
         ->toContain('class Foo')
         ->not->toContain('implements');
 });
 
 it('removes multiple implements', function (): void {
-    $result = applyRemoveInterfaces('<?php class Foo implements Bar, Baz, Qux { }');
+    $result = applyRemoveInterfaces('<?php interface Bar {} interface Baz {} interface Qux {} class Foo implements Bar, Baz, Qux { }');
     expect($result)
         ->toContain('class Foo')
         ->not->toContain('implements');
 });
 
 it('keeps class body intact', function (): void {
-    $result = applyRemoveInterfaces('<?php class Foo implements Bar { public function x(): int { return 1; } }');
+    $result = applyRemoveInterfaces('<?php interface Bar {} class Foo implements Bar { public function x(): int { return 1; } }');
     expect($result)
         ->toContain('public function x()')
         ->not->toContain('implements');
@@ -68,4 +68,32 @@ it('does not touch classes without implements', function (): void {
         ->toContain('class Plain')
         ->toContain('public function foo()')
         ->not->toContain('implements');
+});
+
+it('keeps built-in and type-checked interfaces', function (): void {
+    $result = applyRemoveInterfaces(
+        '<?php interface Base {} interface Container extends Base {} interface Unused {}
+        class C implements Countable, Container, Unused { function count(): int { return 0; } }
+        function f(Container $c) {}',
+    );
+
+    expect($result)
+        ->toContain('class C implements Countable, Container')
+        ->toContain('interface Container extends Base')
+        ->toContain('interface Base')
+        ->not->toContain('interface Unused');
+});
+
+it('keeps interfaces while includes are pending', function (): void {
+    $result = applyRemoveInterfaces('<?php interface Bar {} class Foo implements Bar {} require "more.php";');
+    expect($result)->toContain('interface Bar')->toContain('implements Bar');
+});
+
+it('keeps type-checked ancestors of removed interfaces', function (): void {
+    $result = applyRemoveInterfaces(
+        '<?php interface Dispatcher {} interface Manager extends Dispatcher {} class M implements Manager {}
+        class U { private Dispatcher $d; }',
+    );
+
+    expect($result)->not->toContain('interface Manager')->toContain('class M implements Dispatcher');
 });

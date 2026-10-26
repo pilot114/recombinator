@@ -22,7 +22,12 @@ class PropertyAccessVisitor extends BaseVisitor
     {
         // Обработка $object->property
         // Получаем имя объекта
-        if ($node instanceof Node\Expr\PropertyFetch && $node->var instanceof Node\Expr\Variable) {
+        if (
+            $node instanceof Node\Expr\PropertyFetch
+            && $node->var instanceof Node\Expr\Variable
+            && is_string($node->var->name)
+            && $node->name instanceof Node\Identifier
+        ) {
             $instanceName = $node->var->name;
             $propertyName = $node->name->name;
             // Ищем класс и инстанс объекта

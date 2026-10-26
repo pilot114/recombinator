@@ -27,6 +27,19 @@ class BaseVisitor extends NodeVisitorAbstract
         return null;
     }
 
+    /**
+     * Есть ли include, который FileMapIncludeVisitor ещё может встроить: правила,
+     * необратимо меняющие код по всей программе (снять implements, extends), должны
+     * дождаться его — подключаемый файл может зависеть от того, что они уберут.
+     */
+    protected function hasPendingIncludes(): bool
+    {
+        return new NodeFinder()->findFirst(
+            $this->ast,
+            static fn(Node $node): bool => $node instanceof Node\Expr\Include_ && $node->getAttribute('includeUnresolvable') !== true,
+        ) instanceof Node;
+    }
+
     public function afterTraverse(array $nodes): ?array
     {
         //        echo sprintf("*** %s end ***\n", (new \ReflectionClass(static::class))->getShortName());

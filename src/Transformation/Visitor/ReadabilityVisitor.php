@@ -140,7 +140,7 @@ class ReadabilityVisitor extends BaseVisitor
      */
     private function collectExtractable(Node $node, ?Node $skip, array &$result): void
     {
-        foreach ($node->getSubNodeNames() as $subName) {
+        foreach ($this->unconditionalSubNodeNames($node) as $subName) {
             $value = $node->$subName;
 
             if ($this->isExtractable($value) && $value !== $skip) {
@@ -159,6 +159,28 @@ class ReadabilityVisitor extends BaseVisitor
                 }
             }
         }
+    }
+
+    /**
+     * Подузлы, которые вычисляются всегда и в той же области видимости, что и оператор.
+     * Вынос выражения в $tmp перед оператором делает его безусловным, поэтому нельзя:
+     *  - заходить в замыкания/функции/классы (другая область видимости, ленивое выполнение);
+     *  - брать ветки тернарника, match, правую часть &&, ||, ?? (вычисляются по условию).
+     *
+     * @return list<string>
+     */
+    private function unconditionalSubNodeNames(Node $node): array
+    {
+        return match (true) {
+            $node instanceof Node\FunctionLike, $node instanceof Node\Stmt\ClassLike => [],
+            $node instanceof Node\Expr\Ternary, $node instanceof Node\Expr\Match_ => ['cond'],
+            $node instanceof Node\Expr\BinaryOp\Coalesce,
+            $node instanceof Node\Expr\BinaryOp\BooleanAnd,
+            $node instanceof Node\Expr\BinaryOp\BooleanOr,
+            $node instanceof Node\Expr\BinaryOp\LogicalAnd,
+            $node instanceof Node\Expr\BinaryOp\LogicalOr => ['left'],
+            default => $node->getSubNodeNames(),
+        };
     }
 
     /**

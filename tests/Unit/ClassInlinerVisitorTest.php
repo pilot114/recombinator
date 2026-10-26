@@ -202,3 +202,75 @@ $x = new Unknown();
     $result = parseAndInline($code);
     expect($result)->toContain('new Unknown()');
 });
+
+it('inlines statement-level procedure call (method without return)', function (): void {
+    $code = '<?php
+class Box {
+    private array $items = [];
+    public function set(string $k, $v): void { $this->items[$k] = $v; }
+    public function get(string $k) { return $this->items[$k]; }
+}
+$b = new Box();
+$b->set("a", f());
+echo $b->get("a");';
+    $result = parseAndInline($code);
+    expect($result)
+        ->not->toContain('class Box')
+        ->toMatch('/\$set_v_(\d+) = f\(\);\s+\$b__items\["a"\] = \$set_v_\1;/')
+        ->toContain('echo $b__items["a"];');
+});
+
+it('renames procedure locals so they do not clash with caller variables', function (): void {
+    $code = '<?php
+class Acc {
+    private $sum = 0;
+    public function add($x) { $tmp = $x * 2; $this->sum = $this->sum + $tmp; }
+    public function total() { return $this->sum; }
+}
+$tmp = 100;
+$a = new Acc();
+$a->add(1);
+echo $a->total() + $tmp;';
+    $result = parseAndInline($code);
+    expect($result)
+        ->not->toContain('class Acc')
+        ->toMatch('/\$add_tmp_(\d+) = 1 \* 2;\s+\$a__sum = \$a__sum \+ \$add_tmp_\1;/')
+        ->toContain('echo $a__sum + $tmp;');
+});
+
+it('keeps class when procedure leaks $this', function (): void {
+    $code = '<?php
+class Reg {
+    public function register($p) { $p->provide($this); }
+}
+$r = new Reg();
+$r->register($x);';
+    $result = parseAndInline($code);
+    expect($result)->toContain('class Reg');
+});
+
+it('keeps class when procedure has early return', function (): void {
+    $code = '<?php
+class G {
+    private $v = 0;
+    public function set($x) { if ($x) { return; } $this->v = 1; }
+}
+$g = new G();
+$g->set(1);';
+    $result = parseAndInline($code);
+    expect($result)->toContain('class G');
+});
+
+it('allows return inside closures in procedure body', function (): void {
+    $code = '<?php
+class C {
+    private array $f = [];
+    public function set($id) { $this->f[$id] = static function () { return 1; }; }
+}
+$c = new C();
+$c->set("x");';
+    $result = parseAndInline($code);
+    expect($result)
+        ->not->toContain('class C')
+        ->toContain('$c__f["x"] = static function () {');
+});

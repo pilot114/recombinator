@@ -28,13 +28,15 @@ use Recombinator\Support\SandboxResult;
 class IndexedPropGetterResolverVisitor extends BaseVisitor
 {
     /**
-     * Статический кэш результатов enum-методов: пережива́ет смену прохода.
+     * Кэш результатов enum-методов: переживает смену прохода (enum к тому времени
+     * может быть уже встроен и удалён), поэтому передаётся снаружи и принадлежит
+     * прогону, а не процессу — иначе enum-ы разных программ смешались бы.
      * enumClass → methodName → caseName → phpValue
      * enumClass → methodName → '__by_value__' → backingValue → phpValue
      *
-     * @var array<string, array<string, array<string, mixed>>>
+     * @var \ArrayObject<string, array<string, array<string, mixed>>>
      */
-    private static array $enumMethodCache = [];
+    private readonly \ArrayObject $enumMethodCache;
 
     /** @var array<string, array{prop: string, keyIdx: int, keyName: string}> className → methodName → info */
     private array $getterInfo = [];
@@ -61,9 +63,13 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
     /**
      * @param Sandbox|null $sandbox общий sandbox позволяет переиспользовать кеш между проходами пайплайна
      */
-    public function __construct(?Sandbox $sandbox = null)
+    /**
+     * @param \ArrayObject<string, array<string, array<string, mixed>>>|null $enumMethodCache общий кэш прогона
+     */
+    public function __construct(?Sandbox $sandbox = null, ?\ArrayObject $enumMethodCache = null)
     {
-        $this->sandbox = $sandbox ?? new Sandbox(new ExecutionCache());
+        $this->sandbox         = $sandbox ?? new Sandbox(new ExecutionCache());
+        $this->enumMethodCache = $enumMethodCache ?? new \ArrayObject();
     }
 
     #[\Override]
@@ -172,7 +178,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
                 $methodName = $stmt->name->toString();
 
                 foreach ($cases as $caseName => $backingExpr) {
-                    if (isset(self::$enumMethodCache[$enumName][$methodName][$caseName])) {
+                    if (isset($this->enumMethodCache[$enumName][$methodName][$caseName])) {
                         continue;
                     }
 
@@ -189,12 +195,12 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
                         continue;
                     }
 
-                    self::$enumMethodCache[$enumName][$methodName][$caseName] = $result->value;
+                    $this->enumMethodCache[$enumName][$methodName][$caseName] = $result->value;
 
                     if ($backingExpr instanceof Node\Scalar\String_) {
-                        self::$enumMethodCache[$enumName][$methodName]['__by_value__'][$backingExpr->value] = $result->value;
+                        $this->enumMethodCache[$enumName][$methodName]['__by_value__'][$backingExpr->value] = $result->value;
                     } elseif ($backingExpr instanceof Node\Scalar\LNumber) {
-                        self::$enumMethodCache[$enumName][$methodName]['__by_value__'][$backingExpr->value] = $result->value;
+                        $this->enumMethodCache[$enumName][$methodName]['__by_value__'][$backingExpr->value] = $result->value;
                     }
                 }
             }
@@ -582,8 +588,8 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
             $enumName = $valueExpr->class->toString();
             $caseName = $valueExpr->name->toString();
 
-            if (isset(self::$enumMethodCache[$enumName][$methodName][$caseName])) {
-                return $this->scalarToNode(self::$enumMethodCache[$enumName][$methodName][$caseName]);
+            if (isset($this->enumMethodCache[$enumName][$methodName][$caseName])) {
+                return $this->scalarToNode($this->enumMethodCache[$enumName][$methodName][$caseName]);
             }
 
             // Fallback: sandbox (enum still in AST in this pass)
@@ -600,7 +606,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
                     );
                     $result = $this->sandbox->execute($callNode, [], $preamble);
                     if ($result instanceof SandboxResult) {
-                        self::$enumMethodCache[$enumName][$methodName][$caseName] = $result->value;
+                        $this->enumMethodCache[$enumName][$methodName][$caseName] = $result->value;
                         return $this->scalarToNode($result->value);
                     }
 
@@ -612,7 +618,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
         // 2. String (backed-enum value, e.g. 'adopted') — look up __by_value__ cache
         if ($valueExpr instanceof Node\Scalar\String_) {
             $backingVal = $valueExpr->value;
-            foreach (self::$enumMethodCache as $methods) {
+            foreach ($this->enumMethodCache as $methods) {
                 if (isset($methods[$methodName]['__by_value__'][$backingVal])) {
                     return $this->scalarToNode($methods[$methodName]['__by_value__'][$backingVal]);
                 }
@@ -644,7 +650,7 @@ class IndexedPropGetterResolverVisitor extends BaseVisitor
                         );
                         $result = $this->sandbox->execute($callNode, [], $preamble);
                         if ($result instanceof SandboxResult) {
-                            self::$enumMethodCache[$enumName][$methodName]['__by_value__'][$backingVal] = $result->value;
+                            $this->enumMethodCache[$enumName][$methodName]['__by_value__'][$backingVal] = $result->value;
                             return $this->scalarToNode($result->value);
                         }
 

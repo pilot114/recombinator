@@ -110,3 +110,49 @@ it('does not inline $x = $x + 1 pattern', function (): void {
     // writeCount($x) = 2 → not eligible
     expect($result)->toContain('$x');
 });
+
+it('does not inline into increment (write context)', function (): void {
+    $result = applyInliner('<?php function f($xs) { $n = 0; foreach ($xs as $x) { $a = "e" . $n++; g($a); } }');
+    expect($result)->toContain('$n = 0;')->toContain('$n++');
+});
+
+it('does not inline a variable read inside a loop that does not contain the assignment', function (): void {
+    $result = applyInliner('<?php $v = expensive(); foreach ($xs as $x) { echo $v; }');
+    expect($result)->toContain('$v = expensive();')->toContain('echo $v;');
+});
+
+it('treats same-named variables in different functions as different variables', function (): void {
+    $result = applyInliner('<?php function a() { $x = 1; } function b($x) { return $x; }');
+    expect($result)->toContain('$x = 1;')->toContain('return $x;');
+});
+
+it('does not inline into parameter declaration when param is reassigned and captured by closure', function (): void {
+    $code = '<?php class A { public function get($key, callable $callback) { '
+        . '$callback = static function ($item) use ($callback) { return $callback($item); }; return g($key, $callback); } }';
+    $result = applyInliner($code);
+    expect($result)->toContain('public function get($key, callable $callback)');
+});
+
+it('does not inline a call into string interpolation', function (): void {
+    $result = applyInliner('<?php $body = implode(",", $xs); echo "log: $body";');
+    expect($result)->toContain('$body = implode')->toContain('"log: {$body}"');
+});
+
+it('does not move a computation past other effects', function (string $code, string $kept): void {
+    expect(applyInliner($code))->toContain($kept);
+})->with([
+    'finally'        => ['<?php function h() { try { $r = f(); } finally { g(); } return $r; }', '$r = f();'],
+    'statement'      => ['<?php $a = f(); g(); echo $a;', '$a = f();'],
+    'earlier call'   => ['<?php $a = f(); echo g() . $a;', '$a = f();'],
+]);
+
+it('inlines into the next statement when nothing runs before the read', function (): void {
+    expect(applyInliner('<?php $a = f(); echo $a . g();'))->toContain('echo f() . g();');
+});
+
+it('does not inline into a by-reference parameter of a method', function (): void {
+    $result = applyInliner('<?php class U { function persist($e) { $visited = []; $this->doPersist($e, $visited); }
+        private function doPersist($e, array &$visited) {} }');
+
+    expect($result)->toContain('$this->doPersist($e, $visited);');
+});

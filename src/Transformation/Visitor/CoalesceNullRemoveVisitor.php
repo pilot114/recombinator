@@ -11,9 +11,13 @@ use PhpParser\Node;
  *
  * X ?? null  →  X
  *
- * Паттерн всегда избыточен:
+ * Паттерн избыточен по значению:
  *   - если X !== null  →  результат X  (одинаково с оператором и без)
  *   - если X === null  →  результат null  (одинаково с оператором и без)
+ *
+ * Но ?? ещё и подавляет предупреждение о несуществующих переменной, ключе массива,
+ * свойстве: `$params['driverClass'] ?? null` без ?? даёт «Undefined array key».
+ * Поэтому X — не обращение к переменной, элементу или свойству.
  *
  * Работает снизу вверх, поэтому цепочки сворачиваются за один проход:
  *   $a ?? ($b ?? null)  →  $a ?? $b
@@ -29,6 +33,7 @@ class CoalesceNullRemoveVisitor extends BaseVisitor
             if (
                 $node->right instanceof Node\Expr\ConstFetch
                 && strtolower($node->right->name->toString()) === 'null'
+                && !$this->mayBeUndefined($node->left)
             ) {
                 return $node->left;
             }
@@ -56,5 +61,18 @@ class CoalesceNullRemoveVisitor extends BaseVisitor
         }
 
         return parent::leaveNode($node);
+    }
+
+    private function mayBeUndefined(Node\Expr $expr): bool
+    {
+        if ($expr instanceof Node\Expr\BinaryOp\Coalesce) {
+            return $this->mayBeUndefined($expr->right);
+        }
+
+        return $expr instanceof Node\Expr\Variable
+            || $expr instanceof Node\Expr\ArrayDimFetch
+            || $expr instanceof Node\Expr\PropertyFetch
+            || $expr instanceof Node\Expr\NullsafePropertyFetch
+            || $expr instanceof Node\Expr\StaticPropertyFetch;
     }
 }

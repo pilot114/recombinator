@@ -35,6 +35,13 @@ class VarToScalarVisitor extends BaseVisitor
      */
     private array $conditionalAssignedVars = [];
 
+    /**
+     * Случаи enum (`lowercase enum::case`): объект-одиночка, неизменяемый, как константа.
+     *
+     * @var array<string, true>
+     */
+    private array $enumCases = [];
+
     /** Depth of ClassMethod/Function nesting — substitution is disabled when > 0. */
     private int $methodDepth = 0;
 
@@ -50,6 +57,18 @@ class VarToScalarVisitor extends BaseVisitor
 
         $this->conditionalAssignedVars = [];
         $this->methodDepth = 0;
+        $this->enumCases = [];
+        foreach ($nodes as $node) {
+            foreach ($node instanceof Node\Stmt\Namespace_ ? $node->stmts : [$node] as $stmt) {
+                if ($stmt instanceof Node\Stmt\Enum_ && $stmt->name instanceof Node\Identifier) {
+                    foreach ($stmt->stmts as $case) {
+                        if ($case instanceof Node\Stmt\EnumCase) {
+                            $this->enumCases[strtolower($stmt->name->toString() . '::' . $case->name->toString())] = true;
+                        }
+                    }
+                }
+            }
+        }
 
         foreach (
             [
@@ -92,7 +111,70 @@ class VarToScalarVisitor extends BaseVisitor
             }
         }
 
+        $this->markIndirectWrites();
+
         return null;
+    }
+
+    /**
+     * Переменные, которые меняются не простым присваиванием: по ссылке в вызов
+     * (`inc($n)` с `&$n`), `unset`, `list()`, `foreach`, `global`, `static`,
+     * `use (&$x)`, `$x = &$y`. Их значение после такой записи неизвестно.
+     */
+    private function markIndirectWrites(): void
+    {
+        $byRef = null;
+        foreach ($this->findNode(Node\Expr\Variable::class) as $var) {
+            if (!is_string($var->name)) {
+                continue;
+            }
+
+            $parent  = $var->getAttribute('parent');
+            $written = match (true) {
+                $parent instanceof Node\Expr\AssignRef, $parent instanceof Node\Stmt\Unset_, $parent instanceof Node\Expr\List_,
+                $parent instanceof Node\Stmt\Global_, $parent instanceof Node\StaticVar => true,
+                $parent instanceof Node\ClosureUse => $parent->byRef,
+                $parent instanceof Node\ArrayItem => $parent->byRef || $parent->getAttribute('parent') instanceof Node\Expr\List_,
+                $parent instanceof Node\Stmt\Foreach_ => $parent->keyVar === $var || $parent->valueVar === $var,
+                $parent instanceof Node\Arg => $this->argMayBeByRef($parent, $byRef),
+                default => false,
+            };
+            if ($written) {
+                $this->conditionalAssignedVars[$var->name] = true;
+            }
+        }
+    }
+
+    /** @param array<string, array<int|string, true>>|null $byRef */
+    private function argMayBeByRef(Node\Arg $arg, ?array &$byRef): bool
+    {
+        $call = $arg->getAttribute('parent');
+        if (!$call instanceof Node\Expr\CallLike || $call->isFirstClassCallable()) {
+            return false;
+        }
+
+        $index = array_search($arg, $call->getRawArgs(), true);
+        if (!is_int($index)) {
+            return true;
+        }
+
+        if ($call instanceof Node\Expr\FuncCall && $call->name instanceof Node\Name && function_exists($call->name->getLast())) {
+            return \Recombinator\Transformation\BodyInliner::mayPassByRef($call, $index);
+        }
+
+        $name = match (true) {
+            $call instanceof Node\Expr\New_ => '__construct',
+            $call instanceof Node\Expr\FuncCall => $call->name instanceof Node\Name ? $call->name->getLast() : null,
+            default => $call->name instanceof Node\Identifier ? $call->name->toString() : null,
+        };
+        if ($name === null) {
+            return true;
+        }
+
+        $byRef ??= \Recombinator\Transformation\BodyInliner::byRefParams($this->ast);
+        $refs    = $byRef[strtolower($name)] ?? [];
+
+        return isset($refs[$index]) || isset($refs['*']) || $refs !== [] && $arg->name instanceof \PhpParser\Node\Identifier;
     }
 
     public function enterNode(Node $node): int|Node|array|null
@@ -118,12 +200,7 @@ class VarToScalarVisitor extends BaseVisitor
          */
         if ($node instanceof Node\Expr\Assign && $node->var instanceof Node\Expr\Variable && is_string($node->var->name)) {
             $varName = $node->var->name;
-            // Support both Scalar values and ConstFetch (true, false, null)
-            $isScalar = $node->expr instanceof Node\Scalar;
-            $isConstFetch = $node->expr instanceof Node\Expr\ConstFetch &&
-                            in_array(strtolower($node->expr->name->toString()), ['true', 'false', 'null'], true);
-
-            if (($isScalar || $isConstFetch) && !isset($this->conditionalAssignedVars[$varName])) {
+            if ($this->isConstantValue($node->expr) && !isset($this->conditionalAssignedVars[$varName])) {
                 // заносим в кеш
                 $varExprScalar = clone $node->expr;
                 $varExprScalar->setAttributes([]);
@@ -199,6 +276,10 @@ class VarToScalarVisitor extends BaseVisitor
                         $node->setAttribute('replace', new Node\InterpolatedStringPart($strVal));
                         return null;
                     }
+
+                    if ($cachedValue instanceof Node\Expr\ClassConstFetch) {
+                        return null; // "{E::Case}" в строке — не выражение
+                    }
                 }
 
                 $node->setAttribute('replace', $cachedValue);
@@ -231,17 +312,30 @@ class VarToScalarVisitor extends BaseVisitor
             $assign = $node->expr;
             if ($assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)) {
                 $varName = $assign->var->name;
-                $isScalar = $assign->expr instanceof Node\Scalar;
-                $isConstFetch = $assign->expr instanceof Node\Expr\ConstFetch &&
-                                in_array(strtolower($assign->expr->name->toString()), ['true', 'false', 'null'], true);
-
-                if (!$isScalar && !$isConstFetch && $this->scopeStore->getVarFromScope($varName) !== null) {
+                if (!$this->isConstantValue($assign->expr) && $this->scopeStore->getVarFromScope($varName) !== null) {
                     $this->scopeStore->removeVarFromScope($varName);
                 }
             }
         }
 
         return parent::leaveNode($node);
+    }
+
+    /** Скаляр, true/false/null или case enum. */
+    private function isConstantValue(Node\Expr $expr): bool
+    {
+        if ($expr instanceof Node\Scalar) {
+            return true;
+        }
+
+        if ($expr instanceof Node\Expr\ConstFetch) {
+            return in_array(strtolower($expr->name->toString()), ['true', 'false', 'null'], true);
+        }
+
+        return $expr instanceof Node\Expr\ClassConstFetch
+            && $expr->class instanceof Node\Name
+            && $expr->name instanceof Node\Identifier
+            && isset($this->enumCases[strtolower($expr->class->toString() . '::' . $expr->name->toString())]);
     }
 
     /**

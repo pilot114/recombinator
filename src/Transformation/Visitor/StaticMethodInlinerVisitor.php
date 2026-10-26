@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 
 /**
@@ -30,11 +31,19 @@ class StaticMethodInlinerVisitor extends BaseVisitor
      */
     private array $staticMethods = [];
 
+    /** @var array<string, Node\Stmt\Class_> имя → класс метода */
+    private array $classes = [];
+
+    /** @var list<string> стек lowercase имён объемлющих классов */
+    private array $classStack = [];
+
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
         $this->staticMethods = [];
+        $this->classes       = [];
+        $this->classStack    = [];
         $this->collectStaticMethods($nodes);
         return null;
     }
@@ -51,7 +60,8 @@ class StaticMethodInlinerVisitor extends BaseVisitor
                 continue;
             }
 
-            $className = $node->name->name;
+            $className                 = $node->name->name;
+            $this->classes[$className] = $node;
             foreach ($node->stmts as $stmt) {
                 if (!$stmt instanceof Node\Stmt\ClassMethod) {
                     continue;
@@ -74,6 +84,10 @@ class StaticMethodInlinerVisitor extends BaseVisitor
                 }
 
                 $body = $stmt->stmts[0];
+                if ($this->callsItself($body, $className, $stmt->name->name)) {
+                    continue; // рекурсивный метод развернулся бы бесконечно
+                }
+
                 // single return expr
                 if ($body instanceof Node\Stmt\Return_ && $body->expr instanceof Node\Expr) {
                     $this->staticMethods[$className][$stmt->name->name] = $stmt;
@@ -91,8 +105,94 @@ class StaticMethodInlinerVisitor extends BaseVisitor
         }
     }
 
+    private function callsItself(Node $body, string $className, string $methodName): bool
+    {
+        $calls = new NodeFinder()->findInstanceOf($body, Node\Expr\StaticCall::class);
+        return array_any($calls, fn(\PhpParser\Node\Expr\StaticCall $call): bool => $call->class instanceof Node\Name
+        && $call->name instanceof Node\Identifier
+        && strtolower($call->name->name) === strtolower($methodName)
+        && in_array(strtolower($call->class->toString()), ['self', 'static', strtolower($className)], true));
+    }
+
+    #[\Override]
+    public function leaveNode(Node $node): int|Node|array|null
+    {
+        if ($node instanceof Node\Stmt\ClassLike) {
+            array_pop($this->classStack);
+        }
+
+        return parent::leaveNode($node);
+    }
+
+    /**
+     * Вне своего класса тело можно встроить, только если оно обращается лишь к
+     * публичным членам: `Type::$typeRegistry` (private) в чужом классе — Error.
+     */
+    private function usesOnlyPublicMembers(Node $body, Node\Stmt\Class_ $class): bool
+    {
+        $own = static fn(Node $name): bool => $name instanceof Node\Name
+            && in_array(strtolower($name->toString()), ['self', 'static', strtolower((string) $class->name)], true);
+
+        foreach (new NodeFinder()->findInstanceOf($body, Node::class) as $node) {
+            if ($node instanceof Node\Expr\Variable && $node->name === 'this') {
+                return false;
+            }
+
+            if (
+                (
+                    $node instanceof Node\Expr\StaticCall
+                    || $node instanceof Node\Expr\StaticPropertyFetch
+                    || $node instanceof Node\Expr\ClassConstFetch
+                )
+                && $node->class instanceof Node\Name
+                && strtolower($node->class->toString()) === 'parent'
+            ) {
+                return false;
+            }
+
+            $member = match (true) {
+                $node instanceof Node\Expr\StaticCall && $own($node->class) && $node->name instanceof Node\Identifier
+                    => $class->getMethod($node->name->toString()),
+                $node instanceof Node\Expr\StaticPropertyFetch && $own($node->class) && $node->name instanceof Node\VarLikeIdentifier
+                    => $class->getProperty($node->name->toString()),
+                $node instanceof Node\Expr\New_ && $own($node->class) => $class->getMethod('__construct') ?? true,
+                $node instanceof Node\Expr\ClassConstFetch && $own($node->class) && $node->name instanceof Node\Identifier
+                    => strtolower($node->name->toString()) === 'class' ? true : $this->classConst($class, $node->name->toString()),
+                default => true,
+            };
+            if (
+                $member === null || $member instanceof Node\Stmt\ClassMethod && !$member->isPublic()
+                || $member instanceof Node\Stmt\Property && !$member->isPublic()
+                || $member instanceof Node\Stmt\ClassConst && !$member->isPublic()
+            ) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private function classConst(Node\Stmt\Class_ $class, string $name): ?Node\Stmt\ClassConst
+    {
+        foreach ($class->getConstants() as $const) {
+            foreach ($const->consts as $item) {
+                if ($item->name->toString() === $name) {
+                    return $const;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public function enterNode(Node $node): ?Node
     {
+        if ($node instanceof Node\Stmt\ClassLike) {
+            $this->classStack[] = $node->name instanceof Node\Identifier ? strtolower($node->name->toString()) : '';
+
+            return null;
+        }
+
         if (
             !$node instanceof Node\Expr\StaticCall
             || !$node->class instanceof Node\Name
@@ -110,6 +210,11 @@ class StaticMethodInlinerVisitor extends BaseVisitor
 
         $method = $this->staticMethods[$className][$methodName];
         $body   = $method->stmts[0];
+
+        $inside = end($this->classStack) === strtolower($className);
+        if (!$inside && !$this->usesOnlyPublicMembers($body, $this->classes[$className])) {
+            return null;
+        }
 
         // Resolve the expression to inline: either return expr or throw expr
         if ($body instanceof Node\Stmt\Return_ && $body->expr instanceof Node\Expr) {
@@ -164,12 +269,25 @@ class StaticMethodInlinerVisitor extends BaseVisitor
             ) {
             }
 
-            public function enterNode(Node $node): ?Node
+            /**
+             * Подстановка в leaveNode: подставленный аргумент не обходится повторно,
+             * иначе `f($x->a())` при параметре `$x` подставил бы узел сам в себя.
+             * Клонируем на каждое вхождение, чтобы не разделять поддеревья.
+             */
+            public function leaveNode(Node $node): ?Node
             {
                 if ($node instanceof Node\Expr\Variable && is_string($node->name) && isset($this->paramMap[$node->name])) {
-                    return $this->paramMap[$node->name];
+                    $clone = new \PhpParser\NodeTraverser(new \PhpParser\NodeVisitor\CloningVisitor());
+                    $result = $clone->traverse([$this->paramMap[$node->name]]);
+
+                    return $result[0] instanceof Node\Expr ? $result[0] : null;
                 }
 
+                return null;
+            }
+
+            public function enterNode(Node $node): ?Node
+            {
                 // Replace self/static → concrete class name
                 if (
                     $node instanceof Node\Expr\New_

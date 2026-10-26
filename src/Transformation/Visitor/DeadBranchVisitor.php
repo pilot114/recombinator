@@ -115,7 +115,13 @@ class DeadBranchVisitor extends BaseVisitor
             }
 
             $caseResult = $this->asScalarValue($case->cond);
-            if ($caseResult !== null && $caseResult[1] == $condVal) {
+            // Неизвестное условие (`case $lexer->isNextToken(...)`) может совпасть —
+            // какая ветка выполнится, заранее не знаем
+            if ($caseResult === null) {
+                return null;
+            }
+
+            if ($caseResult[1] == $condVal) {
                 $matchingIdx = $idx;
                 break;
             }
@@ -133,6 +139,12 @@ class DeadBranchVisitor extends BaseVisitor
             foreach ($cases[$i]->stmts as $stmt) {
                 if ($stmt instanceof Node\Stmt\Break_ && !$stmt->num instanceof \PhpParser\Node\Expr) {
                     return $stmts !== [] ? $stmts : NodeTraverser::REMOVE_NODE;
+                }
+
+                // break/continue глубже (`if (...) { ...; break; }`) относится к этому switch:
+                // вне его он станет ошибкой компиляции или выйдет из внешнего цикла
+                if ($this->findNode(Node\Stmt\Break_::class, $stmt) !== [] || $this->findNode(Node\Stmt\Continue_::class, $stmt) !== []) {
+                    return null;
                 }
 
                 $stmts[] = $stmt;

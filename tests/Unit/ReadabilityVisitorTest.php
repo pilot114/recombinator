@@ -86,18 +86,13 @@ it('does NOT extract ternary that is direct return value', function (): void {
 
 // ── Nested ternaries extracted innermost-first ────────────────────────────────
 
-it('extracts nested ternaries in one pass, innermost first', function (): void {
-    // echo (outer ? (inner ? 'a' : 'b') : 'c') . "\n";
-    $code   = '<?php echo ($x ? ($y ? "a" : "b") : "c") . "\n";';
+it('extracts nested ternary from condition innermost first, but not from branches', function (): void {
+    // Ветка тернарника вычисляется по условию — её нельзя выносить перед оператором
+    $code   = '<?php echo (($y ? $a : $b) ? ($z ? "a" : "b") : "c") . "\n";';
     $result = applyReadability($code);
 
-    // Two tmp variables should be introduced
-    expect($result)->toContain('$tmp1 =');
-    expect($result)->toContain('$tmp2 =');
-
-    // Inner ternary becomes tmp1, outer (with tmp1 inside) becomes tmp2
-    expect($result)->toContain('$tmp1 = $y ?');
-    expect($result)->toContain('$tmp2 = $x ? $tmp1');
+    expect($result)->toContain('$tmp1 = $y ? $a : $b;');
+    expect($result)->toContain('$tmp2 = $tmp1 ? $z ? "a" : "b" : "c";');
     expect($result)->toContain('echo $tmp2');
 });
 
@@ -163,4 +158,27 @@ it('extracts ternary from complex echo expression', function (): void {
     expect($result)->toContain("'fail'");
     // The echo now uses $tmp1 instead of the ternary directly
     expect($result)->not->toMatch('/echo.*\?.*:/');
+});
+
+it('does NOT hoist ternary out of a closure body', function (): void {
+    $code   = '<?php $c->set("em", static function ($c) { return new EM($c->get("s") ? new A() : new B()); });';
+    $result = applyReadability($code);
+    expect($result)->toMatch('/function \(\$c\) \{\s+\$tmp1 = \$c->get\("s"\) \? new A\(\) : new B\(\);\s+return new EM\(\$tmp1\);/');
+});
+
+it('does NOT hoist ternary from conditionally evaluated operand', function (): void {
+    $code   = '<?php f($ok && g($a ? h() : i()), $x ?? ($y ? 1 : 2));';
+    $result = applyReadability($code);
+    expect($result)
+        ->toContain('$tmp1 = $x ?? ($y ? 1 : 2);')
+        ->toContain('f($ok && g($a ? h() : i()), $tmp1);')
+        ->not->toContain('$tmp2');
+});
+
+it('does NOT hoist ternary nested in a ternary branch', function (): void {
+    $code   = '<?php echo "x" . ($a ? ($b ? f() : g()) : 0);';
+    $result = applyReadability($code);
+    expect($result)
+        ->toContain('$tmp1 = $a ? $b ? f() : g() : 0;')
+        ->not->toContain('$tmp2');
 });

@@ -72,6 +72,16 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 #run-btn:hover   { opacity: .82; }
 #run-btn:active  { opacity: .65; }
 #run-btn:disabled{ opacity: .45; cursor: not-allowed; }
+#reset-cache-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 7px 12px; background: transparent; color: var(--muted);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 12px; cursor: pointer; white-space: nowrap;
+  transition: color .15s, border-color .15s;
+}
+#reset-cache-btn:hover    { color: var(--text); border-color: var(--muted); }
+#reset-cache-btn:disabled { opacity: .45; cursor: not-allowed; }
+.code-too-big { padding: 16px; color: var(--muted); font-size: 12px; }
 .kbd { display: inline-block; font-size: 10px; opacity: .7; }
 
 /* ── Layout ── */
@@ -454,6 +464,10 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
     </select>
     <span id="status">Вставьте PHP код и нажмите Transform</span>
   </div>
+  <button id="reset-cache-btn" title="Сбросить кэш прогонов: следующий Transform выполнится заново">
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>
+    Сбросить кэш
+  </button>
   <button id="run-btn">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
     Transform
@@ -843,6 +857,8 @@ function fmtTime(ms) {
   return `${(ms / 1000).toFixed(2)} с`;
 }
 
+const TOO_BIG = '<div class="code-too-big">Код слишком большой для полного показа — изменения видны на вкладке Diff</div>';
+
 function makeCard(step) {
   const id = 'c' + (++cardSeq);
   const time = fmtTime(step.time_ms);
@@ -865,10 +881,10 @@ function makeCard(step) {
       ${renderDiff(step.diff)}
     </div>
     <div class="inner-pane code-pane" data-ip="before">
-      <pre><code class="language-php hljs">${hi(step.before)}</code></pre>
+      ${step.before == null ? TOO_BIG : `<pre><code class="language-php hljs">${hi(step.before)}</code></pre>`}
     </div>
     <div class="inner-pane code-pane" data-ip="after">
-      <pre><code class="language-php hljs">${hi(step.after)}</code></pre>
+      ${step.after == null ? TOO_BIG : `<pre><code class="language-php hljs">${hi(step.after)}</code></pre>`}
     </div>
   </div>
 </div>`;
@@ -1056,16 +1072,9 @@ async function run() {
   $('right').appendChild(spin);
 
   try {
-    const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(bodyObj) });
-    const data = await res.json();
-
-    if (data.error) throw new Error(data.error);
-
+    const data = await callTransform(bodyObj, st);
     renderResults(data);
-    const n = data.steps.length;
-    st.className = 'ok';
-    st.textContent = `✓ ${n} ${plural(n,'шаг','шага','шагов')} · ${data.passes} ${plural(data.passes,'проход','прохода','проходов')}`;
-    $('exec-time').textContent = fmtTime(data.total_time_ms);
+    showDone(st, data);
 
   } catch (err) {
     st.className = 'err';
@@ -1076,6 +1085,57 @@ async function run() {
   } finally {
     btn.disabled = false;
     spin.remove();
+  }
+}
+
+// ── Вызов API с продолжением прогона ──────────────────────────────────────────
+// Сервер ограничивает время одного прохода; длинный прогон приходит частями
+// (partial): состояние сохраняется на сервере, а клиент запрашивает продолжение.
+// Готовый результат сервер отдаёт из кэша.
+
+async function callTransform(bodyObj, st) {
+  let steps = [];
+  for (;;) {
+    const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...bodyObj, steps_from: steps.length }) });
+    const data = await res.json();
+
+    if (data.error) throw new Error(data.error);
+
+    if (data.busy) {
+      // Этот же вход сейчас обрабатывает другой запрос
+      await new Promise(r => setTimeout(r, 1000));
+      continue;
+    }
+
+    steps = steps.slice(0, data.steps_from).concat(data.steps);
+    if (!data.partial) return { ...data, steps };
+
+    st.textContent = `⏳ Проход ${data.passes + 1} · ${steps.length} ${plural(steps.length,'шаг','шага','шагов')} · ${fmtTime(data.total_time_ms)}…`;
+  }
+}
+
+function showDone(st, data) {
+  const n = data.steps.length;
+  st.className = 'ok';
+  st.textContent = `✓ ${n} ${plural(n,'шаг','шага','шагов')} · ${data.passes} ${plural(data.passes,'проход','прохода','проходов')}`
+    + (data.cached ? ' · из кэша' : '');
+  $('exec-time').textContent = fmtTime(data.total_time_ms);
+}
+
+async function resetCache() {
+  const btn = $('reset-cache-btn');
+  const st  = $('status');
+  btn.disabled = true;
+  try {
+    const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'reset-cache' }) });
+    const data = await res.json();
+    st.className = 'ok';
+    st.textContent = `Кэш прогонов очищен (${data.removed ?? 0} ${plural(data.removed ?? 0,'файл','файла','файлов')})`;
+  } catch (err) {
+    st.className = 'err';
+    st.textContent = '✗ ' + err.message;
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -1097,16 +1157,9 @@ async function runProject(ex) {
   $('right').appendChild(spin);
 
   try {
-    const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ project: ex.id, entry }) });
-    const data = await res.json();
-
-    if (data.error) throw new Error(data.error);
-
+    const data = await callTransform({ project: ex.id, entry }, st);
     renderResults(data);
-    const n = data.steps.length;
-    st.className = 'ok';
-    st.textContent = `✓ ${n} ${plural(n,'шаг','шага','шагов')} · ${data.passes} ${plural(data.passes,'проход','прохода','проходов')}`;
-    $('exec-time').textContent = fmtTime(data.total_time_ms);
+    showDone(st, data);
 
   } catch (err) {
     st.className = 'err';
@@ -1135,6 +1188,7 @@ $('editor').addEventListener('keydown', e => {
 });
 
 $('run-btn').addEventListener('click', run);
+$('reset-cache-btn').addEventListener('click', resetCache);
 $('tab-add').addEventListener('click', addTab);
 
 document.addEventListener('keydown', e => {

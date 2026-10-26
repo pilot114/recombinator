@@ -15,6 +15,7 @@ use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
 use Recombinator\Transformation\Visitor\DeadBranchVisitor;
 use Recombinator\Transformation\Visitor\CallFunctionVisitor;
 use Recombinator\Transformation\Visitor\ClassInlinerVisitor;
+use Recombinator\Transformation\Visitor\ClosureCallInlinerVisitor;
 use Recombinator\Transformation\Visitor\CoalesceNullRemoveVisitor;
 use Recombinator\Transformation\Visitor\ConcatAssertVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
@@ -35,6 +36,10 @@ use Recombinator\Transformation\Visitor\RemoveGlobalUseVisitor;
 use Recombinator\Transformation\Visitor\RemoveInterfacesVisitor;
 use Recombinator\Transformation\Visitor\InlineEmptySubclassVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedClassVisitor;
+use Recombinator\Transformation\Visitor\ProgramEvaluatorVisitor;
+use Recombinator\Transformation\Visitor\ExternalParentGuardVisitor;
+use Recombinator\Transformation\Visitor\StaticPropConstVisitor;
+use Recombinator\Transformation\Visitor\ClassExistsFoldVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedPureVisitor;
 use Recombinator\Transformation\Visitor\RemoveDeadLoopVisitor;
 use Recombinator\Transformation\Visitor\RemoveDeadCodeAfterJumpVisitor;
@@ -47,12 +52,15 @@ use Recombinator\Transformation\Visitor\StaticArrayStateVisitor;
 use Recombinator\Transformation\Visitor\BoundedWhileUnrollerVisitor;
 use Recombinator\Transformation\Visitor\ForeachLiteralUnrollerVisitor;
 use Recombinator\Transformation\Visitor\MutablePropertyTrackerVisitor;
+use Recombinator\Transformation\Visitor\NewArgHoistVisitor;
+use Recombinator\Transformation\Visitor\ObjectMethodInlinerVisitor;
 use Recombinator\Transformation\Visitor\SimpleMethodCallInlinerVisitor;
 use Recombinator\Transformation\Visitor\IndexedPropGetterResolverVisitor;
 use Recombinator\Transformation\Visitor\TraitInlinerVisitor;
 use Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedPropWriteVisitor;
 use Recombinator\Transformation\Visitor\ObjectArrayTrackerVisitor;
+use Recombinator\Transformation\Visitor\ObjectStateSpecializerVisitor;
 use Recombinator\Transformation\Visitor\ScopeVisitor;
 use Recombinator\Transformation\Visitor\SideEffectMarkerVisitor;
 use Recombinator\Transformation\Visitor\SingleUseInlinerVisitor;
@@ -111,10 +119,14 @@ $meta = static function (object $visitor): VisitorMeta {
 
 // Один sandbox на весь прогон: кеш предвыполнения переживает пересоздание визиторов
 $sandbox = new Sandbox(new ExecutionCache());
+// Кэш enum-методов тоже живёт весь прогон: enum к поздним проходам уже встроен
+$enumCache = new ArrayObject();
 
 $steps = [
     // ── Импорт классов из use SyntaxZoo\... ─────────────────────────────────
     fn() => new UseImportVisitor($fileMap),
+    fn() => new RemoveUnusedClassVisitor(),
+    fn() => new ExternalParentGuardVisitor(),
     fn() => new RemoveGlobalUseVisitor(),
     fn() => new RemoveSplAutoloadVisitor(),
 
@@ -134,6 +146,8 @@ $steps = [
     fn() => new MutablePropertyTrackerVisitor(),
     fn() => new ConcatAssertVisitor(),
     fn() => new EvalStandardFunction(),
+    fn() => new StaticPropConstVisitor(),
+    fn() => new ClassExistsFoldVisitor(),
     fn() => new PreExecutionVisitor(null, $sandbox),
     fn() => new VarToScalarVisitor(),
     fn() => new ConstFoldVisitor(),
@@ -149,7 +163,7 @@ $steps = [
     fn() => new FlattenInheritanceVisitor(),
 
     // ── Разворачивание getter-цепочек через отслеживание сеттеров ───────────
-    fn() => new IndexedPropGetterResolverVisitor($sandbox),
+    fn() => new IndexedPropGetterResolverVisitor($sandbox, $enumCache),
 
     // ── Инлайнинг enum ──────────────────────────────────────────────────────
     fn() => new EnumCaseInlinerVisitor(),
@@ -172,6 +186,12 @@ $steps = [
     // ── Отслеживание коллекций объектов (admit/bySpecies/all) ────────────────
     fn() => new ObjectArrayTrackerVisitor(),
 
+    // ── Развёртка живых объектов ────────────────────────────────────────────
+    fn() => new NewArgHoistVisitor(),
+    fn() => new ObjectMethodInlinerVisitor(),
+    fn() => new ObjectStateSpecializerVisitor(),
+    fn() => new ClosureCallInlinerVisitor(),
+
     // ── Инлайнинг классов ───────────────────────────────────────────────────
     fn() => new ConstructorAndMethodsVisitor(),
     fn() => new PropertyAccessVisitor(),
@@ -186,6 +206,7 @@ $steps = [
     fn() => new RemoveUnusedClassVisitor(),
     fn() => new RemoveUnusedPureVisitor(),
     fn() => new RemoveDeadLoopVisitor(),
+    fn() => new ProgramEvaluatorVisitor(),
 ];
 
 $totalChanged = 0;

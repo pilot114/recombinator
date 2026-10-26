@@ -36,7 +36,7 @@ class ScopeVisitor extends BaseVisitor
             }
         }
 
-        if ($node instanceof Node\Stmt\Class_) {
+        if ($node instanceof Node\Stmt\Class_ && $node->name instanceof Node\Identifier) {
             $name = $node->name->name;
             if ($this->cacheDir !== null) {
                 $filename = sprintf("Class_%s_%s.php", $name, uniqid());

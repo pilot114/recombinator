@@ -36,7 +36,8 @@
     "description": "Приложение на Slim",
     "url": "https://github.com/1ma/Slim-Doctrine-Demo",
     "setup": [
-      "composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs"
+      "composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs",
+      "cp settings.php.dist settings.php"
     ]
   },
   "08-syntax-zoo": {

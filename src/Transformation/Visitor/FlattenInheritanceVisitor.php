@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Recombinator\Transformation\Visitor;
 
+use PhpParser\Modifiers;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
@@ -32,6 +33,11 @@ use PhpParser\NodeVisitorAbstract;
  *
  * `implements` родителя мержится в дочерний; `extends` удаляется.
  *
+ * Статические свойства родителя не копируются: в PHP это одно хранилище на всю
+ * иерархию (`static::$registry[static::class]++` в конструкторе копит счётчики всех
+ * подклассов). Обращения к ним в дочернем классе переписываются на `Parent::$prop`,
+ * а свойство у родителя становится public — подкласс больше не наследник.
+ *
  * Ограничения v1:
  *   - `parent::CONST` и `parent::$staticProp` не переписываются;
  *   - `self::` внутри скопированного тела теперь резолвит в дочерний класс —
@@ -56,6 +62,12 @@ class FlattenInheritanceVisitor extends BaseVisitor
     #[\Override]
     public function afterTraverse(array $nodes): ?array
     {
+        // Встраиваемый позже файл может проверять тип родителя
+        if ($this->hasPendingIncludes()) {
+            return null;
+        }
+
+        $typeChecked = null;
         foreach ($this->classMap as $child) {
             if (!$child->extends instanceof Node\Name) {
                 continue;
@@ -70,10 +82,35 @@ class FlattenInheritanceVisitor extends BaseVisitor
                 continue; // ждём, пока родитель сам станет плоским
             }
 
+            // Без extends подкласс перестаёт быть экземпляром родителя: `$x instanceof Parent`,
+            // `f(Parent $p)`, `catch (Parent)` изменили бы поведение. Ждём, пока такие проверки
+            // уберут другие правила (StripLocalClassTypeHints, InstanceofSimplifier)
+            $typeChecked ??= RemoveInterfacesVisitor::typeReferences($nodes, withStaticAccess: false);
+            if (isset($typeChecked[strtolower($child->extends->toString())]) || $this->usesParentAsType($child)) {
+                continue;
+            }
+
             $this->flatten($child, $parent);
         }
 
         return null;
+    }
+
+    /** `instanceof parent`, `new parent`, `parent::CONST` — всё, кроме parent::method(). */
+    private function usesParentAsType(Node\Stmt\Class_ $child): bool
+    {
+        foreach ($this->findNode(Node\Name::class, $child->stmts) as $name) {
+            if (strtolower($name->toString()) !== 'parent') {
+                continue;
+            }
+
+            $holder = $name->getAttribute('parent');
+            if (!$holder instanceof Node\Expr\StaticCall || $holder->class !== $name) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /** @param array<Node> $nodes */
@@ -99,7 +136,40 @@ class FlattenInheritanceVisitor extends BaseVisitor
         $parentCalls  = $this->parentMethodCallTargets($child);
         $parentStatic = $this->staticMethodMap($parent);
 
-        $copied = [];
+        // Имя копии родительского метода: __parent_M, а если такое уже есть (родитель
+        // сам был наследником и содержит __parent_M деда) — __parent___parent_M и т.д.
+        $taken         = $childMethods + $this->methodNames($parent);
+        $parentMethods = [];
+        foreach ($parent->getMethods() as $method) {
+            if (!$method->isAbstract()) {
+                $parentMethods[$method->name->toString()] = true;
+            }
+        }
+
+        $synthetic = [];
+        foreach (array_keys($parentCalls) as $name) {
+            // Не переопределён в ребёнке — parent::M() это унаследованная копия M
+            if (!isset($childMethods[$name])) {
+                $synthetic[$name] = $name;
+                continue;
+            }
+
+            // Метод родителя из трейта или не найден — копию __parent_M не построить
+            if (!isset($parentMethods[$name])) {
+                return;
+            }
+
+            $candidate = '__parent_' . $name;
+            while (isset($taken[$candidate])) {
+                $candidate = '__parent_' . $candidate;
+            }
+
+            $taken[$candidate] = true;
+            $synthetic[$name]  = $candidate;
+        }
+
+        $copied        = [];
+        $sharedStatics = [];
 
         foreach ($parent->stmts as $stmt) {
             if ($stmt instanceof Node\Stmt\TraitUse) {
@@ -119,6 +189,20 @@ class FlattenInheritanceVisitor extends BaseVisitor
                     $copy = $this->deepClone($stmt);
                     $copy->consts = $kept;
                     $copied[] = $copy;
+                }
+
+                continue;
+            }
+
+            if ($stmt instanceof Node\Stmt\Property && $stmt->isStatic()) {
+                foreach ($stmt->props as $prop) {
+                    if (!isset($childProps[$prop->name->name])) {
+                        $sharedStatics[$prop->name->name] = true;
+                    }
+                }
+
+                if ($sharedStatics !== []) {
+                    $stmt->flags = $stmt->flags & ~(Modifiers::PRIVATE | Modifiers::PROTECTED) | Modifiers::PUBLIC;
                 }
 
                 continue;
@@ -165,13 +249,37 @@ class FlattenInheritanceVisitor extends BaseVisitor
             }
 
             // Переопределён и есть parent::M() — копируем как __parent_M.
-            $copied[] = $this->buildParentCopy($stmt, $childProps, $copied);
+            $copied[] = $this->buildParentCopy($stmt, $synthetic[$name], $childProps, $copied);
         }
 
         $child->stmts = array_merge($copied, $child->stmts);
-        $this->rewriteParentCalls($child, $parentCalls, $parentStatic);
+        $this->redirectSharedStatics($child, $sharedStatics, (string) $parent->name);
+        $this->rewriteParentCalls($child, $synthetic, $parentStatic);
         $this->mergeImplements($child, $parent);
         $child->extends = null;
+    }
+
+    /**
+     * self::$p / static::$p / parent::$p → Parent::$p для статических свойств родителя.
+     *
+     * @param array<string, true> $names
+     */
+    private function redirectSharedStatics(Node\Stmt\Class_ $child, array $names, string $parentName): void
+    {
+        if ($names === []) {
+            return;
+        }
+
+        foreach ($this->findNode(Node\Expr\StaticPropertyFetch::class, $child->stmts) as $fetch) {
+            if (
+                $fetch->class instanceof Node\Name
+                && in_array(strtolower($fetch->class->toString()), ['self', 'static', 'parent'], true)
+                && $fetch->name instanceof Node\VarLikeIdentifier
+                && isset($names[$fetch->name->toString()])
+            ) {
+                $fetch->class = new Node\Name($parentName);
+            }
+        }
     }
 
     /**
@@ -185,11 +293,12 @@ class FlattenInheritanceVisitor extends BaseVisitor
      */
     private function buildParentCopy(
         Node\Stmt\ClassMethod $method,
+        string $copyName,
         array &$childProps,
         array &$copied,
     ): Node\Stmt\ClassMethod {
         $copy = $this->deepClone($method);
-        $copy->name = new Node\Identifier('__parent_' . $method->name->name);
+        $copy->name = new Node\Identifier($copyName);
 
         $assigns = [];
         foreach ($copy->params as $param) {
@@ -333,7 +442,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
     }
 
     /**
-     * @param array<string, true> $targets
+     * @param array<string, string> $targets  метод родителя → имя его копии в наследнике
      * @param array<string, bool> $staticMap
      */
     private function rewriteParentCalls(Node\Stmt\Class_ $child, array $targets, array $staticMap): void
@@ -344,7 +453,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
 
         $rewriter = new class ($targets, $staticMap) extends NodeVisitorAbstract {
             /**
-             * @param array<string, true> $targets
+             * @param array<string, string> $targets
              * @param array<string, bool> $staticMap
              */
             public function __construct(
@@ -369,7 +478,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
                     return null;
                 }
 
-                $synthetic = new Node\Identifier('__parent_' . $name);
+                $synthetic = new Node\Identifier($this->targets[$name]);
                 if ($this->staticMap[$name] ?? false) {
                     return new Node\Expr\StaticCall(
                         new Node\Name('self'),

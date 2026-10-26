@@ -39,6 +39,12 @@ class PreExecutionVisitor extends BaseVisitor
 
     private readonly ScopeStore $scopeStore;
 
+    /** @var array<Node\Stmt\Class_>|null */
+    private ?array $classes = null;
+
+    /** @var array<string, true>|null имена статических свойств, в которые программа где-то пишет */
+    private ?array $mutableStatics = null;
+
     /**
      * @param Sandbox|null $sandbox общий sandbox позволяет переиспользовать кеш между проходами пайплайна
      */
@@ -46,6 +52,26 @@ class PreExecutionVisitor extends BaseVisitor
     {
         $this->scopeStore = $scopeStore ?? ScopeStore::default();
         $this->sandbox    = $sandbox ?? new Sandbox(new ExecutionCache());
+    }
+
+    #[\Override]
+    public function beforeTraverse(array $nodes): ?array
+    {
+        parent::beforeTraverse($nodes);
+        $this->classes        = null;
+        $this->mutableStatics = null;
+        return null;
+    }
+
+    /**
+     * Объявления классов AST, собранные один раз за обход: поиск по всему дереву
+     * на каждый вызов давал O(N²) на больших проектах.
+     *
+     * @return array<Node\Stmt\Class_>
+     */
+    private function classes(): array
+    {
+        return $this->classes ??= $this->findNode(Node\Stmt\Class_::class);
     }
 
     /**
@@ -306,7 +332,7 @@ class PreExecutionVisitor extends BaseVisitor
 
     private function findStaticClassMethod(string $className, string $methodName): ?Node\Stmt\ClassMethod
     {
-        foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
+        foreach ($this->classes() as $class) {
             if (
                 $class->name instanceof Node\Identifier
                 && $class->name->toString() === $className
@@ -341,6 +367,12 @@ class PreExecutionVisitor extends BaseVisitor
             }
         }
 
+        // Песочница видит статические свойства с начальными значениями, а программа
+        // к моменту вызова могла их изменить: Logger::dump() после Logger::log(...)
+        if ($this->readsMutableStatic($method, [])) {
+            return false;
+        }
+
         // Bail on echo / print
         if (
             $this->findNode(Node\Stmt\Echo_::class, $body) !== []
@@ -352,10 +384,79 @@ class PreExecutionVisitor extends BaseVisitor
         return true;
     }
 
+    /**
+     * Читает ли метод (или вызванные им через self::/static:: методы того же класса)
+     * статическое свойство, которое где-то в программе изменяется.
+     *
+     * @param array<string, true> $visited
+     */
+    private function readsMutableStatic(Node\Stmt\ClassMethod $method, array $visited): bool
+    {
+        $this->mutableStatics ??= $this->collectMutableStatics();
+        $visited[strtolower($method->name->toString())] = true;
+
+        foreach ($this->findNode(Node\Expr\StaticPropertyFetch::class, $method->stmts ?? []) as $fetch) {
+            if (
+                !$fetch->name instanceof Node\VarLikeIdentifier
+                || isset($this->mutableStatics[$fetch->name->toString()])
+                || isset($this->mutableStatics['*'])
+            ) {
+                return true;
+            }
+        }
+
+        $class = $method->getAttribute('parent');
+        foreach ($this->findNode(Node\Expr\StaticCall::class, $method->stmts ?? []) as $call) {
+            if (
+                $class instanceof Node\Stmt\Class_
+                && $call->class instanceof Node\Name
+                && in_array(strtolower($call->class->toString()), ['self', 'static'], true)
+                && $call->name instanceof Node\Identifier
+                && !isset($visited[strtolower($call->name->toString())])
+            ) {
+                $callee = $class->getMethod($call->name->toString());
+                if ($callee instanceof Node\Stmt\ClassMethod && $this->readsMutableStatic($callee, $visited)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** @return array<string, true> */
+    private function collectMutableStatics(): array
+    {
+        $names = [];
+        $add   = static function (?Node $target) use (&$names): void {
+            while ($target instanceof Node\Expr\ArrayDimFetch || $target instanceof Node\Expr\PropertyFetch) {
+                $target = $target->var;
+            }
+
+            if ($target instanceof Node\Expr\StaticPropertyFetch) {
+                $names[$target->name instanceof Node\VarLikeIdentifier ? $target->name->toString() : '*'] = true;
+            }
+        };
+
+        foreach ($this->findNode(Node::class) as $node) {
+            match (true) {
+                $node instanceof Node\Expr\Assign, $node instanceof Node\Expr\AssignOp, $node instanceof Node\Expr\AssignRef,
+                $node instanceof Node\Expr\PreInc, $node instanceof Node\Expr\PreDec,
+                $node instanceof Node\Expr\PostInc, $node instanceof Node\Expr\PostDec => $add($node->var),
+                // аргумент может передаваться по ссылке: array_push(self::$items, ...)
+                $node instanceof Node\Arg => $add($node->value),
+                $node instanceof Node\Stmt\Unset_ => array_map($add, $node->vars),
+                default => null,
+            };
+        }
+
+        return $names;
+    }
+
     private function buildClassPreambleByName(string $className): string
     {
         $printer = new Printer();
-        foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
+        foreach ($this->classes() as $class) {
             if (
                 $class->name instanceof Node\Identifier
                 && $class->name->toString() === $className
@@ -386,7 +487,7 @@ class PreExecutionVisitor extends BaseVisitor
 
         $printer  = new Printer();
         $preamble = '';
-        foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
+        foreach ($this->classes() as $class) {
             if (
                 $class->name instanceof Node\Identifier
                 && in_array($class->name->toString(), $classNames, true)

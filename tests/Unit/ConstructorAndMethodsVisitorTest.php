@@ -261,3 +261,24 @@ class Builder {
             ->and($class['methods'])->toHaveKey('build');
     }
 );
+
+it(
+    'inlines instantiation of class with property without default value',
+    function (): void {
+        $code = '<?php
+class Box {
+    private array $items;
+    private $raw;
+    public function __construct() { $this->items = []; }
+}
+$b = new Box();';
+
+        $ast = $this->parser->parse($code);
+        $ast = new NodeTraverser(new \PhpParser\NodeVisitor\NodeConnectingVisitor())->traverse($ast);
+        $ast = new NodeTraverser($this->visitor)->traverse($ast);
+
+        $result = new \PhpParser\PrettyPrinter\Standard()->prettyPrint($ast);
+
+        expect($result)->toMatch('/\$b_raw_\w+ = null;/');
+    }
+);

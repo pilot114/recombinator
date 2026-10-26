@@ -104,3 +104,21 @@ it(
         expect($result)->toBeArray();
     }
 );
+
+it(
+    'skips anonymous classes',
+    function (): void {
+        $tmpDir = sys_get_temp_dir() . '/recombinator_scope_test_' . uniqid();
+        mkdir($tmpDir);
+        $entryFile = $tmpDir . '/entry.php';
+        file_put_contents($entryFile, '<?php echo "entry";');
+
+        $ast = $this->parser->parse('<?php $o = new class { public int $x = 1; };');
+        new NodeTraverser(new ScopeVisitor($entryFile, $tmpDir))->traverse($ast);
+
+        expect(glob($tmpDir . '/Class_*') ?: [])->toBe([]);
+
+        array_map(unlink(...), glob($tmpDir . '/*') ?: []);
+        rmdir($tmpDir);
+    }
+);

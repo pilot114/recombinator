@@ -94,6 +94,13 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
      */
     private array $resolvedVars = [];
 
+    /**
+     * Объекты, состав коллекции которых статически не определить
+     *
+     * @var array<string, true>
+     */
+    private array $untrackedVars = [];
+
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
@@ -109,6 +116,7 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
         $this->admitReplacements     = [];
         $this->foreachExprReplacements = [];
         $this->resolvedVars          = [];
+        $this->untrackedVars         = [];
 
         $this->analyzeClasses();
         $this->collectVarTypes($nodes);
@@ -159,6 +167,55 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
      * Detects variadic methods that do `$this->prop[] = $arg; ++$counter; return $counter`
      * or similar append+count patterns.
      */
+    /**
+     * Метод только добавляет в $this->$prop[] и пишет в свои локальные переменные;
+     * вызывает лишь чистые функции.
+     *
+     * @param array<Node\Stmt> $stmts
+     */
+    private function onlyAppends(array $stmts, string $prop): bool
+    {
+        foreach ($this->findNode(Node::class, $stmts) as $node) {
+            if (
+                $node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\NullsafeMethodCall
+                || $node instanceof Node\Expr\StaticCall || $node instanceof Node\Expr\New_
+                || $node instanceof Node\Expr\Include_ || $node instanceof Node\Stmt\Echo_ || $node instanceof Node\Expr\Print_
+            ) {
+                return false;
+            }
+
+            if (
+                $node instanceof Node\Expr\FuncCall
+                && (!$node->name instanceof Node\Name || !RemoveUnusedPureVisitor::isKnownPureFunction(strtolower($node->name->toString())))
+            ) {
+                return false;
+            }
+
+            $target = match (true) {
+                $node instanceof Node\Expr\Assign, $node instanceof Node\Expr\AssignOp, $node instanceof Node\Expr\AssignRef,
+                $node instanceof Node\Expr\PreInc, $node instanceof Node\Expr\PreDec,
+                $node instanceof Node\Expr\PostInc, $node instanceof Node\Expr\PostDec => $node->var,
+                default => null,
+            };
+            if (!$target instanceof \PhpParser\Node\Expr || $target instanceof Node\Expr\Variable && $target->name !== 'this') {
+                continue;
+            }
+
+            $isAppend = $target instanceof Node\Expr\ArrayDimFetch
+                && !$target->dim instanceof Node\Expr
+                && $target->var instanceof Node\Expr\PropertyFetch
+                && $target->var->var instanceof Node\Expr\Variable
+                && $target->var->var->name === 'this'
+                && $target->var->name instanceof Node\Identifier
+                && $target->var->name->toString() === $prop;
+            if (!$isAppend) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private function detectAdmitMethod(Node\Stmt\Class_ $class, string $className): void
     {
         foreach ($class->getMethods() as $method) {
@@ -204,6 +261,12 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
             // Must end with `return $intExpr`
             $last = end($stmts);
             if (!$last instanceof Node\Stmt\Return_) {
+                continue;
+            }
+
+            // Вызов заменяется числом, поэтому других эффектов быть не должно:
+            // `$this->statuses[$a->name] = ...` в admit() пропал бы вместе с вызовом
+            if (!$this->onlyAppends($stmts, $appendProp)) {
                 continue;
             }
 
@@ -349,34 +412,50 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
 
     private function collectAdmitCalls(array $nodes): void
     {
-        foreach ($this->findNode(Node\Stmt\Expression::class, $nodes) as $stmt) {
-            $expr = $stmt->expr;
-
-            // $result = $obj->admit(...)
-            if (
-                $expr instanceof Node\Expr\Assign
-                && $expr->var instanceof Node\Expr\Variable
-                && is_string($expr->var->name)
-                && $expr->expr instanceof Node\Expr\MethodCall
-            ) {
-                $call = $expr->expr;
-                if ($this->isAdmitCall($call)) {
-                    $objVar   = $call->var instanceof Node\Expr\Variable ? $call->var->name : null;
-                    if ($objVar !== null) {
-                        $admitted = $this->processAdmitCall($objVar, $call->args);
-                        $this->admitReplacements[spl_object_id($expr)] = new Node\Scalar\LNumber($admitted);
-                    }
-                }
+        // Вызовы в порядке выполнения прямолинейного кода верхнего уровня
+        foreach ($this->findNode(Node\Expr\MethodCall::class, $nodes) as $call) {
+            if (!$this->isAdmitCall($call) || !$call->var instanceof Node\Expr\Variable || !is_string($call->var->name)) {
+                continue;
             }
 
-            // $obj->admit(...) — standalone call (no assignment)
-            if ($expr instanceof Node\Expr\MethodCall && $this->isAdmitCall($expr)) {
-                $objVar = $expr->var instanceof Node\Expr\Variable ? $expr->var->name : null;
-                if ($objVar !== null) {
-                    $this->processAdmitCall($objVar, $expr->args);
-                }
+            $objVar = $call->var->name;
+
+            // В цикле, ветвлении или функции число вызовов статически неизвестно
+            if (!$this->isStraightLineTopLevel($call)) {
+                $this->untrackedVars[$objVar] = true;
+                continue;
+            }
+
+            $admitted = $this->processAdmitCall($objVar, $call->args);
+            if ($admitted === null) {
+                $this->untrackedVars[$objVar] = true;
+                continue;
+            }
+
+            $parent = $call->getAttribute('parent');
+            if (!$parent instanceof Node\Stmt\Expression) {
+                // $n = $obj->admit(...) / echo "{$obj->admit(...)}" → количество
+                $this->admitReplacements[spl_object_id($call)] = new Node\Scalar\Int_($admitted);
             }
         }
+    }
+
+    private function isStraightLineTopLevel(Node $node): bool
+    {
+        for ($p = $node->getAttribute('parent'); $p instanceof Node; $p = $p->getAttribute('parent')) {
+            if (
+                $p instanceof Node\FunctionLike || $p instanceof Node\Stmt\ClassLike
+                || $p instanceof Node\Stmt\If_ || $p instanceof Node\Stmt\Switch_ || $p instanceof Node\Stmt\TryCatch
+                || $p instanceof Node\Stmt\For_ || $p instanceof Node\Stmt\Foreach_ || $p instanceof Node\Stmt\While_ || $p instanceof Node\Stmt\Do_
+                || $p instanceof Node\Expr\Ternary || $p instanceof Node\Expr\Match_
+                || $p instanceof Node\Expr\BinaryOp\BooleanAnd || $p instanceof Node\Expr\BinaryOp\BooleanOr
+                || $p instanceof Node\Expr\BinaryOp\Coalesce
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function isAdmitCall(Node\Expr\MethodCall $call): bool
@@ -400,9 +479,12 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
      * Flattens spread/non-spread args, tracks them in $this->objectArrays[$objVar],
      * returns the admitted count (capped by capacity).
      */
-    private function processAdmitCall(string $objVar, array $args): int
+    private function processAdmitCall(string $objVar, array $args): ?int
     {
         $flatExprs = $this->flattenArgs($args);
+        if ($flatExprs === null) {
+            return null;
+        }
 
         $capacity = $this->capacities[$objVar] ?? PHP_INT_MAX;
         $current  = count($this->objectArrays[$objVar] ?? []);
@@ -435,26 +517,27 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
      * @param  array<Node\Arg|Node\VariadicPlaceholder> $args
      * @return list<Node\Expr>
      */
-    private function flattenArgs(array $args): array
+    private function flattenArgs(array $args): ?array
     {
         $result = [];
 
         foreach ($args as $arg) {
             if (!$arg instanceof Node\Arg) {
-                continue;
+                return null;
             }
 
             if ($arg->unpack) {
-                // ...[expr1, expr2] → expr1, expr2
-                if ($arg->value instanceof Node\Expr\Array_) {
-                    foreach ($arg->value->items as $item) {
-                        if ($item instanceof Node\ArrayItem) {
-                            $result[] = $item->value;
-                        }
+                // ...[expr1, expr2] → expr1, expr2; распаковка переменной — состав неизвестен
+                if (!$arg->value instanceof Node\Expr\Array_) {
+                    return null;
+                }
+
+                foreach ($arg->value->items as $item) {
+                    if (!$item instanceof Node\ArrayItem || $item->unpack) {
+                        return null;
                     }
-                } elseif ($arg->value instanceof Node\Expr\Variable && is_string($arg->value->name)) {
-                    // ...[$singleVar] — look up the var type
-                    $result[] = $arg->value;
+
+                    $result[] = $item->value;
                 }
             } else {
                 $result[] = $arg->value;
@@ -503,7 +586,7 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
             $objVar     = $call->var->name;
             $methodName = $call->name->toString();
             $cls        = $this->varTypes[$objVar] ?? null;
-            if ($cls === null) {
+            if ($cls === null || isset($this->untrackedVars[$objVar])) {
                 continue;
             }
 
@@ -511,8 +594,14 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
                 continue;
             }
 
+            // Содержимое известно, только если массив объекта отслеживается
+            // (иначе пустой список подставился бы вместо реального)
+            if (!isset($this->objectArrays[$objVar])) {
+                continue;
+            }
+
             $methodInfo = $this->generatorMethods[$cls][$methodName];
-            $animals    = $this->objectArrays[$objVar] ?? [];
+            $animals    = $this->objectArrays[$objVar];
 
             if ($methodInfo['type'] === 'all') {
                 $items = [];
@@ -563,13 +652,12 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
     #[\Override]
     public function leaveNode(Node $node): int|Node|array|null
     {
-        // Replace $admitted = $shelter->admit(...) → $admitted = 3
+        // $admitted = $shelter->admit(...) → $admitted = 3 (и в любой позиции выражения)
         if (
-            $node instanceof Node\Expr\Assign
+            $node instanceof Node\Expr\MethodCall
             && isset($this->admitReplacements[spl_object_id($node)])
         ) {
-            $node->expr = $this->admitReplacements[spl_object_id($node)];
-            return $node;
+            return $this->admitReplacements[spl_object_id($node)];
         }
 
         // Replace foreach expr: $shelter->bySpecies('dog') → literal array

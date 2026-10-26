@@ -267,3 +267,14 @@ foreach ($items as $item) {
         expect($result)->toContain('$subtotal = $subtotal + $item[\'price\']');
     }
 );
+
+it('does not substitute variables changed through a reference', function (): void {
+    $code = '<?php function inc(&$n) { $n++; } $n = 0; inc($n); echo $n;';
+    $ast  = new PhpParser\ParserFactory()->createForNewestSupportedVersion()->parse($code) ?? [];
+    $ast  = new PhpParser\NodeTraverser(new PhpParser\NodeVisitor\NodeConnectingVisitor())->traverse($ast);
+    $ast  = new PhpParser\NodeTraverser(
+        new Recombinator\Transformation\Visitor\VarToScalarVisitor(new Recombinator\Domain\ScopeStore()),
+    )->traverse($ast);
+
+    expect(new PhpParser\PrettyPrinter\Standard()->prettyPrint($ast))->toContain('echo $n;');
+});

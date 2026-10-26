@@ -8,6 +8,7 @@ use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\CloningVisitor;
 use PhpParser\NodeVisitorAbstract;
+use Recombinator\Transformation\BodyInliner;
 
 /**
  * Сводит тело функции/метода к одному return, подставляя локальные переменные.
@@ -104,7 +105,12 @@ class MethodToSingleReturnVisitor extends BaseVisitor
             /** @var string $name */
             $name = $var->name;
 
-            $subs[$name] = $this->applySubs($expr->expr, $subs);
+            $value = $this->applySubs($expr->expr, $subs);
+            if (!$value instanceof \PhpParser\Node\Expr) {
+                return null;
+            }
+
+            $subs[$name] = $value;
         }
 
         $useCounts = $this->countVarUsages($last->expr, array_keys($subs));
@@ -117,45 +123,32 @@ class MethodToSingleReturnVisitor extends BaseVisitor
         }
 
         $newReturnExpr = $this->applySubs($last->expr, $subs);
+        if (!$newReturnExpr instanceof \PhpParser\Node\Expr) {
+            return null;
+        }
+
         $node->stmts = [new Node\Stmt\Return_($newReturnExpr, $last->getAttributes())];
 
         return $node;
     }
 
     /**
-     * Подставляет в клон $expr значения из $subs для соответствующих Variable-узлов.
+     * Подставляет в клон $expr значения из $subs с учётом областей видимости:
+     * параметры и локальные переменные вложенных замыканий не трогаются.
+     * null — подставить нельзя (например, выражение в свободную переменную стрелочной функции).
      *
      * @param array<string, Node\Expr> $subs
      */
-    private function applySubs(Node\Expr $expr, array $subs): Node\Expr
+    private function applySubs(Node\Expr $expr, array $subs): ?Node\Expr
     {
         if ($subs === []) {
             return $expr;
         }
 
-        $cloned = self::cloneExpr($expr);
+        $result = BodyInliner::substitute([new Node\Stmt\Return_($expr)], $subs, null);
+        $return = $result[0] ?? null;
 
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor(
-            new class ($subs) extends NodeVisitorAbstract {
-                /** @param array<string, Node\Expr> $subs */
-                public function __construct(private array $subs)
-                {
-                }
-
-                public function leaveNode(Node $n): ?Node
-                {
-                    if ($n instanceof Node\Expr\Variable && is_string($n->name) && isset($this->subs[$n->name])) {
-                        return MethodToSingleReturnVisitor::cloneExpr($this->subs[$n->name]);
-                    }
-
-                    return null;
-                }
-            }
-        );
-
-        $result = $traverser->traverse([$cloned]);
-        return $result[0] instanceof Node\Expr ? $result[0] : $expr;
+        return $return instanceof Node\Stmt\Return_ ? $return->expr : null;
     }
 
     public static function cloneExpr(Node\Expr $expr): Node\Expr

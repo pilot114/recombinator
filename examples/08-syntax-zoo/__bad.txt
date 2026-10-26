@@ -1,0 +1,29 @@
+Admitted: 3
+rex says Woof! (canidae)
+milo says Woof! (canidae)
+Whiskers purrs softly...
+Total: 0
+Split: 7/16
+tick 4
+tick 2
+greater
+is animal
+no $interpolation here, literal {$placeholder}
+42
+42
+Whiskers the cat, age 7
+Whiskers performs jump
+Result: null
+Rex the dog, age 4
+>> tagged
+15
+empty
+Berlin
+Rex II the dog, age 4
+terminal
+--- Shelter log ---
+[ERROR] No such animal
+[INFO] guarded call completed
+--- end ---
+SyntaxZoo_Dog=3 
+SyntaxZoo_Cat=1 

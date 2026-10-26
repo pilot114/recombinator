@@ -130,3 +130,146 @@ it('skips unresolvable require', function (): void {
     );
     expect($result)->toContain('echo 1');
 });
+
+it('inlines require used as a value: file body before statement, return value in place', function (): void {
+    $result = parseAndApply(
+        '<?php $cfg = require __DIR__ . "/config.php"; echo $cfg;',
+        ['config.php' => '<?php $base = 1; return ["a" => $base];'],
+    );
+    expect($result)
+        ->toContain('$base = 1;')
+        ->toContain('$cfg = ["a" => $base];')
+        ->not->toContain('require')
+        ->not->toContain('return');
+});
+
+it('inlines require passed as first argument', function (): void {
+    $result = parseAndApply(
+        '<?php return new Container(require "settings.php");',
+        ['settings.php' => '<?php return ["x" => 1];'],
+    );
+    expect($result)->toContain('return new Container(["x" => 1]);');
+});
+
+it('does not inline value require when it is not evaluated first', function (): void {
+    $result = parseAndApply(
+        '<?php $x = foo(bar(), require "settings.php");',
+        ['settings.php' => '<?php return 1;'],
+    );
+    expect($result)->toContain('require');
+});
+
+it('does not inline value require when file has early return', function (): void {
+    $result = parseAndApply(
+        '<?php $x = require "settings.php";',
+        ['settings.php' => '<?php if ($a) { return 1; } return 2;'],
+    );
+    expect($result)->toContain('require');
+});
+
+it('drops trailing return of statement-level require so it does not end the script', function (): void {
+    $result = parseAndApply(
+        '<?php require "autoload.php"; echo 1;',
+        ['autoload.php' => '<?php $loaded = true; return Loader::get();'],
+    );
+    expect($result)
+        ->toContain('$loaded = true;')
+        ->toContain('Loader::get();')
+        ->not->toContain('return');
+});
+
+it('does not inline a file that declares a namespace', function (): void {
+    $result = parseAndApply(
+        '<?php function load() { require __DIR__ . "/Loader.php"; }',
+        ['Loader.php' => "<?php\nnamespace Composer\\Autoload;\nclass ClassLoader {}"],
+    );
+    expect($result)->toContain('require __DIR__ . "/Loader.php";')->not->toContain('namespace');
+});
+
+it('drops declare(strict_types) of the included file', function (): void {
+    $result = parseAndApply(
+        '<?php echo 1; require "settings.php";',
+        ['settings.php' => "<?php\ndeclare(strict_types=1);\n\$x = 1;"],
+    );
+    expect($result)->toContain('$x = 1;')->not->toContain('declare');
+});
+
+it('replaces the Composer autoloader with its autoload files', function (): void {
+    $files = <<<'PHP'
+<?php
+$vendorDir = dirname(__DIR__);
+$baseDir = dirname($vendorDir);
+return array(
+    'abc' => $vendorDir . '/symfony/polyfill/bootstrap.php',
+    'def' => $baseDir . '/src/helpers.php',
+);
+PHP;
+    $result = parseAndApply(
+        "<?php require __DIR__ . '/../vendor/autoload.php'; echo 1;",
+        [
+            'public/index.php'                  => '',
+            'vendor/autoload.php'               => "<?php require_once __DIR__ . '/composer/autoload_real.php';"
+                . ' return ComposerAutoloaderInitX::getLoader();',
+            'vendor/composer/autoload_real.php' => '<?php class ComposerAutoloaderInitX {}',
+            'vendor/composer/autoload_files.php' => $files,
+        ],
+        'public/index.php',
+    );
+
+    expect($result)
+        ->toContain("require_once __DIR__ . '/../vendor/symfony/polyfill/bootstrap.php';")
+        ->toContain("require_once __DIR__ . '/../src/helpers.php';")
+        ->not->toContain('ComposerAutoloaderInit');
+});
+
+it('keeps only an alias loader and Composer as a fallback for runtime class names', function (): void {
+    $result = parseAndApply(
+        "<?php require __DIR__ . '/vendor/autoload.php'; echo 1;",
+        [
+            'vendor/autoload.php'               => '<?php return ComposerAutoloaderInitX::getLoader();',
+            'vendor/composer/autoload_real.php' => '<?php class ComposerAutoloaderInitX {}',
+        ],
+        'index.php',
+    );
+
+    expect($result)
+        ->toContain("class_alias(\$flat, \$class);")
+        ->toContain("require_once __DIR__ . '/vendor/autoload.php';")
+        ->not->toContain('ComposerAutoloaderInit');
+});
+
+it('relocates __DIR__ of a file inlined from another directory', function (): void {
+    $result = parseAndApply(
+        "<?php require __DIR__ . '/../bootstrap.php';",
+        [
+            'public/index.php' => '',
+            'bootstrap.php'    => '<?php const ROOT = __DIR__; $f = __FILE__; $s = __DIR__ . "/lib/x.php"; require __DIR__ . "/missing.php";',
+            'lib/x.php'        => '',
+        ],
+        'public/index.php',
+    );
+
+    expect($result)
+        ->toContain("const ROOT = __DIR__ . '/..';")
+        ->toContain("\$f = __DIR__ . '/..' . '/bootstrap.php';")
+        ->toContain('require __DIR__ . "/missing.php";');
+});
+
+it('inlines a namespaced file with functions only', function (): void {
+    $functions = <<<'PHP'
+<?php
+namespace FastRoute;
+use Other\Thing;
+if (!function_exists('FastRoute\simpleDispatcher')) {
+    function simpleDispatcher(callable $cb) { return cachedDispatcher($cb, new Thing(), strlen('x')); }
+    function cachedDispatcher(callable $cb) { return new RouteCollector(); }
+}
+PHP;
+    $result = parseAndApply('<?php require __DIR__ . "/functions.php";', ['functions.php' => $functions], 'index.php');
+
+    expect($result)
+        ->toContain('function FastRoute_simpleDispatcher(callable $cb)')
+        ->toContain('return \FastRoute_cachedDispatcher($cb, new \Other\Thing(), strlen(\'x\'));')
+        ->toContain('return new \FastRoute\RouteCollector();')
+        ->not->toContain('namespace');
+});

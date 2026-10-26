@@ -199,12 +199,6 @@ parameters:
 			path: src/Transformation/Visitor/EnumCaseInlinerVisitor.php
 
 		-
-			message: '#^Property Recombinator\\Transformation\\Visitor\\EnumCaseInlinerVisitor\:\:\$enums \(array\<string, array\{cases\: array\<string, PhpParser\\Node\\Scalar\\Int_\|PhpParser\\Node\\Scalar\\String_\>, methods\: array\<string, PhpParser\\Node\\Stmt\\ClassMethod\>\}\>\) does not accept non\-empty\-array\<string, array\{cases\: array\<string, PhpParser\\Node\\Expr\>, methods\: array\<string, PhpParser\\Node\\Stmt\\ClassMethod\>\}\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: src/Transformation/Visitor/EnumCaseInlinerVisitor.php
-
-		-
 			message: '#^Instanceof between PhpParser\\Node\\Identifier and PhpParser\\Node\\Identifier will always evaluate to true\.$#'
 			identifier: instanceof.alwaysTrue
 			count: 3
@@ -391,12 +385,6 @@ parameters:
 			path: src/Transformation/Visitor/RemoveUnusedClosureCapturesVisitor.php
 
 		-
-			message: '#^Instanceof between PhpParser\\Node\\ArrayItem and PhpParser\\Node\\ArrayItem will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 1
-			path: src/Transformation/Visitor/RemoveUnusedPropWriteVisitor.php
-
-		-
 			message: '#^Access to property \$expr on an unknown class PhpParser\\Node\\Expr\\UnaryOp\.$#'
 			identifier: class.notFound
 			count: 1
@@ -425,15 +413,3 @@ parameters:
 			identifier: instanceof.alwaysTrue
 			count: 1
 			path: src/Transformation/Visitor/StaticMethodInlinerVisitor.php
-
-		-
-			message: '#^Instanceof between PhpParser\\Node\\Identifier and PhpParser\\Node\\Identifier will always evaluate to true\.$#'
-			identifier: instanceof.alwaysTrue
-			count: 2
-			path: src/Transformation/Visitor/TraitInlinerVisitor.php
-
-		-
-			message: '#^Property PhpParser\\Node\\Stmt\\ClassLike\:\:\$stmts \(array\<PhpParser\\Node\\Stmt\>\) does not accept array\<PhpParser\\Node\>\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: src/Transformation/Visitor/TraitInlinerVisitor.php

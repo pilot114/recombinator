@@ -8,8 +8,12 @@ use PhpParser\Node;
 use Recombinator\Domain\ScopeStore;
 
 /**
- * Собирает тела однострочных функций в ScopeStore и удаляет определения,
- * чтобы CallFunctionVisitor мог инлайнить вызовы.
+ * Собирает тела однострочных функций в ScopeStore, чтобы CallFunctionVisitor мог
+ * инлайнить вызовы. Определение остаётся: его удалит RemoveUnusedFunctionVisitor,
+ * когда вызовов не останется (не каждый вызов удаётся встроить).
+ *
+ * Функция с `global` не собирается: внутри другой функции `$shelter` — уже
+ * локальная переменная, а не глобальная.
  *
  * Аналог FunctionScopeVisitor, но работает прямо в едином глобальном scope
  * (без разбивки по файлам).
@@ -32,18 +36,11 @@ class FunctionBodyCollectorVisitor extends BaseVisitor
 
         $stmts = $node->stmts ?? [];
 
-        // Filter out `global` declarations — after variable inlining they're often dead code.
-        // We still only handle functions whose effective body is a single return.
-        $effectiveStmts = array_values(array_filter(
-            $stmts,
-            static fn(\PhpParser\Node\Stmt $s): bool => !($s instanceof Node\Stmt\Global_),
-        ));
-
-        if (count($effectiveStmts) !== 1 || !($effectiveStmts[0] instanceof Node\Stmt\Return_)) {
+        if (count($stmts) !== 1 || !($stmts[0] instanceof Node\Stmt\Return_)) {
             return null;
         }
 
-        $returnExpr = $effectiveStmts[0]->expr;
+        $returnExpr = $stmts[0]->expr;
         if (!$returnExpr instanceof \PhpParser\Node\Expr) {
             return null;
         }
@@ -67,7 +64,6 @@ class FunctionBodyCollectorVisitor extends BaseVisitor
         }
 
         $this->scopeStore->setFunctionToGlobal((string) $node->name, $body);
-        $node->setAttribute('remove', true);
 
         return null;
     }

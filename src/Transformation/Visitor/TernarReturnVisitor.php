@@ -29,26 +29,53 @@ class TernarReturnVisitor extends BaseVisitor
             default => null,
         };
 
-        if ($stmts === null || $stmts === []) {
+        // function &f(): вернуть по ссылке можно только переменную, не тернарный оператор
+        if ($stmts === null || $stmts === [] || ($node instanceof Node\FunctionLike && $node->returnsByRef())) {
             return null;
         }
 
+        // Цепочка `if (a) return x; if (b) return y; return z;` сворачивается целиком
+        // за один обход: иначе каждое звено ждало бы следующего прохода конвейера
+        $changed = false;
+        while (($folded = $this->foldTail($stmts)) !== null) {
+            $stmts   = $folded;
+            $changed = true;
+        }
+
+        if ($changed) {
+            $nodeNew        = clone $node;
+            $nodeNew->stmts = $stmts;
+            $node->setAttribute('replace', $nodeNew);
+        }
+
+        return null;
+    }
+
+    /**
+     * Сворачивает хвост списка операторов по одному из паттернов.
+     *
+     * @param  array<Node\Stmt> $stmts
+     * @return array<Node\Stmt>|null null — паттерн не найден
+     */
+    private function foldTail(array $stmts): ?array
+    {
         $count = count($stmts);
-        $last  = $stmts[$count - 1];
+        if ($count === 0) {
+            return null;
+        }
+
+        $last = $stmts[$count - 1];
 
         // Паттерн 1: if(cond) { return a; } else { return b; }
-        if ($last instanceof Node\Stmt\If_ && $last->else instanceof \PhpParser\Node\Stmt\Else_ && $last->elseifs === []) {
+        if ($last instanceof Node\Stmt\If_ && $last->else instanceof Node\Stmt\Else_ && $last->elseifs === []) {
             $ifReturn   = $this->getSingleReturn($last->stmts);
             $elseReturn = $this->getSingleReturn($last->else->stmts);
 
-            if ($ifReturn instanceof \PhpParser\Node\Expr && $elseReturn instanceof \PhpParser\Node\Expr) {
-                $nodeNew        = clone $node;
-                $nodeNew->stmts = [
+            if ($ifReturn instanceof Node\Expr && $elseReturn instanceof Node\Expr) {
+                return [
                     ...array_slice($stmts, 0, $count - 1),
                     new Node\Stmt\Return_(new Node\Expr\Ternary($last->cond, $ifReturn, $elseReturn)),
                 ];
-                $node->setAttribute('replace', $nodeNew);
-                return null;
             }
         }
 
@@ -57,21 +84,18 @@ class TernarReturnVisitor extends BaseVisitor
             $prev = $stmts[$count - 2];
             if (
                 $prev instanceof Node\Stmt\If_
-                && !$prev->else instanceof \PhpParser\Node\Stmt\Else_
+                && !$prev->else instanceof Node\Stmt\Else_
                 && $prev->elseifs === []
                 && $last instanceof Node\Stmt\Return_
             ) {
                 $ifReturn = $this->getSingleReturn($prev->stmts);
                 $elseExpr = $last->expr;
 
-                if ($ifReturn instanceof \PhpParser\Node\Expr && $elseExpr instanceof Node\Expr) {
-                    $nodeNew        = clone $node;
-                    $nodeNew->stmts = [
+                if ($ifReturn instanceof Node\Expr && $elseExpr instanceof Node\Expr) {
+                    return [
                         ...array_slice($stmts, 0, $count - 2),
                         new Node\Stmt\Return_(new Node\Expr\Ternary($prev->cond, $ifReturn, $elseExpr)),
                     ];
-                    $node->setAttribute('replace', $nodeNew);
-                    return null;
                 }
             }
         }

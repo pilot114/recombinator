@@ -34,17 +34,17 @@ it(
 );
 
 it(
-    'removes collected function from AST',
+    'keeps the function definition and skips functions with global',
     function (): void {
-        $code = '<?php function double($x) { return $x * 2; }';
-        $ast = $this->parser->parse($code);
+        $ast = $this->parser->parse('<?php function double($x) { return $x * 2; } function city() { global $s; return $s->city; }');
 
         $traverser = new NodeTraverser();
         $traverser->addVisitor($this->visitor);
         $traverser->traverse($ast);
 
-        // The function should be marked for removal
-        expect($ast[0]->getAttribute('remove'))->toBeTrue();
+        // Определение удалит RemoveUnusedFunctionVisitor, когда вызовов не останется
+        expect($ast[0]->getAttribute('remove'))->toBeNull()
+            ->and($this->store->getFunctionFromGlobal('city'))->toBeNull();
     }
 );
 
