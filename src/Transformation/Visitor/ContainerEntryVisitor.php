@@ -33,6 +33,10 @@ use Recombinator\Support\Sandbox;
  *
  * Подставляется только значение без побочных эффектов (литералы, константы):
  * оно вычисляется при каждом чтении, а не один раз при создании контейнера.
+ *
+ * Допущение окружения containerEntriesImmutable (TargetEnvironment) снимает условие 2
+ * для вызовов, которые анализ не может отсеять: с динамическим именем метода и с
+ * вычисляемым ключом. Вызовы писателя с литеральным ключом учитываются как обычно.
  */
 #[VisitorMeta('Литеральные записи DI-контейнера: $c->get("settings") → значение')]
 class ContainerEntryVisitor extends BaseVisitor
@@ -90,7 +94,7 @@ class ContainerEntryVisitor extends BaseVisitor
     /** @var \SplObjectStorage<Node\FunctionLike, string> фабрика контейнера → имя параметра-контейнера */
     private \SplObjectStorage $factories;
 
-    public function __construct()
+    public function __construct(private readonly bool $assumeImmutable = false)
     {
         $this->factories = new \SplObjectStorage();
     }
@@ -469,7 +473,7 @@ class ContainerEntryVisitor extends BaseVisitor
                 // $x->$m(...) с m = 'set'; вызов с меньшим числом аргументов писателем быть не может
                 $names = $this->possibleStrings($node->name);
                 $hits  = $names === null || array_intersect(array_map(strtolower(...), $names), array_keys($writers)) !== [];
-                if ($writerNamed && $hits && !$this->tooFewArgs($node, $minRequired) && $this->mayBeContainer($node->var, $class)) {
+                if (!$this->assumeImmutable && $writerNamed && $hits && !$this->tooFewArgs($node, $minRequired) && $this->mayBeContainer($node->var, $class)) {
                     return null;
                 }
 
@@ -489,6 +493,10 @@ class ContainerEntryVisitor extends BaseVisitor
 
             $key = $node->args[$index] ?? null;
             if (!$key instanceof Node\Arg || $key->unpack || !$key->value instanceof Node\Scalar\String_) {
+                if ($this->assumeImmutable) {
+                    continue;
+                }
+
                 return null;
             }
 

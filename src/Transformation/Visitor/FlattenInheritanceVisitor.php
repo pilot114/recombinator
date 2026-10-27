@@ -6,6 +6,7 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Modifiers;
 use PhpParser\Node;
+use Recombinator\Support\TypeInference;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
@@ -297,6 +298,8 @@ class FlattenInheritanceVisitor extends BaseVisitor
         $this->redirectSharedStatics($child, $sharedStatics, (string) $parent->name);
         $this->rewriteParentCalls($child, $synthetic, $parentStatic);
         $this->mergeImplements($child, $parent);
+        // Объекты родителя теперь — объекты этого класса (для типов, которые его называют)
+        TypeInference::addFormerTypes($child, [strtolower((string) $parent->name), ...TypeInference::formerTypes($parent)]);
         $child->extends = null;
     }
 

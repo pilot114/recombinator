@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Support\TypeInference;
 
 /**
  * Удаляет объявления интерфейсов и их упоминания в implements-списке классов.
@@ -85,14 +86,14 @@ class RemoveInterfacesVisitor extends BaseVisitor
             if ($node->name instanceof Node\Identifier && isset($this->removable[strtolower($node->name->toString())])) {
                 $node->setAttribute('remove', true);
             } else {
-                $node->extends = $this->withoutRemovable($node->extends);
+                $node->extends = $this->withoutRemovable($node->extends, $node);
             }
 
             return null;
         }
 
         if ($node instanceof Node\Stmt\Class_ || $node instanceof Node\Stmt\Enum_) {
-            $node->implements = $this->withoutRemovable($node->implements);
+            $node->implements = $this->withoutRemovable($node->implements, $node);
         }
 
         return null;
@@ -102,8 +103,9 @@ class RemoveInterfacesVisitor extends BaseVisitor
      * @param  array<Node\Name> $names
      * @return list<Node\Name>
      */
-    private function withoutRemovable(array $names): array
+    private function withoutRemovable(array $names, Node\Stmt\ClassLike $owner): array
     {
+        $removed = [];
         // Удаляемый интерфейс заменяется его оставшимися предками: класс, реализовавший
         // EventManagerInterface extends EventDispatcher, должен остаться EventDispatcher
         $result = [];
@@ -122,9 +124,15 @@ class RemoveInterfacesVisitor extends BaseVisitor
                 continue;
             }
 
+            $removed[] = $lower;
             foreach ($this->interfaces[$lower]->extends as $parent) {
                 $queue[] = $parent;
             }
+        }
+
+        // Объявленные типы (originalType) ещё называют удалённый интерфейс — его объекты теперь этот класс
+        if ($removed !== []) {
+            TypeInference::addFormerTypes($owner, $removed);
         }
 
         return $result;

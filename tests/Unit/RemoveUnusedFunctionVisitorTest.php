@@ -77,3 +77,27 @@ $a = used(5);
     expect($result)->toContain('function used');
     expect($result)->not->toContain('function unused');
 });
+
+it('keeps functions named by strings or by project files outside the program', function (): void {
+    $ast = new ParserFactory()->createForHostVersion()->parse(
+        '<?php function a() {} function b() {} function c() {} function dead() {} array_map("a", []); $f = b(...);',
+    ) ?? [];
+    $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
+    $ast = new NodeTraverser(new RemoveUnusedFunctionVisitor(null, ['vendor/x.php' => '<?php c(1);']))->traverse($ast);
+
+    $result = new StandardPrinter()->prettyPrint($ast);
+
+    expect($result)->toContain('function a()')
+        ->toContain('function b()')
+        ->toContain('function c()')
+        ->not->toContain('function dead()');
+});
+
+it('ignores includes that cannot be inlined', function (): void {
+    $ast = new ParserFactory()->createForHostVersion()->parse('<?php function dead() {} require $file;') ?? [];
+    $ast[1]->expr->setAttribute('includeUnresolvable', true);
+    $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
+    $ast = new NodeTraverser(new RemoveUnusedFunctionVisitor())->traverse($ast);
+
+    expect(new StandardPrinter()->prettyPrint($ast))->not->toContain('function dead()');
+});

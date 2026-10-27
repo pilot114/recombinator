@@ -61,3 +61,34 @@ it('keeps classes referenced from functions and enum cases', function (): void {
 
     expect($result)->toContain('enum S')->toContain('class U');
 });
+
+it('does not count array keys and is_a() class names as uses', function (): void {
+    $ast = new ParserFactory()->createForNewestSupportedVersion()->parse(
+        '<?php class Oracle {} class Pg {} class Lite {}
+        $strategy = ["Oracle" => 2][$platform::class] ?? 1;
+        $isPg = is_a($platform, "Pg");
+        $driver = new (["sqlite" => "Lite"]["sqlite"])();',
+    ) ?? [];
+    $ast    = new NodeTraverser(new PhpParser\NodeVisitor\ParentConnectingVisitor())->traverse($ast);
+    $ast    = new NodeTraverser(new RemoveUnusedClassVisitor())->traverse($ast);
+
+    $result = new Printer()->prettyPrint($ast);
+
+    expect($result)->not->toContain('class Oracle')
+        ->not->toContain('class Pg')
+        ->toContain('class Lite');
+});
+
+it('treats functions extracted from static methods as graph nodes, not roots', function (): void {
+    $result = applyRemoveUnusedClass(
+        '<?php class Files { public static $start; public function get() { return Files_isSupported(); } }
+        function Files_isSupported() { return Files::$start ??= 1; }
+        class Used { public static function make() { return Used_make(); } }
+        function Used_make() { return new Used(); }
+        function helper() { return 1; }
+        echo Used_make(), helper();',
+    );
+
+    expect($result)->not->toContain('class Files')->not->toContain('function Files_isSupported')
+        ->toContain('class Used')->toContain('function Used_make')->toContain('function helper');
+});

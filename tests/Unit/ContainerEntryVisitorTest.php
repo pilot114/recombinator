@@ -26,11 +26,11 @@ const CONTAINER = '<?php final class Box {
 class Coll { private array $e = []; public function set($k, $v) { $this->e[$k] = $v; } }
 ';
 
-function applyContainerEntry(string $code): string
+function applyContainerEntry(string $code, bool $assumeImmutable = false): string
 {
     $ast = new ParserFactory()->createForNewestSupportedVersion()->parse(CONTAINER . $code) ?? [];
     $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
-    $ast = new NodeTraverser(new ContainerEntryVisitor())->traverse($ast);
+    $ast = new NodeTraverser(new ContainerEntryVisitor($assumeImmutable))->traverse($ast);
 
     return new Printer()->prettyPrint($ast);
 }
@@ -72,3 +72,14 @@ it('keeps entries that may be overwritten', function (string $write): void {
     'dynamic method'    => ['function w($box, $m) { $box->$m("settings", 1); } $x = "set"; w($cnt, $x);'],
     'through property'  => ['class H { private $b; function __construct($b) { $this->b = $b; } function put($k) { $this->b->set($k, 2); } } new H($cnt);'],
 ]);
+
+it('trusts unresolved writer calls under the containerEntriesImmutable assumption', function (): void {
+    $code = '$cnt = new Box(["settings" => 1]);
+        $cnt->set("em", static function ($c) { return $c->get("settings"); });
+        function w($box, $k) { $box->set($k, 1); } w($cnt, $key);';
+
+    expect(applyContainerEntry($code))->toContain('return $c->get("settings");')
+        ->and(applyContainerEntry($code, true))->toContain('return 1;')
+        // литеральный ключ учитывается и при допущении
+        ->and(applyContainerEntry($code . ' $cnt->set("settings", 2);', true))->toContain('return $c->get("settings");');
+});

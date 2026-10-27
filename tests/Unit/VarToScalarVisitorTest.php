@@ -278,3 +278,47 @@ it('does not substitute variables changed through a reference', function (): voi
 
     expect(new PhpParser\PrettyPrinter\Standard()->prettyPrint($ast))->toContain('echo $n;');
 });
+
+it('keeps variables in binding positions (closure use, isset, unset, foreach)', function (): void {
+    $code = '<?php $s = "a{$x}b"; $f = function () use ($s) { return $s; }; $i = isset($s); foreach ([1] as $s) {} unset($s);';
+
+    $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
+    $traverser->addVisitor(new ScopeVisitor());
+    $traverser->addVisitor($this->visitor);
+
+    $result = $this->printer->prettyPrint($traverser->traverse($this->parser->parse($code) ?? []));
+
+    expect($result)->toContain('use ($s)')
+        ->and($result)->toContain('isset($s)')
+        ->and($result)->toContain('as $s')
+        ->and($result)->toContain('unset($s)');
+});
+
+it('does not treat interpolated strings as constants', function (): void {
+    $code = '<?php $indent = f(); $sub = "{$indent}  "; $indent = "x"; echo "a{$sub}b";';
+
+    $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
+    $traverser->addVisitor(new ScopeVisitor());
+    $traverser->addVisitor($this->visitor);
+
+    $result = $this->printer->prettyPrint($traverser->traverse($this->parser->parse($code) ?? []));
+
+    expect($result)->toContain('$sub = "{$indent}  ";')
+        ->and($result)->toContain('echo "a{$sub}b";');
+});
+
+it('does not carry values between function bodies or into parameters', function (): void {
+    $code = '<?php function a() { $c = "X"; return $c; } function b(string $c) { return $c; }';
+
+    $traverser = new NodeTraverser();
+    $traverser->addVisitor(new ParentConnectingVisitor());
+    $traverser->addVisitor(new ScopeVisitor());
+    $traverser->addVisitor($this->visitor);
+
+    $result = $this->printer->prettyPrint($traverser->traverse($this->parser->parse($code) ?? []));
+
+    expect($result)->toContain('function b(string $c)')
+        ->and($result)->toContain('return $c;');
+});

@@ -115,3 +115,13 @@ it('does not fold comparison when one operand is a variable', function (): void 
     $result = applyConstFold('<?php $x = $a === "test";');
     expect($result)->toContain('$a ===');
 });
+
+it('folds isset over a literal array instead of the element inside it', function (): void {
+    $parser    = new PhpParser\ParserFactory()->createForNewestSupportedVersion();
+    $traverser = new PhpParser\NodeTraverser(new PhpParser\NodeVisitor\NodeConnectingVisitor(), new Recombinator\Transformation\Visitor\ConstFoldVisitor());
+    $result    = new PhpParser\PrettyPrinter\Standard()->prettyPrint($traverser->traverse($parser->parse(
+        '<?php $a = isset(["x" => 1]["x"]); $b = isset(["x" => null]["x"]); $c = isset(["x" => 1]["y"]); $d = ["x" => 1]["x"];',
+    ) ?? []));
+
+    expect($result)->toContain('$a = true;')->toContain('$b = false;')->toContain('$c = false;')->toContain('$d = 1;');
+});

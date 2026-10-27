@@ -5,27 +5,32 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
-use PhpParser\NodeTraverser;
 use Recombinator\Core\Config;
+use Recombinator\Support\ExternalCode;
 
 /**
  * Удаляет определения функций, которые нигде не вызываются.
  *
- * Безопасно: рекурсивные функции остаются (вызов внутри тела считается использованием).
- * Динамические вызовы ($fn()) и строковые callable не отслеживаются — такие функции
- * не будут удалены только если есть явный статический вызов.
+ * Используется: вызов `f()` (в том числе `f(...)`), строка `'f'` (callable,
+ * `function_exists('f')`), упоминание во внешнем коде — файлах проекта, не вошедших
+ * в программу. Рекурсивная функция остаётся (вызов в теле — тоже использование).
+ *
+ * Пока есть встраиваемый include, ничего не удаляется; невстраиваемые include не
+ * учитываются — то же соглашение, что у RemoveUnusedMethodVisitor. Имя, собранное
+ * из частей (`'f' . $x`), не видно.
  */
 #[VisitorMeta('Удаление неиспользуемых функций')]
 class RemoveUnusedFunctionVisitor extends BaseVisitor
 {
     /** @var array<string, true> */
-    private array $calledFunctions = [];
+    private array $used = [];
 
-    private bool $hasUnresolvedIncludes = false;
+    private bool $skip = false;
 
     private readonly Config $config;
 
-    public function __construct(?Config $config = null)
+    /** @param array<string, string> $fileMap файлы проекта (путь → код) */
+    public function __construct(?Config $config = null, private readonly array $fileMap = [])
     {
         $this->config = $config ?? new Config();
     }
@@ -35,16 +40,25 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
     {
         parent::beforeTraverse($nodes);
 
-        $this->hasUnresolvedIncludes = $this->findNode(Node\Expr\Include_::class) !== [];
-        if ($this->hasUnresolvedIncludes) {
+        $this->used = [];
+        $this->skip = $this->hasPendingIncludes();
+        if ($this->skip) {
             return null;
         }
 
-        $this->calledFunctions = [];
-        foreach ($this->findNode(Node\Expr\FuncCall::class) as $call) {
-            if ($call->name instanceof Node\Name) {
-                $this->calledFunctions[strtolower($call->name->toString())] = true;
+        $classes = [];
+        foreach ($this->findNode(Node::class) as $node) {
+            if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name) {
+                $this->used[strtolower(ltrim($node->name->toString(), '\\'))] = true;
+            } elseif ($node instanceof Node\Scalar\String_) {
+                $this->used[strtolower(ltrim($node->value, '\\'))] = true;
+            } elseif ($node instanceof Node\Stmt\ClassLike && $node->name instanceof Node\Identifier) {
+                $classes[$node->name->toLowerString()] = true;
             }
+        }
+
+        if ($this->fileMap !== []) {
+            $this->used += ExternalCode::forProgram($this->fileMap, $classes, $this->ast)->names();
         }
 
         return null;
@@ -52,12 +66,12 @@ class RemoveUnusedFunctionVisitor extends BaseVisitor
 
     public function enterNode(Node $node): ?Node
     {
-        if ($this->hasUnresolvedIncludes || !$node instanceof Node\Stmt\Function_) {
+        if ($this->skip || !$node instanceof Node\Stmt\Function_) {
             return null;
         }
 
-        $name = strtolower((string) $node->name);
-        if (!isset($this->calledFunctions[$name]) && !$this->config->isProtected($name)) {
+        $name = $node->name->toLowerString();
+        if (!isset($this->used[$name]) && !$this->config->isProtected($name)) {
             $node->setAttribute('remove', true);
         }
 

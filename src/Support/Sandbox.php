@@ -96,7 +96,7 @@ class Sandbox
         'strpos', 'strrchr', 'strrev', 'strripos', 'strrpos', 'strstr',
         'strtolower', 'strtoupper', 'strtr', 'substr', 'substr_compare',
         'substr_count', 'substr_replace', 'trim', 'ucfirst', 'ucwords',
-        'vsprintf', 'wordwrap',
+        'vsprintf', 'wordwrap', 'version_compare',
 
         // Массивы
         'array_change_key_case', 'array_chunk', 'array_column', 'array_combine',

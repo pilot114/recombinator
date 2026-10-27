@@ -182,7 +182,8 @@ class VarToScalarVisitor extends BaseVisitor
         // Class methods have their own variable scope; outer-scope scalar values
         // must not bleed into them. Closures and arrow functions are excluded
         // because they legitimately capture outer-scope variables.
-        if ($node instanceof Node\Stmt\ClassMethod) {
+        // Функции — тоже своя область видимости (значение из одной утекало бы в другую)
+        if ($node instanceof Node\Stmt\ClassMethod || $node instanceof Node\Stmt\Function_) {
             $this->methodDepth++;
             return null;
         }
@@ -292,7 +293,7 @@ class VarToScalarVisitor extends BaseVisitor
     #[\Override]
     public function leaveNode(Node $node): int|Node|array|null
     {
-        if ($node instanceof Node\Stmt\ClassMethod) {
+        if ($node instanceof Node\Stmt\ClassMethod || $node instanceof Node\Stmt\Function_) {
             $this->methodDepth--;
         }
 
@@ -324,6 +325,11 @@ class VarToScalarVisitor extends BaseVisitor
     /** Скаляр, true/false/null или case enum. */
     private function isConstantValue(Node\Expr $expr): bool
     {
+        // "{$x}…" — тоже Scalar, но значение зависит от переменных; __LINE__ и др. — от места
+        if ($expr instanceof Node\Scalar\InterpolatedString || $expr instanceof Node\Scalar\MagicConst) {
+            return false;
+        }
+
         if ($expr instanceof Node\Scalar) {
             return true;
         }
@@ -344,6 +350,18 @@ class VarToScalarVisitor extends BaseVisitor
     protected function isVarRead(Node $node, string $varName): bool
     {
         $parent = $node->getAttribute('parent');
+
+        // Позиции, где нужна сама переменная, а не значение: захват замыкания, static/global,
+        // unset/isset, catch, цели foreach и list(), ссылки, аргумент по ссылке
+        $binding = $parent instanceof Node\Param || $parent instanceof Node\ClosureUse || $parent instanceof Node\StaticVar || $parent instanceof Node\Stmt\Global_
+            || $parent instanceof Node\Stmt\Unset_ || $parent instanceof Node\Expr\Isset_ || $parent instanceof Node\Stmt\Catch_
+            || $parent instanceof Node\Expr\AssignRef
+            || $parent instanceof Node\Stmt\Foreach_ && ($parent->keyVar === $node || $parent->valueVar === $node)
+            || $parent instanceof Node\ArrayItem && ($parent->byRef || $parent->getAttribute('parent') instanceof Node\Expr\List_)
+            || $parent instanceof Node\Arg && $parent->byRef;
+        if ($binding) {
+            return false;
+        }
 
         // LHS of plain assignment
         if ($parent instanceof Node\Expr\Assign && $parent->var instanceof Node\Expr\Variable && $parent->var->name === $varName) {

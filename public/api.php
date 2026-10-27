@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 if (!is_dir($path)) {
                     return 0;
                 }
+
                 $it = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, RecursiveDirectoryIterator::SKIP_DOTS));
                 $n  = 0;
                 foreach ($it as $f) {
@@ -38,6 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                         $n++;
                     }
                 }
+
                 return $n;
             };
 
@@ -50,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'url'         => (string) ($meta['url'] ?? ''),
                 'srcCount'    => $countPhp($exampleDir . 'src'),
                 'vendorCount' => $countPhp($exampleDir . 'vendor'),
+                'environment' => $meta['environment'] ?? null,
             ];
             continue;
         }
@@ -136,7 +139,7 @@ use Recombinator\Transformation\Visitor\RemoveInterfacesVisitor;
 use Recombinator\Transformation\Visitor\RemoveSplAutoloadVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedClassVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedMethodVisitor;
-use Recombinator\Transformation\Visitor\PrivateMethodInlinerVisitor;
+use Recombinator\Transformation\Visitor\SmallCallInlinerVisitor;
 use Recombinator\Transformation\Visitor\SingleImplementationInterfaceVisitor;
 use Recombinator\Transformation\Visitor\ContainerEntryVisitor;
 use Recombinator\Transformation\Visitor\StaticMethodExtractVisitor;
@@ -145,6 +148,16 @@ use Recombinator\Transformation\Visitor\ProgramEvaluatorVisitor;
 use Recombinator\Transformation\Visitor\ExternalParentGuardVisitor;
 use Recombinator\Transformation\Visitor\StaticPropConstVisitor;
 use Recombinator\Transformation\Visitor\ClassExistsFoldVisitor;
+use Recombinator\Transformation\Visitor\TargetEnvironmentVisitor;
+use Recombinator\Transformation\Visitor\PolyfillRequireVisitor;
+use Recombinator\Transformation\Visitor\InvariantPropertyVisitor;
+use Recombinator\Transformation\Visitor\UnwrittenArrayKeyVisitor;
+use Recombinator\Transformation\Visitor\ConstantArgumentVisitor;
+use Recombinator\Transformation\Visitor\MagicConstantVisitor;
+use Recombinator\Transformation\Visitor\GlobalConstantVisitor;
+use Recombinator\Transformation\Visitor\LocalConstantVisitor;
+use Recombinator\Core\TargetEnvironment;
+use Recombinator\Support\DoctrineMetadataProbe;
 use Recombinator\Transformation\Visitor\RemoveUnusedClosureCapturesVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedFunctionVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedPropWriteVisitor;
@@ -169,6 +182,8 @@ $timeout = 60;
 const REQUEST_BUDGET = 25;
 // Полный код «до/после» в шагах — только для небольших программ, иначе только diff
 const STEP_CODE_LIMIT = 200_000;
+// Ответ больше этого — без шагов прошлых прогонов (см. respond)
+const RESPONSE_LIMIT = 1_000_000;
 set_time_limit($timeout);
 ini_set('memory_limit', '5G');
 $requestStart = microtime(true);
@@ -191,6 +206,9 @@ if (($input['action'] ?? '') === 'reset-cache') {
 // Поддерживаем три формата: {code}, {files, entry}, {project, entry}
 /** @var array<string, string> $fileMap */
 $fileMap = [];
+/** @var array<string, mixed> $environmentData допущения о целевом сервере (TargetEnvironment) */
+$environmentData = [];
+$projectDir      = null;
 
 if (!empty($input['project'])) {
     $projectId  = preg_replace('/[^a-z0-9-]/', '', (string) $input['project']);
@@ -202,21 +220,26 @@ if (!empty($input['project'])) {
         if (preg_replace('/^\d+-/', '', $dn) === $projectId) {
             $meta = $allMeta[$dn] ?? [];
             if (($meta['type'] ?? '') === 'project') {
-                $projectDir = rtrim($d, '/');
-                $entryRel   = (string) ($input['entry'] ?? $meta['entry'] ?? '');
+                $projectDir      = rtrim($d, '/');
+                $entryRel        = (string) ($input['entry'] ?? $meta['entry'] ?? '');
+                $environmentData = is_array($meta['environment'] ?? null) ? $meta['environment'] : [];
             }
+
             break;
         }
     }
+
     if ($projectDir === null) {
         echo json_encode(['error' => 'Unknown project: ' . $projectId]);
         exit;
     }
+
     foreach (['src', 'vendor'] as $subdir) {
         $scanDir = $projectDir . '/' . $subdir;
         if (!is_dir($scanDir)) {
             continue;
         }
+
         $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($scanDir, RecursiveDirectoryIterator::SKIP_DOTS));
         foreach ($iterator as $file) {
             if ($file->isFile() && $file->getExtension() === 'php') {
@@ -225,10 +248,12 @@ if (!empty($input['project'])) {
             }
         }
     }
+
     // Файлы корня проекта (bootstrap.php, settings.php и т.п.) подключаются через require
     foreach (glob($projectDir . '/*.php') ?: [] as $rootFile) {
         $fileMap[basename($rootFile)] = (string) file_get_contents($rootFile);
     }
+
     if (!empty($entryRel) && file_exists($projectDir . '/' . $entryRel)) {
         $fileMap[$entryRel] = (string) file_get_contents($projectDir . '/' . $entryRel);
         $code = $fileMap[$entryRel];
@@ -243,11 +268,13 @@ if (!empty($input['project'])) {
         if (!is_array($file) || !isset($file['name'], $file['code'])) {
             continue;
         }
+
         $fileMap[(string) $file['name']] = (string) $file['code'];
         if ((string) $file['name'] === $entryRel) {
             $code = (string) $file['code'];
         }
     }
+
     if ($code === '') {
         $code     = end($fileMap) ?: '';
         $entryRel = array_key_last($fileMap) ?? '';
@@ -305,7 +332,29 @@ function stripConnections(array $ast): array
     return $t->traverse($ast);
 }
 
-$runKey   = sha1(serialize([$code, $fileMap, $entryRel ?? '']) . pipelineVersion());
+// Окружение из запроса (правка в интерфейсе) важнее описания проекта
+if (is_array($input['environment'] ?? null)) {
+    $environmentData = $input['environment'];
+}
+
+$environment = TargetEnvironment::fromArray($environmentData);
+if ($projectDir !== null) {
+    $environment = $environment->withProjectDir((string) realpath($projectDir));
+}
+$envArray    = $environment->toArray();
+$envHash     = $environment->isEmpty() ? '' : sha1((string) json_encode($envArray));
+$inputKey    = sha1(serialize([$code, $fileMap, $entryRel ?? '']));
+$runKey      = sha1($inputKey . $envHash . pipelineVersion());
+
+// Пробы: частичное выполнение кода проекта (метаданные Doctrine) → инварианты
+if ($projectDir !== null && isset($environment->probes['doctrine'])) {
+    $environment = $environment->withInvariants(DoctrineMetadataProbe::invariants(
+        (string) realpath($projectDir),
+        $environment->probes['doctrine'],
+        $inputKey,
+        __DIR__ . '/../var/cache/probes',
+    ));
+}
 $runFile  = $runCacheDir . '/' . $runKey . '.run';
 $lockFile = $runCacheDir . '/' . $runKey . '.lock';
 if (!is_dir($runCacheDir)) {
@@ -330,18 +379,36 @@ if (is_file($runFile)) {
 }
 
 /** Ответ клиенту: шаги начиная с $stepsFrom (клиент дописывает их к уже полученным). */
+/**
+ * Ответ клиенту: шаги начиная с $stepsFrom (клиент дописывает их к уже полученным).
+ * Ответ больше RESPONSE_LIMIT — только шаги последнего прогона: унаследованные от
+ * прогонов, с которых он продолжил (steps_base), не отправляются; steps_offset сообщает
+ * клиенту номер первого отправленного шага.
+ */
 function respond(array $run, int $stepsFrom, bool $partial, bool $cached): never
 {
-    echo json_encode([
+    // Смещение, с которым клиент уже работает (он прислал его в запросе)
+    $clientOffset = max(0, min((int) ($GLOBALS['input']['steps_offset'] ?? 0), $stepsFrom));
+    $flags   = JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE;
+    $payload = static fn(int $from, int $offset): array => [
         'original'      => $run['original'],
         'final'         => $run['final'] ?? null,
-        'steps'         => array_slice($run['steps'], $stepsFrom),
-        'steps_from'    => $stepsFrom,
+        'steps'         => array_slice($run['steps'], $from),
+        'steps_from'    => $from,
+        'steps_offset'  => $offset,
         'passes'        => $run['passes'],
         'partial'       => $partial,
         'cached'        => $cached,
         'total_time_ms' => $run['total_time_ms'],
-    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE);
+    ];
+
+    $base = (int) ($run['steps_base'] ?? 0);
+    $json = (string) json_encode($payload($stepsFrom, $clientOffset), $flags);
+    if ($stepsFrom < $base && strlen($json) > RESPONSE_LIMIT) {
+        $json = (string) json_encode($payload($base, $base), $flags);
+    }
+
+    echo $json;
     exit;
 }
 
@@ -350,6 +417,90 @@ if ($run !== null && $run['done']) {
 }
 
 $stepsFrom = max(0, min((int) ($input['steps_from'] ?? 0), count($run['steps'] ?? [])));
+
+/**
+ * Последний завершённый прогон того же входа (при другой версии конвейера): новые и
+ * изменённые правила продолжают с его результата, а не с исходного кода.
+ *
+ * @return array<string, mixed>|null
+ */
+function previousRun(string $runCacheDir, string $inputKey, string $code, string $envHash, array $environment = []): ?array
+{
+    // Свой указатель (то же окружение), затем прогон без допущений: допущения только добавляются
+    $files = [];
+    foreach (array_unique([$inputKey . ($envHash !== '' ? '.' . $envHash : ''), $inputKey]) as $name) {
+        $pointer   = $runCacheDir . '/' . $name . '.latest';
+        $candidate = is_file($pointer) ? $runCacheDir . '/' . trim((string) file_get_contents($pointer)) . '.run' : null;
+        if ($candidate !== null && is_file($candidate)) {
+            $files[] = $candidate;
+        }
+    }
+
+    if ($files === []) {
+        // Прогоны до появления указателя: ищем по исходному коду, свежие первыми
+        // (не дольше 15 с: кэш бывает большим, а без продолжения прогон просто пойдёт с нуля)
+        $files = glob($runCacheDir . '/*.run') ?: [];
+        usort($files, static fn(string $a, string $b): int => filemtime($b) <=> filemtime($a));
+        $files = array_slice($files, 0, 30);
+    }
+
+    $started = microtime(true);
+    $needle  = serialize($code);
+    foreach ($files as $file) {
+        if (microtime(true) - $started > 15) {
+            break;
+        }
+
+        $raw = @gzuncompress((string) file_get_contents($file));
+        $old = $raw !== false && str_contains($raw, $needle) ? @unserialize($raw) : null;
+        // Окружение прошлого прогона — то же или его часть: допущения только добавляются
+        $oldEnv  = is_array($old) ? $old['environment'] ?? null : null;
+        $sameEnv = is_array($old) && (in_array($old['environment_hash'] ?? '', ['', $envHash], true)
+            || is_array($oldEnv) && array_all($oldEnv, static fn(mixed $v, string $k): bool => ($environment[$k] ?? null) === $v));
+        if ($sameEnv && ($old['done'] ?? false) && ($old['input_key'] ?? $inputKey) === $inputKey && $old['original'] === $code && $sameEnv) {
+            $old['resumed_from'] = basename($file, '.run');
+
+            return $old;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * AST основного цикла из завершённого прогона. В старых прогонах сохранён только итог
+ * после фазы читаемости — из него убирается карта class_alias (её строки удерживали бы
+ * все классы) и пустые разделители блоков; комментарии снимет RemoveCommentsVisitor.
+ *
+ * @param  array<string, mixed> $old
+ * @return array<PhpParser\Node>
+ */
+function resumableAst(array $old): array
+{
+    // Nop верхнего уровня — разделители блоков CodeBlockVisitor: без комментариев они лишние
+    return array_values(array_filter($old['main_ast'] ?? $old['ast'], static fn(PhpParser\Node $node): bool => !(
+        $node instanceof PhpParser\Node\Stmt\Nop
+    ) && !(
+        $node instanceof PhpParser\Node\Stmt\Foreach_
+        && $node->keyVar instanceof PhpParser\Node\Expr\Variable && $node->keyVar->name === 'flat'
+        && $node->valueVar instanceof PhpParser\Node\Expr\Variable && $node->valueVar->name === 'original'
+    )));
+}
+
+// fresh: true — прогон с исходного кода, без продолжения с прошлого результата
+if ($run === null && empty($input['fresh']) && ($old = previousRun($runCacheDir, $inputKey, $code, $envHash, $envArray)) !== null) {
+    $run = [
+        ...$old,
+        'ast'           => resumableAst($old),
+        'main_ast'      => null,
+        'idle_runs'     => 0,
+        'visitor_index' => 0,
+        // Шаги прошлых прогонов: при большом ответе клиенту отдаются только новые
+        'steps_base'    => count($old['steps']),
+        'done'          => false,
+        'final'         => null,
+    ];
+}
 
 if ($run === null) {
     try {
@@ -375,6 +526,10 @@ if ($run === null) {
     ];
     $stepsFrom = 0;
 }
+
+$run['input_key']        = $inputKey;
+$run['environment_hash'] = $envHash;
+$run['environment']      = $envArray;
 
 /** Сохраняет состояние прогона (атомарно: через временный файл). */
 function saveRun(string $runFile, array $run): void
@@ -413,7 +568,12 @@ function applyOneVisitor(array &$ast, NodeVisitorAbstract $visitor, string $befo
 
     $t2 = new NodeTraverser();
     $t2->addVisitor($visitor);
-    $ast = array_values($t2->traverse($ast));
+    try {
+        $ast = array_values($t2->traverse($ast));
+    } catch (Throwable $throwable) {
+        // Имя правила в сообщении: иначе по стеку NodeTraverser виновника не найти
+        throw new RuntimeException($visitor::class . ': ' . $throwable->getMessage(), 0, $throwable);
+    }
 
     $after = $printer->prettyPrint($ast);
 
@@ -428,11 +588,12 @@ function getVisitorMeta(NodeVisitorAbstract $visitor): array
 {
     $ref   = new ReflectionClass($visitor);
     $attrs = $ref->getAttributes(VisitorMeta::class);
-    if (!empty($attrs)) {
+    if ($attrs !== []) {
         /** @var VisitorMeta $m */
         $m = $attrs[0]->newInstance();
         return ['name' => $m->name ?: $ref->getShortName(), 'desc' => $m->desc];
     }
+
     return ['name' => $ref->getShortName(), 'desc' => ''];
 }
 
@@ -443,7 +604,7 @@ $sandbox = new Sandbox($run['exec_cache']);
 // Кэш enum-методов: enum к поздним проходам уже встроен, а значения его методов нужны
 $enumCache = $run['enum_cache'];
 
-$makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap, $entryRel): array {
+$makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap, $entryRel, $environment, $projectDir): array {
     $visitors = [];
     if (!empty($fileMap)) {
         $visitors[] = new FileMapIncludeVisitor($fileMap, $entryRel);
@@ -452,8 +613,16 @@ $makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap,
         $visitors[] = new RemoveUnusedClassVisitor();
         $visitors[] = new ExternalParentGuardVisitor();
     }
+
     // Замкнутый мир: все классы программы известны, только если их подтянули из карты файлов
-    $closedWorld = !empty($fileMap) ? [new ClassExistsFoldVisitor()] : [];
+    $closedWorld = !empty($fileMap) ? [new ClassExistsFoldVisitor(), new UnwrittenArrayKeyVisitor()] : [];
+    // Допущения о целевом сервере: class_exists, extension_loaded, PHP_VERSION_ID, getenv…
+    if (!$environment->isEmpty()) {
+        $closedWorld[] = new TargetEnvironmentVisitor($environment, $fileMap, $projectDir === null ? null : (string) realpath($projectDir));
+        $closedWorld[] = new PolyfillRequireVisitor($environment, $fileMap, $entryRel);
+        $closedWorld[] = new InvariantPropertyVisitor($environment);
+    }
+
     return array_merge($visitors, [
         new RemoveGlobalUseVisitor(),
         new RemoveSplAutoloadVisitor(),
@@ -475,6 +644,10 @@ $makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap,
         ...$closedWorld,
         new PreExecutionVisitor($ss, $sandbox),
         new VarToScalarVisitor($ss),
+        new MagicConstantVisitor(),
+        new GlobalConstantVisitor(),
+        new ConstantArgumentVisitor(),
+        new LocalConstantVisitor(),
         new ConstFoldVisitor(),
         new PrintNormalizeVisitor(),
         new DeadBranchVisitor(),
@@ -502,14 +675,14 @@ $makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap,
         new FunctionScopeVisitor($ss),
         new CallFunctionVisitor($ss),
         new PureFunctionEvaluatorVisitor(),
-        new RemoveUnusedFunctionVisitor(),
+        new RemoveUnusedFunctionVisitor(null, $fileMap),
 
         // Развёртка живых объектов: new из аргументов, процедуры, состояние, замыкания
         new NewArgHoistVisitor(),
         new ObjectMethodInlinerVisitor(),
-        new PrivateMethodInlinerVisitor(),
+        new SmallCallInlinerVisitor($fileMap),
         new ObjectStateSpecializerVisitor(),
-        new ContainerEntryVisitor(),
+        new ContainerEntryVisitor($environment->assumes('containerEntriesImmutable')),
         new ClosureCallInlinerVisitor(),
 
         // Инлайнинг классов
@@ -637,6 +810,8 @@ while (true) {
 }
 
 // ── Phase 2: readability (single isolated pass) ───────────────────────────────
+// Копия AST основного цикла: следующая версия конвейера продолжит с неё (см. previousRun)
+$run['main_ast']  = unserialize(serialize(stripConnections($ast)));
 $readabilityStart = microtime(true);
 $currentCode      = $printer->prettyPrint($ast);
 $reconnect        = true;
@@ -662,5 +837,6 @@ $run['ast']            = $ast;
 $run['final']          = "<?php\n" . $printer->prettyPrint($ast);
 $run['done']           = true;
 saveRun($runFile, $run);
+file_put_contents($runCacheDir . '/' . $inputKey . ($envHash !== '' ? '.' . $envHash : '') . '.latest', $runKey);
 
 respond($run, $stepsFrom, false, false);

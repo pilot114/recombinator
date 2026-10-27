@@ -146,6 +146,28 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 .proj-entry-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .proj-entry-row label { font-size: 12px; color: var(--muted); flex-shrink: 0; }
+/* Окружение целевого сервера: сводка + редактируемый JSON */
+.proj-env { display: flex; flex-direction: column; gap: 8px; }
+.proj-env-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.proj-env-head label { font-size: 12px; color: var(--muted); }
+.proj-env-head button {
+  background: none; border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--muted); font-size: 11px; padding: 2px 8px; cursor: pointer;
+}
+.proj-env-head button:hover { color: var(--text); }
+.proj-env-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.proj-env-chip {
+  font-family: var(--mono); font-size: 11px; padding: 1px 6px;
+  border: 1px solid var(--border); border-radius: 10px; color: var(--text); background: var(--surface2);
+}
+.proj-env-chip.assume { border-color: var(--accent); color: var(--accent); }
+.proj-env-note { font-size: 11px; color: var(--muted); line-height: 1.5; }
+#proj-env-json {
+  width: 100%; min-height: 180px; resize: vertical; box-sizing: border-box;
+  background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+  border-radius: var(--radius); font-family: var(--mono); font-size: 11px; padding: 8px; line-height: 1.5;
+}
+#proj-env-json.invalid { border-color: #f85149; }
 #proj-entry-select {
   flex: 1; min-width: 0; background: var(--surface2); color: var(--text);
   border: 1px solid var(--border); border-radius: var(--radius);
@@ -651,8 +673,51 @@ function showProjectMode(ex) {
       <label>Энтрипоинт</label>
       <select id="proj-entry-select">${opts}</select>
     </div>
+    <div class="proj-env">
+      <div class="proj-env-head">
+        <label>Окружение целевого сервера</label>
+        <button type="button" id="proj-env-reset" title="Вернуть описание из meta.json">Сбросить</button>
+      </div>
+      <div class="proj-env-chips" id="proj-env-chips"></div>
+      <div class="proj-env-note">Правила считают это описание правдой о сервере: проверки class_exists, extension_loaded,
+        PHP_VERSION_ID, getenv сворачиваются по нему, а допущения (assumptions) разрешают более смелые преобразования.
+        Пусто — без допущений.</div>
+      <textarea id="proj-env-json" spellcheck="false"></textarea>
+    </div>
   `;
   pd.classList.add('show');
+
+  const area  = $('proj-env-json');
+  const fill  = env => { area.value = env ? JSON.stringify(env, null, 2) : ''; renderEnvChips(); };
+  area.addEventListener('input', renderEnvChips);
+  $('proj-env-reset').addEventListener('click', () => fill(ex.environment));
+  fill(ex.environment);
+}
+
+/** Окружение из редактора: объект, null (пусто) или undefined (ошибка JSON). */
+function projectEnvironment() {
+  const area = $('proj-env-json');
+  if (!area || !area.value.trim()) return null;
+  try { return JSON.parse(area.value); } catch { return undefined; }
+}
+
+function renderEnvChips() {
+  const env  = projectEnvironment();
+  const area = $('proj-env-json');
+  area.classList.toggle('invalid', env === undefined);
+  const chips = [];
+  if (env) {
+    if (env.php) chips.push(`<span class="proj-env-chip">PHP ${esc(env.php)}</span>`);
+    if (env.os) chips.push(`<span class="proj-env-chip">${esc(env.os)}</span>`);
+    if (env.sapi) chips.push(`<span class="proj-env-chip">${esc(env.sapi)}</span>`);
+    if (env.entry) chips.push(`<span class="proj-env-chip" title="Путь входного файла на сервере: __DIR__">${esc(env.entry)}</span>`);
+    if (Array.isArray(env.extensions)) chips.push(`<span class="proj-env-chip" title="${esc(env.extensions.join(', '))}">${env.extensions.length} ${plural(env.extensions.length,'расширение','расширения','расширений')}</span>`);
+    for (const [k, v] of Object.entries(env.env || {})) chips.push(`<span class="proj-env-chip">${esc(k)}=${esc(String(v))}</span>`);
+    for (const [k, v] of Object.entries(env.assumptions || {})) if (v) chips.push(`<span class="proj-env-chip assume">${esc(k)}</span>`);
+    for (const k of Object.keys(env.probes || {})) chips.push(`<span class="proj-env-chip assume" title="Частичное выполнение кода проекта: инварианты">проба: ${esc(k)}</span>`);
+    for (const k of Object.keys(env.invariants || {})) chips.push(`<span class="proj-env-chip assume" title="Инварианты свойств">${esc(k)}</span>`);
+  }
+  $('proj-env-chips').innerHTML = chips.join('') || '<span class="proj-env-note">без допущений</span>';
 }
 
 function loadExample(id) {
@@ -1095,8 +1160,10 @@ async function run() {
 
 async function callTransform(bodyObj, st) {
   let steps = [];
+  // Номер первого полученного шага: при большом ответе сервер не присылает шаги прошлых прогонов
+  let offset = 0;
   for (;;) {
-    const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...bodyObj, steps_from: steps.length }) });
+    const res  = await fetch('api.php', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...bodyObj, steps_from: offset + steps.length, steps_offset: offset }) });
     const data = await res.json();
 
     if (data.error) throw new Error(data.error);
@@ -1107,18 +1174,25 @@ async function callTransform(bodyObj, st) {
       continue;
     }
 
-    steps = steps.slice(0, data.steps_from).concat(data.steps);
-    if (!data.partial) return { ...data, steps };
+    if ((data.steps_offset ?? 0) !== offset) {
+      offset = data.steps_offset ?? 0;
+      steps  = [];
+    }
 
-    st.textContent = `⏳ Проход ${data.passes + 1} · ${steps.length} ${plural(steps.length,'шаг','шага','шагов')} · ${fmtTime(data.total_time_ms)}…`;
+    steps = steps.slice(0, data.steps_from - offset).concat(data.steps);
+    if (!data.partial) return { ...data, steps, hiddenSteps: offset };
+
+    st.textContent = `⏳ Проход ${data.passes + 1} · ${offset + steps.length} ${plural(offset + steps.length,'шаг','шага','шагов')} · ${fmtTime(data.total_time_ms)}…`;
   }
 }
 
 function showDone(st, data) {
-  const n = data.steps.length;
+  const hidden = data.hiddenSteps ?? 0;
+  const n      = hidden + data.steps.length;
   st.className = 'ok';
   st.textContent = `✓ ${n} ${plural(n,'шаг','шага','шагов')} · ${data.passes} ${plural(data.passes,'проход','прохода','проходов')}`
-    + (data.cached ? ' · из кэша' : '');
+    + (data.cached ? ' · из кэша' : '')
+    + (hidden > 0 ? ` · показан последний прогон: ${data.steps.length} из ${n} (ответ > 1 МБ)` : '');
   $('exec-time').textContent = fmtTime(data.total_time_ms);
 }
 
@@ -1157,7 +1231,9 @@ async function runProject(ex) {
   $('right').appendChild(spin);
 
   try {
-    const data = await callTransform({ project: ex.id, entry }, st);
+    const environment = projectEnvironment();
+    if (environment === undefined) throw new Error('Окружение сервера: некорректный JSON');
+    const data = await callTransform({ project: ex.id, entry, environment: environment ?? {} }, st);
     renderResults(data);
     showDone(st, data);
 

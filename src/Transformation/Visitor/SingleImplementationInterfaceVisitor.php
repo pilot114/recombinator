@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Support\ExternalCode;
 
 /**
  * Проверку по интерфейсу с единственной реализацией заменяет проверкой по классу:
@@ -91,9 +92,9 @@ class SingleImplementationInterfaceVisitor extends BaseVisitor
             }
         }
 
-        $external = $this->externalCode($declared);
+        $external = ExternalCode::forProgram($this->fileMap, $declared, $this->ast);
         foreach ($interfaces as $lower => $name) {
-            if (isset($blocked[$lower]) || $this->mentionedOutside($name, $external)) {
+            if (isset($blocked[$lower]) || $external->extendsOrImplements($name)) {
                 continue;
             }
 
@@ -250,39 +251,5 @@ class SingleImplementationInterfaceVisitor extends BaseVisitor
         }
 
         return $result;
-    }
-
-    /**
-     * Код файлов проекта, классы которых в программу не вошли.
-     *
-     * @param  array<string, Node\Stmt\ClassLike> $declared
-     * @return list<string>
-     */
-    private function externalCode(array $declared): array
-    {
-        $result = [];
-        foreach ($this->fileMap as $code) {
-            $namespace = preg_match('/^\s*namespace\s+([\w\\\\]+)\s*[;{]/m', $code, $match) === 1 ? $match[1] . '\\' : '';
-            preg_match_all('/^\s*(?:(?:final|abstract|readonly)\s+)*(?:class|interface|trait|enum)\s+(\w+)/m', $code, $matches);
-            $internal = array_any($matches[1], static fn(string $short): bool => isset($declared[strtolower(str_replace('\\', '_', $namespace . $short))]));
-            if (!$internal) {
-                $result[] = $code;
-            }
-        }
-
-        return $result;
-    }
-
-    /**
-     * Встречается ли короткое имя интерфейса в implements/extends внешнего кода.
-     *
-     * @param list<string> $external
-     */
-    private function mentionedOutside(string $interface, array $external): bool
-    {
-        $short   = substr((string) strrchr('_' . $interface, '_'), 1);
-        $pattern = '/\b(?:implements|extends)\b[^{;]*\b' . preg_quote($short, '/') . '\b/i';
-
-        return array_any($external, static fn(string $code): bool => preg_match($pattern, $code) === 1);
     }
 }

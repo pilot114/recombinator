@@ -246,7 +246,7 @@ class StaticMethodExtractVisitor extends BaseVisitor
             'returnType' => $copy->returnType,
             'stmts'      => $copy->stmts ?? [],
             'attrGroups' => $copy->attrGroups,
-        ]);
+        ], ['extractedFrom' => $class->name?->toString()]);
     }
 
     /** Вызовы, строки-callable и `C::m(...)` вынесенных методов → функции. */

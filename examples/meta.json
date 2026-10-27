@@ -38,7 +38,50 @@
     "setup": [
       "composer install --no-dev --optimize-autoloader --no-scripts --ignore-platform-reqs",
       "cp settings.php.dist settings.php"
-    ]
+    ],
+    "environment": {
+      "php": "8.5.10",
+      "os": "Linux",
+      "entry": "{project}/public/index.php",
+      "extensions": [
+        "Core",
+        "ctype",
+        "date",
+        "dom",
+        "fileinfo",
+        "filter",
+        "hash",
+        "iconv",
+        "intl",
+        "json",
+        "lexbor",
+        "libxml",
+        "mbstring",
+        "openssl",
+        "pcre",
+        "PDO",
+        "pdo_sqlite",
+        "random",
+        "Reflection",
+        "session",
+        "SimpleXML",
+        "SPL",
+        "standard",
+        "tokenizer",
+        "uri",
+        "xml",
+        "xmlreader",
+        "xmlwriter",
+        "Zend OPcache",
+        "zlib"
+      ],
+      "assumptions": {
+        "containerEntriesImmutable": true
+      },
+      "probes": {
+        "doctrine": "$cnt = require 'bootstrap.php'; $cnt->register(new UMA\\DoctrineDemo\\DI\\Doctrine()); return $cnt->get(Doctrine\\ORM\\EntityManager::class);"
+      }
+    }
   },
   "08-syntax-zoo": {
     "name": "Syntax Zoo",

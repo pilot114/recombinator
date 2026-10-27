@@ -13,8 +13,9 @@ use PhpParser\Node;
  *   class_exists('Nyholm_Psr7_Factory_Psr17Factory')  → true   (объявлен в AST)
  *   class_exists('Laminas\Diactoros\ResponseFactory') → false  (пакета нет в карте)
  *
- * Заодно `'Cls'::m()` → `Cls::m()`: такие вызовы появляются после раскрутки цикла
- * по списку имён классов, и другие визиторы понимают только имя класса.
+ * Заодно `'Cls'::m()` → `Cls::m()` и `new ('Cls')` → `new Cls`: такие выражения
+ * появляются после раскрутки цикла по списку имён классов и подстановки констант,
+ * а другие визиторы понимают только имя класса.
  *
  * Отрицательный ответ даётся только для имён с namespace: UseImportVisitor уже
  * переименовал бы такой класс, если бы нашёл его файл. Имя без namespace может
@@ -69,7 +70,7 @@ class ClassExistsFoldVisitor extends BaseVisitor
     public function enterNode(Node $node): ?Node
     {
         if (
-            $node instanceof Node\Expr\StaticCall
+            ($node instanceof Node\Expr\StaticCall || $node instanceof Node\Expr\New_)
             && $node->class instanceof Node\Scalar\String_
             && isset($this->declared[strtolower(ltrim($node->class->value, '\\'))])
         ) {

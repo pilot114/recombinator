@@ -44,8 +44,21 @@ class ConstFoldVisitor extends BaseVisitor
             }
         }
 
-        // ['a' => ['b' => true]]['a']['b'] → true
-        if ($node instanceof Node\Expr\ArrayDimFetch) {
+        // isset(['a' => 1]['a']) → true; isset(['a' => null]['a']), isset([...]['нет']) → false
+        if ($node instanceof Node\Expr\Isset_ && count($node->vars) === 1 && $node->vars[0] instanceof Node\Expr\ArrayDimFetch) {
+            $present = $this->literalElement($node->vars[0]);
+            if ($present !== false) {
+                $set = $present instanceof Node\Expr && (!$present instanceof Node\Expr\ConstFetch || $present->name->toLowerString() !== 'null');
+
+                return new Node\Expr\ConstFetch(new Node\Name($set ? 'true' : 'false'));
+            }
+        }
+
+        // ['a' => ['b' => true]]['a']['b'] → true (не внутри isset/unset и не как цель записи)
+        $parent = $node->getAttribute('parent');
+        $target = $parent instanceof Node\Expr\Isset_ || $parent instanceof Node\Stmt\Unset_
+            || ($parent instanceof Node\Expr\Assign || $parent instanceof Node\Expr\AssignOp || $parent instanceof Node\Expr\AssignRef) && $parent->var === $node;
+        if ($node instanceof Node\Expr\ArrayDimFetch && !$target) {
             $folded = $this->foldArrayDim($node);
             if ($folded instanceof Node\Expr) {
                 return $folded;
@@ -71,26 +84,37 @@ class ConstFoldVisitor extends BaseVisitor
      */
     private function foldArrayDim(Node\Expr\ArrayDimFetch $node): ?Node\Expr
     {
+        $element = $this->literalElement($node);
+
+        return $element instanceof Node\Expr ? $this->deepClone($element) : null;
+    }
+
+    /**
+     * Элемент литерального массива по литеральному ключу: значение; null — ключа нет;
+     * false — массив или ключ не литеральные.
+     */
+    private function literalElement(Node\Expr\ArrayDimFetch $node): Node\Expr|false|null
+    {
         if (!$node->var instanceof Node\Expr\Array_ || !$node->dim instanceof Node\Expr) {
-            return null;
+            return false;
         }
 
         $dim = $this->asScalar($node->dim);
         if ($dim === null || is_float($dim[1])) {
-            return null;
+            return false;
         }
 
         $values = [];
         $next   = 0;
         foreach ($node->var->items as $item) {
             if (!$item instanceof Node\ArrayItem || $item->byRef || $item->unpack || !$this->isEffectFree($item->value)) {
-                return null;
+                return false;
             }
 
             if ($item->key instanceof Node\Expr) {
                 $key = $this->asScalar($item->key);
                 if ($key === null || is_float($key[1])) {
-                    return null;
+                    return false;
                 }
 
                 $key = $this->arrayKey($key[1]);
@@ -107,7 +131,7 @@ class ConstFoldVisitor extends BaseVisitor
 
         $wanted = $this->arrayKey($dim[1]);
 
-        return isset($values[$wanted]) ? $this->deepClone($values[$wanted]) : null;
+        return $values[$wanted] ?? null;
     }
 
     private function arrayKey(mixed $key): int|string

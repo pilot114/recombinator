@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Support\TypeInference;
 
 /**
  * Инлайнинг пустых подклассов: заменяет все внешние ссылки на пустой подкласс
@@ -67,6 +68,12 @@ class InlineEmptySubclassVisitor extends BaseVisitor
             $childName  = $class->name->toString();
             $parentName = $class->extends->toString();
             $this->toReplace[$childName] = $parentName;
+
+            // Объекты пустого подкласса станут объектами родителя
+            $parentClass = $classes[strtolower(ltrim($parentName, '\\'))] ?? null;
+            if ($parentClass instanceof Node\Stmt\ClassLike) {
+                TypeInference::addFormerTypes($parentClass, [strtolower($childName), ...TypeInference::formerTypes($class)]);
+            }
         }
 
         return null;

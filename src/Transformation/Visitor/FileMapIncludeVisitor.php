@@ -118,7 +118,10 @@ class FileMapIncludeVisitor extends BaseVisitor
 
                 $nodes = [...$split[0], new Node\Stmt\Expression($split[1])];
             } elseif (array_any($nodes, $this->containsTopLevelReturn(...))) {
-                return null;
+                $nodes = $this->unfoldEarlyReturns($nodes);
+                if ($nodes === null) {
+                    return null;
+                }
             }
 
             $parent->setAttribute('replace', $nodes);
@@ -230,6 +233,69 @@ class FileMapIncludeVisitor extends BaseVisitor
         }
 
         return [$body, $last->expr];
+    }
+
+    /**
+     * Ранние return файла (значение не используется) → ветвление:
+     *
+     *   if (\PHP_VERSION_ID >= 80000) { return require 'b80.php'; }   if (\PHP_VERSION_ID >= 80000) { require 'b80.php'; }
+     *   function_exists('f') || define(…);                         →   else { function_exists('f') || define(…); }
+     *
+     * Безусловные функции из хвоста PHP объявляет при компиляции файла — до раннего
+     * return, — поэтому они выносятся вперёд. Безусловный класс в хвосте или return
+     * в другом месте (в цикле, в ветке не последним) — null.
+     *
+     * @param  array<Node\Stmt> $stmts
+     * @return array<Node\Stmt>|null
+     */
+    private function unfoldEarlyReturns(array $stmts): ?array
+    {
+        $hoisted = [];
+        $result  = [];
+        foreach (array_values($stmts) as $index => $stmt) {
+            if (!$this->containsTopLevelReturn($stmt)) {
+                $result[] = $stmt;
+                continue;
+            }
+
+            $tail = array_slice($stmts, $index + 1);
+            foreach ($tail as $rest) {
+                if ($rest instanceof Node\Stmt\ClassLike) {
+                    return null;
+                }
+            }
+
+            $functions = array_values(array_filter($tail, static fn(Node $n): bool => $n instanceof Node\Stmt\Function_));
+            $tail      = array_values(array_filter($tail, static fn(Node $n): bool => !$n instanceof Node\Stmt\Function_));
+            array_push($hoisted, ...$functions);
+
+            if ($stmt instanceof Node\Stmt\Return_) {
+                if ($stmt->expr instanceof Node\Expr) {
+                    $result[] = new Node\Stmt\Expression($stmt->expr);
+                }
+
+                return [...$hoisted, ...$result];
+            }
+
+            if (!$stmt instanceof Node\Stmt\If_ || $stmt->elseifs !== [] || $stmt->else instanceof Node\Stmt\Else_ || !end($stmt->stmts) instanceof Node\Stmt\Return_) {
+                return null;
+            }
+
+            $then = $this->unfoldEarlyReturns($stmt->stmts);
+            $else = $tail === [] ? [] : $this->unfoldEarlyReturns($tail);
+            if ($then === null || $else === null) {
+                return null;
+            }
+
+            $result[] = new Node\Stmt\If_($stmt->cond, [
+                'stmts' => $then,
+                'else'  => $else === [] ? null : new Node\Stmt\Else_($else),
+            ], $stmt->getAttributes());
+
+            return [...$hoisted, ...$result];
+        }
+
+        return [...$hoisted, ...$result];
     }
 
     /** Есть ли return, относящийся к самому файлу (не к вложенной функции/классу). */

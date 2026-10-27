@@ -273,3 +273,18 @@ PHP;
         ->toContain('return new \FastRoute\RouteCollector();')
         ->not->toContain('namespace');
 });
+
+it('inlines files with early returns as branches', function (): void {
+    $result = parseAndApply(
+        "<?php require 'boot.php'; echo f();",
+        [
+            'boot.php' => "<?php if (\\PHP_VERSION_ID >= 80000) { return require 'boot80.php'; }\nif (!defined('X')) { define('X', 1); }\nfunction f() { return 1; }",
+            'boot80.php' => "<?php if (!function_exists('g')) { function g() { return 2; } }",
+        ],
+    );
+
+    expect($result)->toContain('function f()')
+        ->toContain('if (\PHP_VERSION_ID >= 80000) {')
+        ->toContain("} else if (!defined('X')) {")
+        ->not->toContain('return require');
+});

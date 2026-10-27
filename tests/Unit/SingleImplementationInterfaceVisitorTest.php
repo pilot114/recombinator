@@ -44,5 +44,5 @@ it('keeps interfaces that several hierarchies or outside code implement', functi
     'two classes'    => ['interface I {} class A implements I {} class B implements I {} $x instanceof I;', []],
     'enum'           => ['interface I {} class A implements I {} enum E implements I {} $x instanceof I;', []],
     'anonymous'      => ['interface I {} class A implements I {} $o = new class implements I {}; $x instanceof I;', []],
-    'external file'  => ['interface I {} class A implements I {} $x instanceof I;', ['vendor/X.php' => '<?php namespace V; class X implements \I {}']],
+    'external file'  => ['interface I {} class A implements I {} $x instanceof I; $c = "V\\\\X";', ['vendor/X.php' => '<?php namespace V; class X implements \I {}']],
 ]);
