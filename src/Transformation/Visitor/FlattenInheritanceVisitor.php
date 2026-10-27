@@ -68,6 +68,7 @@ class FlattenInheritanceVisitor extends BaseVisitor
         }
 
         $typeChecked = null;
+        $usage       = null;
         foreach ($this->classMap as $child) {
             if (!$child->extends instanceof Node\Name) {
                 continue;
@@ -90,10 +91,50 @@ class FlattenInheritanceVisitor extends BaseVisitor
                 continue;
             }
 
+            // Копия тел родителя в каждого наследника только раздувает код: уплощаем,
+            // лишь когда родитель исчезнет — у него один наследник и других ссылок нет
+            $usage ??= $this->parentUsage($nodes);
+            $parentKey = strtolower($child->extends->toString());
+            if (($usage['children'][$parentKey] ?? 0) !== 1 || isset($usage['referenced'][$parentKey])) {
+                continue;
+            }
+
             $this->flatten($child, $parent);
         }
 
         return null;
+    }
+
+    /**
+     * Сколько у каждого класса наследников и какие классы используются не только как
+     * родитель (new, ::, строкой).
+     *
+     * @param  array<Node> $nodes
+     * @return array{children: array<string, int>, referenced: array<string, true>}
+     */
+    private function parentUsage(array $nodes): array
+    {
+        $children   = [];
+        $referenced = [];
+        foreach ($this->findNode(Node::class, $nodes) as $node) {
+            if ($node instanceof Node\Stmt\Class_ && $node->extends instanceof Node\Name) {
+                $key            = strtolower($node->extends->toString());
+                $children[$key] = ($children[$key] ?? 0) + 1;
+            }
+
+            $class = match (true) {
+                $node instanceof Node\Expr\New_, $node instanceof Node\Expr\StaticCall, $node instanceof Node\Expr\ClassConstFetch,
+                $node instanceof Node\Expr\StaticPropertyFetch => $node->class,
+                default => null,
+            };
+            if ($class instanceof Node\Name) {
+                $referenced[strtolower(ltrim($class->toString(), '\\'))] = true;
+            } elseif ($node instanceof Node\Scalar\String_) {
+                $referenced[strtolower(ltrim($node->value, '\\'))] = true;
+            }
+        }
+
+        return ['children' => $children, 'referenced' => $referenced];
     }
 
     /** `instanceof parent`, `new parent`, `parent::CONST` — всё, кроме parent::method(). */

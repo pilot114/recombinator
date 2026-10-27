@@ -31,3 +31,9 @@ it('does not fold arguments whose evaluation emits a warning', function (): void
     $result = applyPureEvaluator('<?php function f($s) { return $s; } $r = f([1] . "x");');
     expect($result)->toContain('$r = f([1] . "x");');
 });
+
+it('does not use a constant assigned in another scope', function (): void {
+    $result = applyPureEvaluator('<?php function h(array $i) { return implode(" ", $i); }
+        class U { function a() { $id = []; return $id; } function b($d) { $id = g($d); return h($id); } }');
+    expect($result)->toContain('return h($id);');
+});

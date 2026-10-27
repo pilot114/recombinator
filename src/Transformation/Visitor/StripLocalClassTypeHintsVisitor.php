@@ -9,8 +9,20 @@ use PhpParser\Node;
 
 /**
  * Убирает type-hints, ссылающиеся на классы, объявленные в этом же файле.
- * Это позволяет RemoveUnusedClassVisitor удалить абстрактные классы,
- * на которые ссылаются только через type-hints, а не через new/instanceof.
+ * Это позволяет RemoveUnusedClassVisitor удалить абстрактные классы, а
+ * RemoveInterfacesVisitor — интерфейсы, на которые ссылаются только через
+ * type-hints, а не через new/instanceof/catch.
+ *
+ * Снятие типа — расширение: корректная программа ведёт себя так же.
+ * - Тип с локальным классом снимается целиком (`Foo|null`, `?Foo`).
+ * - У свойств и promoted-параметров тип становится `mixed`: readonly обязано иметь
+ *   тип, а типизированное свойство без значения остаётся неинициализированным.
+ * - Тип возврата снимается, только если ни один предок не объявляет этот метод с
+ *   другим типом (внешний предок проверяется через рефлексию).
+ * - Снятый тип параметра снимается и у переопределений: потомок не может быть уже.
+ *
+ * Исходный тип сохраняется в атрибутах originalType / originalReturnType: по нему
+ * другие правила доказывают, что значение не может быть объектом данного класса.
  */
 #[VisitorMeta('Удаление type-hints локальных классов')]
 class StripLocalClassTypeHintsVisitor extends BaseVisitor
@@ -65,29 +77,24 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
             && !$this->hasExternalAncestor($node)
             && $this->ancestorsAllowStripping($node)
         ) {
+            $node->setAttribute('originalReturnType', $node->getAttribute('originalReturnType') ?? $node->returnType);
             $node->returnType = null;
             return $node;
         }
 
-        // Strip param types (readonly-свойство без типа — ошибка компиляции, его не трогаем)
-        if (
-            $node instanceof Node\Param
-            && $node->type instanceof \PhpParser\Node
-            && $this->isLocalType($node->type)
-            && !$this->isReadonly($node)
-        ) {
-            $node->type = null;
+        // Параметр: promoted — это свойство, тип остаётся (mixed)
+        if ($node instanceof Node\Param && $node->type instanceof Node && $this->isLocalType($node->type)) {
+            $node->setAttribute('originalType', $node->getAttribute('originalType') ?? $node->type);
+            $node->type = ($node->flags & Modifiers::VISIBILITY_MASK) !== 0 || ($node->flags & Modifiers::READONLY) !== 0
+                ? new Node\Identifier('mixed')
+                : null;
             return $node;
         }
 
-        // Strip property types
-        if (
-            $node instanceof Node\Stmt\Property
-            && $node->type instanceof \PhpParser\Node
-            && $this->isLocalType($node->type)
-            && !$this->isReadonly($node)
-        ) {
-            $node->type = null;
+        // Свойство: mixed сохраняет «неинициализированное» состояние и тип у readonly
+        if ($node instanceof Node\Stmt\Property && $node->type instanceof Node && $this->isLocalType($node->type)) {
+            $node->setAttribute('originalType', $node->getAttribute('originalType') ?? $node->type);
+            $node->type = new Node\Identifier('mixed');
             return $node;
         }
 
@@ -101,8 +108,13 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
     private function hasExternalAncestor(Node $method): bool
     {
         $class = $method->getAttribute('parent');
+        if (!$class instanceof Node\Stmt\ClassLike) {
+            return false;
+        }
 
-        return $class instanceof Node\Stmt\ClassLike && $this->inheritsExternal($class, 0);
+        $name = $method instanceof Node\Stmt\ClassMethod ? $method->name->toString() : null;
+
+        return $this->inheritsExternal($class, 0, $name);
     }
 
     /**
@@ -138,6 +150,57 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
         return true;
     }
 
+    /**
+     * Снятый у предка тип параметра снимается и у переопределений: `f($x)` в
+     * интерфейсе и `f(object $x)` в классе — потомок уже предка, ошибка компиляции.
+     */
+    #[\Override]
+    public function afterTraverse(array $nodes): ?array
+    {
+        do {
+            $changed = false;
+            foreach ($this->declarations as $class) {
+                foreach ($class->getMethods() as $method) {
+                    if ($method->name->toLowerString() === '__construct') {
+                        continue;
+                    }
+
+                    foreach (array_values($method->params) as $i => $param) {
+                        if ($param->type instanceof Node && $this->ancestorParamUntyped($class, $method->name->toString(), $i)) {
+                            $param->setAttribute('originalType', $param->getAttribute('originalType') ?? $param->type);
+                            $param->type = ($param->flags & Modifiers::VISIBILITY_MASK) !== 0 ? new Node\Identifier('mixed') : null;
+                            $changed     = true;
+                        }
+                    }
+                }
+            }
+        } while ($changed);
+
+        return null;
+    }
+
+    private function ancestorParamUntyped(Node\Stmt\ClassLike $class, string $method, int $index): bool
+    {
+        $queue   = $this->parentDeclarations($class);
+        $visited = [];
+        while ($queue !== []) {
+            $ancestor = array_pop($queue);
+            if (isset($visited[spl_object_id($ancestor)])) {
+                continue;
+            }
+
+            $visited[spl_object_id($ancestor)] = true;
+            $declared = $ancestor->getMethod($method);
+            if ($declared instanceof Node\Stmt\ClassMethod && isset($declared->params[$index]) && $declared->params[$index]->type === null) {
+                return true;
+            }
+
+            array_push($queue, ...$this->parentDeclarations($ancestor));
+        }
+
+        return false;
+    }
+
     /** @return list<Node\Stmt\ClassLike> локальные родители и интерфейсы */
     private function parentDeclarations(Node\Stmt\ClassLike $class): array
     {
@@ -159,8 +222,12 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
         return $result;
     }
 
-    /** Есть ли во всей цепочке предков (через локальные классы) внешний класс или интерфейс. */
-    private function inheritsExternal(Node\Stmt\ClassLike $class, int $depth): bool
+    /**
+     * Есть ли во всей цепочке предков (через локальные классы) внешний класс или
+     * интерфейс — объявляющий метод $method, если он задан (известный PHP класс
+     * проверяется рефлексией, неизвестный — считается объявляющим).
+     */
+    private function inheritsExternal(Node\Stmt\ClassLike $class, int $depth, ?string $method = null): bool
     {
         $parents = match (true) {
             $class instanceof Node\Stmt\Class_ => [$class->extends, ...$class->implements],
@@ -175,30 +242,26 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
             }
 
             $parent = $this->declarations[strtolower(ltrim($name->toString(), '\\'))] ?? null;
-            if (!$parent instanceof Node\Stmt\ClassLike || $depth > 16 || $this->inheritsExternal($parent, $depth + 1)) {
+            if ($depth > 16) {
+                return true;
+            }
+
+            if ($parent instanceof Node\Stmt\ClassLike) {
+                if ($this->inheritsExternal($parent, $depth + 1, $method)) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            $external = ltrim($name->toString(), '\\');
+            $known    = class_exists($external, false) || interface_exists($external, false);
+            if ($method === null || !$known || new \ReflectionClass($external)->hasMethod($method)) {
                 return true;
             }
         }
 
         return false;
-    }
-
-    /** Readonly-свойство (в том числе promoted-параметр или член readonly-класса) обязано иметь тип. */
-    private function isReadonly(Node\Param|Node\Stmt\Property $node): bool
-    {
-        $class = $node->getAttribute('parent');
-        while ($class instanceof Node && !$class instanceof Node\Stmt\Class_) {
-            $class = $class->getAttribute('parent');
-        }
-
-        $inReadonlyClass = $class instanceof Node\Stmt\Class_ && $class->isReadonly();
-        if ($node instanceof Node\Stmt\Property) {
-            return $node->isReadonly() || $inReadonlyClass;
-        }
-
-        $promoted = ($node->flags & Modifiers::VISIBILITY_MASK) !== 0;
-
-        return ($node->flags & Modifiers::READONLY) !== 0 || ($promoted && $inReadonlyClass);
     }
 
     private function isLocalType(mixed $type): bool
@@ -215,8 +278,9 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
             return $this->isLocalType($type->type);
         }
 
+        // Объединение снимается целиком, если в нём есть локальный класс
         if ($type instanceof Node\UnionType) {
-            return array_all($type->types, fn(Node\Identifier|Node\Name|Node\IntersectionType $t): bool => $this->isLocalType($t));
+            return array_any($type->types, fn(Node\Identifier|Node\Name|Node\IntersectionType $t): bool => $this->isLocalType($t));
         }
 
         return false;

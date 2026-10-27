@@ -37,6 +37,9 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
 
     private const string MEMORY_LIMIT = '32M';
 
+    /** Глубина функций и классов вокруг текущего узла. */
+    private int $depth = 0;
+
     public function __construct()
     {
         $this->printer = new StandardPrinter();
@@ -49,12 +52,18 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
         $this->pureFunctions = [];
         $this->knownVars     = [];
 
-        // Шаг 1: собрать переменные с константными значениями (скаляры + константные массивы)
-        foreach ($this->findNode(Node\Stmt\Expression::class) as $stmt) {
+        // Шаг 1: собрать переменные с константными значениями (скаляры + константные массивы).
+        // Только верхний уровень и единственное присваивание: `$id = []` в одном методе —
+        // не значение `$id` в другом
+        $this->depth = 0;
+        $counts      = ObjectMethodInlinerVisitor::topLevelAssignCounts($nodes);
+        foreach ($nodes as $stmt) {
             if (
+                $stmt instanceof Node\Stmt\Expression &&
                 $stmt->expr instanceof Node\Expr\Assign &&
                 $stmt->expr->var instanceof Node\Expr\Variable &&
-                is_string($stmt->expr->var->name)
+                is_string($stmt->expr->var->name) &&
+                ($counts[$stmt->expr->var->name] ?? 0) === 1
             ) {
                 try {
                     $this->knownVars[$stmt->expr->var->name] = $this->resolveStrict($stmt->expr->expr);
@@ -74,8 +83,22 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
         return null;
     }
 
+    #[\Override]
+    public function leaveNode(Node $node): int|Node|array|null
+    {
+        if ($node instanceof Node\FunctionLike || $node instanceof Node\Stmt\ClassLike) {
+            $this->depth--;
+        }
+
+        return parent::leaveNode($node);
+    }
+
     public function enterNode(Node $node): ?Node
     {
+        if ($node instanceof Node\FunctionLike || $node instanceof Node\Stmt\ClassLike) {
+            $this->depth++;
+        }
+
         if (!$node instanceof Node\Expr\FuncCall || !$node->name instanceof Node\Name) {
             return null;
         }
@@ -204,7 +227,8 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
         }
 
         if ($node instanceof Node\Expr\Variable && is_string($node->name)) {
-            if (array_key_exists($node->name, $this->knownVars)) {
+            // Значения известны только для переменных верхнего уровня
+            if ($this->depth === 0 && array_key_exists($node->name, $this->knownVars)) {
                 return $this->knownVars[$node->name];
             }
 

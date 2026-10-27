@@ -249,15 +249,15 @@ $app = $b->get("app");';
 
 // ── StripLocalClassTypeHintsVisitor: readonly требует тип ───────────────────
 
-it('keeps local class type on readonly properties', function (): void {
+it('replaces local class types on properties with mixed', function (): void {
     $code = '<?php class Conn {} class Result { public function __construct(private readonly Conn $connection, Conn $other) {} } '
-        . 'readonly class R { public function __construct(public Conn $c) {} } class P { private Conn $a; private readonly Conn $b; }';
+        . 'readonly class R { public function __construct(public Conn $c) {} } class P { private Conn $a; private readonly ?Conn $b; }';
     $result = applyUnfoldVisitor($code, new Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor());
     expect($result)
-        ->toContain('private readonly Conn $connection, $other')
-        ->toContain('public Conn $c')
-        ->toContain('private $a;')
-        ->toContain('private readonly Conn $b;');
+        ->toContain('private readonly mixed $connection, $other')
+        ->toContain('public mixed $c')
+        ->toContain('private mixed $a;')
+        ->toContain('private readonly mixed $b;');
 });
 
 // ── FlattenInheritanceVisitor: многоуровневое наследование ──────────────────

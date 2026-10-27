@@ -119,3 +119,16 @@ it('aliases original names of inlined classes when Composer stays as a fallback'
         ->toContain('class_alias($flat, $original, false);');
     expect(strpos($result, 'foreach'))->toBeLessThan(strpos($result, 'require_once'));
 });
+
+it('folds literal array lookups with PHP key rules', function (): void {
+    $result = applyClosedWorld(
+        '<?php $a = ["d" => ["dev" => true, "dir" => ROOT . "/x"]]["d"]["dev"]; $b = ["x", "y"][1]; $c = [1 => "a", "1" => "b"]["1"];
+        $d = ["k" => f()]["j"]; $e = ["k" => 1, "o" => f()]["k"]; $g = ["k" => 1]["missing"];',
+        new \Recombinator\Transformation\Visitor\ConstFoldVisitor(),
+    );
+
+    expect($result)
+        ->toContain('$a = true;')->toContain('$b = "y";')->toContain('$c = "b";')
+        ->toContain('$d = ["k" => f()]["j"];')->toContain('$e = ["k" => 1, "o" => f()]["k"];')
+        ->toContain('$g = ["k" => 1]["missing"];');
+});

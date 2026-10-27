@@ -44,6 +44,14 @@ class ConstFoldVisitor extends BaseVisitor
             }
         }
 
+        // ['a' => ['b' => true]]['a']['b'] → true
+        if ($node instanceof Node\Expr\ArrayDimFetch) {
+            $folded = $this->foldArrayDim($node);
+            if ($folded instanceof Node\Expr) {
+                return $folded;
+            }
+        }
+
         // Интерполированная строка без переменных (все части — константы) → String_
         if ($node instanceof Node\Scalar\Encapsed) {
             $folded = $this->foldEncapsed($node);
@@ -53,6 +61,91 @@ class ConstFoldVisitor extends BaseVisitor
         }
 
         return parent::leaveNode($node);
+    }
+
+    /**
+     * Элемент литерального массива по литеральному ключу. Ключи приводятся как в PHP
+     * ("1" → 1, true → 1, null → ""), без ключа — следующий целый индекс, повтор —
+     * последний. Отброшенные элементы не должны иметь побочных эффектов; отсутствующий
+     * ключ не сворачивается (предупреждение «Undefined array key»).
+     */
+    private function foldArrayDim(Node\Expr\ArrayDimFetch $node): ?Node\Expr
+    {
+        if (!$node->var instanceof Node\Expr\Array_ || !$node->dim instanceof Node\Expr) {
+            return null;
+        }
+
+        $dim = $this->asScalar($node->dim);
+        if ($dim === null || is_float($dim[1])) {
+            return null;
+        }
+
+        $values = [];
+        $next   = 0;
+        foreach ($node->var->items as $item) {
+            if (!$item instanceof Node\ArrayItem || $item->byRef || $item->unpack || !$this->isEffectFree($item->value)) {
+                return null;
+            }
+
+            if ($item->key instanceof Node\Expr) {
+                $key = $this->asScalar($item->key);
+                if ($key === null || is_float($key[1])) {
+                    return null;
+                }
+
+                $key = $this->arrayKey($key[1]);
+            } else {
+                $key = $next;
+            }
+
+            if (is_int($key) && $key >= $next) {
+                $next = $key + 1;
+            }
+
+            $values[$key] = $item->value;
+        }
+
+        $wanted = $this->arrayKey($dim[1]);
+
+        return isset($values[$wanted]) ? $this->deepClone($values[$wanted]) : null;
+    }
+
+    private function arrayKey(mixed $key): int|string
+    {
+        $key = match (true) {
+            is_bool($key) => (int) $key,
+            $key === null => '',
+            default => $key,
+        };
+
+        // Десятичная строка без ведущих нулей — целый ключ, как в PHP
+        if (is_string($key) && preg_match('/^(0|-?[1-9]\d*)$/', $key) === 1 && (string) (int) $key === $key) {
+            return (int) $key;
+        }
+
+        return is_int($key) ? $key : (string) $key;
+    }
+
+    /** Литералы, константы и их комбинации — отбросить их можно без последствий. */
+    private function isEffectFree(Node\Expr $expr): bool
+    {
+        if ($expr instanceof Node\Scalar || $expr instanceof Node\Expr\ConstFetch || $expr instanceof Node\Expr\ClassConstFetch) {
+            return true;
+        }
+
+        if ($expr instanceof Node\Expr\BinaryOp) {
+            return $this->isEffectFree($expr->left) && $this->isEffectFree($expr->right);
+        }
+
+        if ($expr instanceof Node\Expr\UnaryMinus || $expr instanceof Node\Expr\BooleanNot) {
+            return $this->isEffectFree($expr->expr);
+        }
+
+        return $expr instanceof Node\Expr\Array_ && array_all(
+            $expr->items,
+            fn(Node\ArrayItem $item): bool => !$item->unpack
+                && $this->isEffectFree($item->value) && (!$item->key instanceof Node\Expr || $this->isEffectFree($item->key)),
+        );
     }
 
     // ── Binary operation folding ─────────────────────────────────────────────

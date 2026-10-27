@@ -148,24 +148,34 @@ it('does not fold a switch branch with a nested break', function (): void {
     expect($result)->toContain('switch (1)');
 });
 
-it('strips self return types consistently and keeps them under external parents', function (): void {
+it('strips self return types consistently and keeps them where an external parent declares the method', function (): void {
     $result = applySemantics(
         '<?php interface D { function add($m): self; } class M implements D { function add($m): D { return $this; } }
-        class Q implements Countable { function count(): int { return 0; } function me(): static { return $this; } }',
+        class It extends ArrayIterator {}
+        class Q implements IteratorAggregate { function getIterator(): It { return new It([]); } function me(): static { return $this; } }',
         new \Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor(),
     );
 
-    expect($result)->toContain('function add($m);')->toContain('function me(): static');
+    expect($result)->toContain('function add($m);')->toContain('function getIterator(): It')->toMatch('/function me\(\)\s*\{/');
 });
 
-it('keeps return types along a hierarchy rooted in an external class', function (): void {
+it('strips nullable and union local types from parameters and propagates to overrides', function (): void {
+    $result = applySemantics(
+        '<?php interface S {} interface H { function handle(?S $s, int|S $t); } class K implements H { function handle(?S $s, int|S|string $t) {} }',
+        new \Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor(),
+    );
+
+    expect($result)->toContain('function handle($s, $t);')->toContain('function handle($s, $t)');
+});
+
+it('strips return types along a hierarchy whose external root does not declare the method', function (): void {
     $result = applySemantics(
         '<?php class Base extends Exception { static function make(): Base { return new Base(); } }
         class Child extends Base { static function make(): Base { return new Child(); } }',
         new \Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor(),
     );
 
-    expect(substr_count($result, 'make(): Base'))->toBe(2);
+    expect(substr_count($result, 'make(): Base'))->toBe(0);
 });
 
 it('keeps a local return type when an ancestor declares an external one', function (): void {
@@ -248,4 +258,41 @@ it('does not fold an if-return chain in a function returning by reference', func
     );
 
     expect($result)->toContain('return $this->s[$k];');
+});
+
+it('flattens only a parent with a single child and no other uses', function (): void {
+    $two = applySemantics(
+        '<?php abstract class P { function f() { return 1; } } class A extends P {} class B extends P {}',
+        new FlattenInheritanceVisitor(),
+    );
+    $one = applySemantics('<?php abstract class P { function f() { return 1; } } class A extends P {}', new FlattenInheritanceVisitor());
+
+    expect($two)->toContain('class A extends P')->and($one)->not->toContain('extends');
+});
+
+it('inlines function calls only when argument evaluation stays the same', function (string $code, string $kept): void {
+    $store = new ScopeStore();
+    $ast   = new ParserFactory()->createForNewestSupportedVersion()->parse($code) ?? [];
+    $ast   = new NodeTraverser(new \Recombinator\Transformation\Visitor\FunctionBodyCollectorVisitor($store))->traverse($ast);
+    $ast   = new NodeTraverser(new \Recombinator\Transformation\Visitor\CallFunctionVisitor($store))->traverse($ast);
+
+    expect(new Printer()->prettyPrint($ast))->toContain($kept);
+})->with([
+    'recursion'        => ['<?php function f($n) { return $n ? f($n - 1) : 0; } echo f(3);', 'echo f(3);'],
+    'mutual recursion' => ['<?php function a($n) { return b($n); } function b($n) { return a($n); } echo a(1);', 'echo a(1);'],
+    'duplicated call'  => ['<?php function twice($x) { return $x . $x; } echo twice(g());', 'echo twice(g());'],
+    'dropped call'     => ['<?php function first($a, $b) { return $a; } echo first(1, g());', 'echo first(1, g());'],
+    'scalar coercion'  => ['<?php function show(int $x) { return var_export($x, true); } echo show("5");', 'echo show("5");'],
+    'outer variable'   => ['<?php function add($a) { return $a + $b; } echo add(1);', 'echo add(1);'],
+    'named argument'   => ['<?php function id($a) { return $a; } echo id(a: g());', 'echo id(a: g());'],
+]);
+
+it('inlines a function with a default value for a missing argument', function (): void {
+    $store = new ScopeStore();
+    $code  = '<?php function sep($a, $s = ", ") { return $a . $s; } echo sep("x");';
+    $ast   = new ParserFactory()->createForNewestSupportedVersion()->parse($code) ?? [];
+    $ast   = new NodeTraverser(new \Recombinator\Transformation\Visitor\FunctionBodyCollectorVisitor($store))->traverse($ast);
+    $ast   = new NodeTraverser(new \Recombinator\Transformation\Visitor\CallFunctionVisitor($store))->traverse($ast);
+
+    expect(new Printer()->prettyPrint($ast))->toContain('echo "x" . ", ";');
 });

@@ -135,6 +135,11 @@ use Recombinator\Transformation\Visitor\RemoveGlobalUseVisitor;
 use Recombinator\Transformation\Visitor\RemoveInterfacesVisitor;
 use Recombinator\Transformation\Visitor\RemoveSplAutoloadVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedClassVisitor;
+use Recombinator\Transformation\Visitor\RemoveUnusedMethodVisitor;
+use Recombinator\Transformation\Visitor\PrivateMethodInlinerVisitor;
+use Recombinator\Transformation\Visitor\SingleImplementationInterfaceVisitor;
+use Recombinator\Transformation\Visitor\ContainerEntryVisitor;
+use Recombinator\Transformation\Visitor\StaticMethodExtractVisitor;
 use Recombinator\Transformation\Visitor\OriginalClassAliasVisitor;
 use Recombinator\Transformation\Visitor\ProgramEvaluatorVisitor;
 use Recombinator\Transformation\Visitor\ExternalParentGuardVisitor;
@@ -478,6 +483,7 @@ $makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap,
         new SingleUseInlinerVisitor(),
 
         // Инлайнинг иерархии классов
+        new SingleImplementationInterfaceVisitor($fileMap),
         new RemoveInterfacesVisitor(),
         new TraitInlinerVisitor(),
         new FlattenInheritanceVisitor(),
@@ -488,6 +494,7 @@ $makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap,
         // Инлайнинг enum и статических методов
         new EnumCaseInlinerVisitor(),
         new StaticMethodInlinerVisitor(),
+        new StaticMethodExtractVisitor(),
 
         // Инлайнинг функций
         new ScopeVisitor(),
@@ -500,7 +507,9 @@ $makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap,
         // Развёртка живых объектов: new из аргументов, процедуры, состояние, замыкания
         new NewArgHoistVisitor(),
         new ObjectMethodInlinerVisitor(),
+        new PrivateMethodInlinerVisitor(),
         new ObjectStateSpecializerVisitor(),
+        new ContainerEntryVisitor(),
         new ClosureCallInlinerVisitor(),
 
         // Инлайнинг классов
@@ -522,6 +531,7 @@ $makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap,
         new InlineEmptySubclassVisitor(),
         new RemoveDeadCodeAfterJumpVisitor(),
         new RemoveUnusedClosureCapturesVisitor(),
+        new RemoveUnusedMethodVisitor(null, $fileMap),
         new RemoveUnusedClassVisitor(),
         new RemoveUnusedPureVisitor(),
         new RemoveDeadLoopVisitor(),

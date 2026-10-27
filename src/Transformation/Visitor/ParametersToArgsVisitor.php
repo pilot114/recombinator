@@ -16,7 +16,12 @@ class ParametersToArgsVisitor extends BaseVisitor
     {
     }
 
-    public function enterNode(Node $var): int|Node|array|null
+    /**
+     * Подстановка при выходе: подставленный аргумент не обходится повторно (в нём
+     * могут быть переменные с пометками другого встроенного тела).
+     */
+    #[\Override]
+    public function leaveNode(Node $var): int|Node|array|null
     {
         if ($var instanceof Node\Expr\Variable) {
             $i = $var->getAttribute('arg_index');
@@ -27,7 +32,7 @@ class ParametersToArgsVisitor extends BaseVisitor
                     for ($j = $i; $j < $counter; $j++) {
                         $arg = $this->node->args[$j];
                         if ($arg instanceof Node\Arg) {
-                            $items[] = new Node\ArrayItem($arg->value);
+                            $items[] = new Node\ArrayItem($this->deepClone($arg->value));
                         }
                     }
 
@@ -37,14 +42,15 @@ class ParametersToArgsVisitor extends BaseVisitor
                 if (isset($this->node->args[$i])) {
                     $arg = $this->node->args[$i];
                     if ($arg instanceof Node\Arg) {
-                        return $arg->value;
+                        // Копия: параметр может встречаться в теле несколько раз
+                        return $this->deepClone($arg->value);
                     }
                 }
             }
 
             $default = $var->getAttribute('arg_default');
             if ($default instanceof Node) {
-                return $default;
+                return $this->deepClone($default);
             }
         }
 
