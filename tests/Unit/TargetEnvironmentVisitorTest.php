@@ -100,3 +100,22 @@ it('resolves __DIR__ and existing source files from the entry path', function ()
         ->toContain('$c = file_exists("/srv/app/var/cache");')
         ->toContain('require_once __DIR__ . "/../vendor/autoload.php";');
 });
+
+it('decides polyfill guards once the program no longer loads project files', function (): void {
+    $files = ['vendor/symfony/deprecation-contracts/function.php' => '<?php if (!function_exists("trigger_deprecation")) { function trigger_deprecation() {} }'];
+    $env   = ['php' => PHP_VERSION, 'extensions' => get_loaded_extensions()];
+    $code  = 'if (!function_exists("trigger_deprecation")) { function trigger_deprecation() {} } $c = function_exists("clamp_not_builtin_xyz");';
+
+    expect(applyEnvironment($code, $env, $files))->toContain('if (!false)')->toContain('$c = false;')
+        ->and(applyEnvironment($code . ' require __DIR__ . "/vendor/autoload.php";', $env, $files))->toContain('function_exists("trigger_deprecation")');
+});
+
+it('decides defined() for global constants in a closed program', function (): void {
+    $env  = ['php' => PHP_VERSION, 'extensions' => get_loaded_extensions()];
+    $code = 'if (!defined("ARRAY_FILTER_USE_VALUE_X")) { define("ARRAY_FILTER_USE_VALUE_X", 0); }
+        $a = defined("PHP_EOL"); $b = defined("NOT_DECLARED_ANYWHERE"); const MINE = 1; $c = defined("MINE"); define($name, 1);';
+
+    expect(applyEnvironment('if (!defined("ARRAY_FILTER_USE_VALUE_X")) { define("ARRAY_FILTER_USE_VALUE_X", 0); } $a = defined("PHP_EOL"); $b = defined("NOT_DECLARED_ANYWHERE");', $env))
+        ->toContain('if (!false)')->toContain('$a = true;')->toContain('$b = false;')
+        ->and(applyEnvironment($code, $env))->toContain('defined("NOT_DECLARED_ANYWHERE")');
+});

@@ -45,3 +45,17 @@ it('folds isset and empty over invariant properties', function (): void {
     expect($result)->toContain('return false && $this->x;')
         ->toContain('return [false, empty($this->associationMappings)];');
 });
+
+it('folds method results given as invariants when the receiver chain has no side effects', function (): void {
+    $ast = new ParserFactory()->createForNewestSupportedVersion()->parse(
+        '<?php class Config { private $a = []; public function isLazy() { return $this->a["lazy"] ?? false; } }
+        class Em { private Config $config; public function getConfiguration(): Config { return $this->config; } }
+        class Factory { public function __construct(private Em $em) {} public function make() { return [$this->em->getConfiguration()->isLazy(), (new Config())->isLazy()]; } }',
+    ) ?? [];
+    $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
+
+    $env = TargetEnvironment::fromArray(['invariants' => ['Config' => ['isLazy()' => true]]]);
+    $result = new Printer()->prettyPrint(new NodeTraverser(new InvariantPropertyVisitor($env))->traverse($ast));
+
+    expect($result)->toContain('return [true, (new Config())->isLazy()];');
+});

@@ -62,6 +62,9 @@ class TargetEnvironmentVisitor extends BaseVisitor
     ) {
     }
 
+    /** Программа замкнута — файлы проекта вне неё не выполняются (см. beforeTraverse). */
+    private bool $closed = false;
+
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
@@ -80,6 +83,13 @@ class TargetEnvironmentVisitor extends BaseVisitor
                 $this->functionCounts[$node->name->toLowerString()]   = ($this->functionCounts[$node->name->toLowerString()] ?? 0) + 1;
             }
         }
+
+        // Программа замкнута: автозагрузчик Composer убран, невстроенных подключений нет —
+        // файлы проекта, кроме самой программы, не выполняются и функций не объявляют
+        $this->closed = !$this->hasPendingIncludes() && !array_any(
+            $this->findNode(Node\Expr\Include_::class),
+            static fn(Node\Expr\Include_ $i): bool => $i->getAttribute('runtimeAutoload') === true,
+        );
 
         // Функция, объявленная на верхнем уровне без условия, существует с загрузки файла
         foreach ($nodes as $node) {
@@ -192,10 +202,11 @@ class TargetEnvironmentVisitor extends BaseVisitor
             'extension_loaded' => $this->environment->hasExtension($argument),
             'phpversion' => $this->extensionVersion($argument),
             'function_exists' => $this->ownGuard($call, ltrim($argument, '\\')) ? false : $this->functionExists(ltrim($argument, '\\')),
-            'getenv' => $this->environment->env[$argument] ?? null,
+            // null в описании — переменной на сервере нет
+            'getenv' => array_key_exists($argument, $this->environment->env) ? $this->environment->env[$argument] ?? false : null,
             'file_exists', 'is_file', 'is_readable' => $this->isSourceFile($argument) ? true : null,
             'ini_get' => $this->iniValue($argument),
-            'defined' => $this->classConstantDefined($argument),
+            'defined' => str_contains($argument, '::') ? $this->classConstantDefined($argument) : $this->constantDefined($call, ltrim($argument, '\\')),
             default => null,
         };
     }
@@ -312,6 +323,131 @@ class TargetEnvironmentVisitor extends BaseVisitor
         return is_array($core) && array_key_exists($directive, $core) ? null : false;
     }
 
+    /**
+     * defined('ИМЯ') для глобальной константы: встроенная константа ядра или расширения,
+     * которое есть на сервере, — true; константу программа не объявляет (и программа
+     * замкнута) — false; единственное объявление под `if (!defined('ИМЯ'))` — проверка
+     * выполняется до него, false.
+     */
+    private function constantDefined(Node\Expr\FuncCall $call, string $name): ?bool
+    {
+        $declarations = $this->constantDeclarations();
+        if ($declarations === null) {
+            return null; // define() с вычисляемым именем
+        }
+
+        $count = $declarations[$name] ?? 0;
+        if ($count === 1 && $this->constantGuard($call, $name)) {
+            return false;
+        }
+
+        if ($count > 0) {
+            return null;
+        }
+
+        $extension = $this->builtinConstantExtension($name);
+        if ($extension !== null) {
+            return $this->environment->hasExtension($extension);
+        }
+
+        // Не встроенная — если анализатор знает все константы сервера (те же версия и расширения)
+        return $this->closed && $this->knowsServerConstants() ? false : null;
+    }
+
+    private function knowsServerConstants(): bool
+    {
+        if (
+            !$this->environment->extensionsKnown() || $this->environment->phpVersionId() === null
+            || intdiv($this->environment->phpVersionId(), 100) !== intdiv(\PHP_VERSION_ID, 100)
+        ) {
+            return false;
+        }
+
+        $loaded = array_map(strtolower(...), get_loaded_extensions());
+        return array_all($this->serverExtensions(), fn(string $extension): bool => in_array(strtolower($extension), $loaded, true));
+    }
+
+    /** @return list<string> */
+    private function serverExtensions(): array
+    {
+        return array_map(strval(...), array_keys($this->environment->extensions ?? []));
+    }
+
+    /** @return array<string, int>|null имя → число объявлений в программе; null — имя вычисляется */
+    private function constantDeclarations(): ?array
+    {
+        $result = [];
+        foreach ($this->findNode(Node::class) as $node) {
+            if ($node instanceof Node\Stmt\Const_) {
+                foreach ($node->consts as $const) {
+                    $result[$const->name->toString()] = ($result[$const->name->toString()] ?? 0) + 1;
+                }
+            } elseif ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name && ltrim($node->name->toLowerString(), '\\') === 'define') {
+                $first = ($node->getArgs()[0] ?? null)?->value;
+                if (!$first instanceof Node\Scalar\String_) {
+                    return null;
+                }
+
+                $result[ltrim($first->value, '\\')] = ($result[ltrim($first->value, '\\')] ?? 0) + 1;
+            }
+        }
+
+        return $result;
+    }
+
+    /** `if (!defined('X')) { … define('X', …); … }` — защита единственного объявления. */
+    private function constantGuard(Node\Expr\FuncCall $call, string $name): bool
+    {
+        $not = $call->getAttribute('parent');
+        $if  = $not instanceof Node\Expr\BooleanNot ? $not->getAttribute('parent') : null;
+        if (!$if instanceof Node\Stmt\If_ || $if->cond !== $not || $if->elseifs !== [] || $if->else instanceof Node\Stmt\Else_) {
+            return false;
+        }
+
+        foreach ($if->stmts as $stmt) {
+            $define = $stmt instanceof Node\Stmt\Expression ? $stmt->expr : null;
+            if (
+                $define instanceof Node\Expr\FuncCall && $define->name instanceof Node\Name && ltrim($define->name->toLowerString(), '\\') === 'define'
+                && ($define->getArgs()[0] ?? null)?->value instanceof Node\Scalar\String_ && ltrim($define->getArgs()[0]->value->value, '\\') === $name
+            ) {
+                return true;
+            }
+
+            if ($stmt instanceof Node\Stmt\Const_ && array_any($stmt->consts, static fn(Node\Const_ $c): bool => $c->name->toString() === $name)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Расширение, которое объявляет встроенную константу (в этой версии PHP); null — не встроенная. */
+    private function builtinConstantExtension(string $name): ?string
+    {
+        static $byName = null;
+        if ($byName === null) {
+            $byName = [];
+            foreach (get_defined_constants(true) as $extension => $constants) {
+                if ($extension === 'user') {
+                    continue;
+                }
+
+                foreach (array_keys($constants) as $constant) {
+                    $byName[$constant] = $extension;
+                }
+            }
+        }
+
+        if (!isset($byName[$name])) {
+            return null;
+        }
+
+        // Ядро: те же версии PHP — та же константа
+        $sameVersion = $this->environment->phpVersionId() !== null && intdiv($this->environment->phpVersionId(), 100) === intdiv(\PHP_VERSION_ID, 100);
+
+        return $sameVersion ? $byName[$name] : null;
+    }
+
     /** defined('Класс::КОНСТАНТА') для класса программы: по объявлению в нём или предках. */
     private function classConstantDefined(string $name): ?bool
     {
@@ -386,17 +522,23 @@ class TargetEnvironmentVisitor extends BaseVisitor
         }
 
         $lower = strtolower($name);
-        if (isset($this->declared()['functions'][$lower]) || ($this->functionCounts[$lower] ?? 0) !== 1) {
+        if ($this->projectDeclares($lower) || ($this->functionCounts[$lower] ?? 0) !== 1) {
             return false;
         }
 
         return array_any($if->stmts, static fn(Node\Stmt $s): bool => $s instanceof Node\Stmt\Function_ && $s->name->toLowerString() === $lower);
     }
 
+    /** Функцию может объявить файл проекта вне программы (пока программа не замкнута). */
+    private function projectDeclares(string $lower): bool
+    {
+        return !$this->closed && isset($this->declared()['functions'][$lower]);
+    }
+
     private function functionExists(string $name): ?bool
     {
         $lower = strtolower($name);
-        if (isset($this->topFunctions[$lower]) && !isset($this->declared()['functions'][$lower])) {
+        if (isset($this->topFunctions[$lower]) && !$this->projectDeclares($lower)) {
             return true;
         }
 
@@ -411,7 +553,7 @@ class TargetEnvironmentVisitor extends BaseVisitor
             }
         }
 
-        if (isset($this->programFunctions[$lower]) || isset($this->declared()['functions'][$lower])) {
+        if (isset($this->programFunctions[$lower]) || $this->projectDeclares($lower)) {
             return null; // своя функция или полифил из файла проекта — объявление может быть условным
         }
 

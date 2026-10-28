@@ -1,8 +1,9 @@
-FROM dunglas/frankenphp:php8.4
+FROM dunglas/frankenphp:php8.4-alpine
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends git unzip \
-    && rm -rf /var/lib/apt/lists/*
+# в Debian-варианте образа десятки HIGH/CRITICAL без исправлений, в alpine — единицы,
+# а то, что уже исправлено в репозитории, подтягиваем apk upgrade
+RUN apk upgrade --no-cache \
+    && apk add --no-cache git unzip
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 

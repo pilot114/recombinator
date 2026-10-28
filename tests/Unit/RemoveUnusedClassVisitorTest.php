@@ -10,6 +10,7 @@ use Recombinator\Transformation\Visitor\RemoveUnusedClassVisitor;
 function applyRemoveUnusedClass(string $code): string
 {
     $ast = new ParserFactory()->createForNewestSupportedVersion()->parse($code) ?? [];
+    $ast = new NodeTraverser(new PhpParser\NodeVisitor\ParentConnectingVisitor())->traverse($ast);
     $ast = new NodeTraverser(new RemoveUnusedClassVisitor())->traverse($ast);
 
     return new Printer()->prettyPrint($ast);
@@ -91,4 +92,15 @@ it('treats functions extracted from static methods as graph nodes, not roots', f
 
     expect($result)->not->toContain('class Files')->not->toContain('function Files_isSupported')
         ->toContain('class Used')->toContain('function Used_make')->toContain('function helper');
+});
+
+it('keeps classes named by a finite set of runtime-built strings', function (): void {
+    $result = applyRemoveUnusedClass(
+        '<?php class Faker_Provider_Address {} class Faker_Provider_Person {} class Faker_Provider_Lorem {}
+        function make($p) { return new (sprintf("Faker\\\\Provider\\\\%s", $p))(); }
+        make("Address"); make("Person");',
+    );
+
+    expect($result)->toContain('class Faker_Provider_Address')->toContain('class Faker_Provider_Person')
+        ->not->toContain('class Faker_Provider_Lorem');
 });

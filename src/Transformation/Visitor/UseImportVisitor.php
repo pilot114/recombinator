@@ -10,6 +10,7 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
+use Recombinator\Support\StringValues;
 
 /**
  * Заменяет `use Foo\Bar` определением класса из карты файлов.
@@ -35,6 +36,9 @@ class UseImportVisitor extends BaseVisitor
      * @var array<string, true>
      */
     private array $inlined = [];
+
+    /** Повторы afterTraverse для классов, подтянутых по ссылкам из подтянутых */
+    private int $pullRounds = 0;
 
     /**
      * FQCNs, которые искались, но не найдены в fileMap (внешние зависимости).
@@ -112,14 +116,18 @@ class UseImportVisitor extends BaseVisitor
         $this->parseCache       = [];
         $this->qualifiedCache   = [];
         $this->declared         = [];
+        $this->pullRounds       = 0;
         $this->nonStrictInlined = false;
         $changed                = false;
+        // Объявленные где угодно, в том числе под `if (class_exists(...))` (ExternalParentGuardVisitor)
+        foreach (new NodeFinder()->findInstanceOf($nodes, Node\Stmt\ClassLike::class) as $class) {
+            if ($class->name instanceof Node\Identifier) {
+                $this->declared[strtolower($class->name->toString())] = true;
+            }
+        }
+
         foreach ($nodes as $node) {
             foreach ($node instanceof Node\Stmt\Namespace_ ? $node->stmts : [$node] as $stmt) {
-                if ($stmt instanceof Node\Stmt\ClassLike && $stmt->name instanceof Node\Identifier) {
-                    $this->declared[strtolower($stmt->name->toString())] = true;
-                }
-
                 $changed = $changed || $stmt instanceof Node\Stmt\GroupUse;
             }
         }
@@ -267,7 +275,8 @@ class UseImportVisitor extends BaseVisitor
 
             if ($n instanceof Node\Expr\FuncCall || $n instanceof Node\Expr\ConstFetch) {
                 $notClass[$n->name] = true;
-            } elseif ($n instanceof Node\Name\FullyQualified && count($n->getParts()) > 1) {
+            } elseif ($n instanceof Node\Name\FullyQualified && (count($n->getParts()) > 1 || !$this->isBuiltin($n->toString()))) {
+                // Глобальное имя — только не встроенное: заглушка полифила (`\SortDirection` из PHP 8.6)
                 $refs[] = $n;
             } elseif (
                 $n instanceof Node\Scalar\String_
@@ -307,6 +316,27 @@ class UseImportVisitor extends BaseVisitor
             }
         }
 
+        // Имя, собранное во время выполнения из конечного набора строк (провайдеры
+        // Faker): классы набора встраиваются, исходное имя на месте свяжет алиас
+        // runtimeAutoload (`Faker\Provider\en_US\Address` → `Faker_Provider_en_US_Address`)
+        if ($canPull) {
+            $computed = StringValues::classNames($nodes);
+            foreach ($computed as $fqcn) {
+                if (!isset($this->declared[strtolower(strtr($fqcn, ['\\' => '_']))]) && !isset($this->inlined[$fqcn])) {
+                    array_push($pulled, ...$this->resolveClass($fqcn) ?? []);
+                }
+            }
+
+            // Созданные по собранному имени — плагины: их методы вызывают по именам из данных
+            // (см. RemoveUnusedMethodVisitor::plugins); пометка переживает сворачивание имени
+            $plugins = array_fill_keys(array_map(static fn(string $n): string => strtolower(strtr($n, ['\\' => '_'])), $computed), true);
+            foreach (new NodeFinder()->findInstanceOf([...$nodes, ...$pulled], Node\Stmt\ClassLike::class) as $class) {
+                if ($class->name instanceof Node\Identifier && isset($plugins[$class->name->toLowerString()])) {
+                    $class->setAttribute('dynamicPlugin', true);
+                }
+            }
+        }
+
         if ($pulled === []) {
             $ordered = $canPull ? $this->orderDeclarations($nodes) : null;
 
@@ -320,8 +350,25 @@ class UseImportVisitor extends BaseVisitor
         }
 
         array_splice($nodes, $at, 0, $pulled);
+        foreach (new NodeFinder()->findInstanceOf($pulled, Node\Stmt\ClassLike::class) as $class) {
+            if ($class->name instanceof Node\Identifier) {
+                $this->declared[strtolower($class->name->toString())] = true;
+            }
+        }
+
+        // Ссылки внутри встроенных классов (родитель, интерфейсы) — тем же порядком,
+        // пока подтягивается новое: иначе родитель остался бы внешним `\Faker\Provider\Text`
+        if (++$this->pullRounds <= 16) {
+            return $this->afterTraverse($nodes) ?? $nodes;
+        }
 
         return $this->orderDeclarations($nodes) ?? $nodes;
+    }
+
+    private function isBuiltin(string $name): bool
+    {
+        return (class_exists($name, false) || interface_exists($name, false) || enum_exists($name, false) || trait_exists($name, false))
+            && new \ReflectionClass($name)->isInternal();
     }
 
     /**
@@ -570,7 +617,8 @@ class UseImportVisitor extends BaseVisitor
 
         $parts       = explode('\\', $fqcn);
         $shortName   = end($parts);
-        $suffixParts = array_slice($parts, 1);
+        // Глобальное имя (заглушка полифила `SortDirection`) — по самому имени файла
+        $suffixParts = count($parts) > 1 ? array_slice($parts, 1) : $parts;
 
         while ($suffixParts !== []) {
             $suffix = implode('/', $suffixParts) . '.php';

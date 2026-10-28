@@ -8,6 +8,7 @@ use PhpParser\Node;
 use PhpParser\NodeFinder;
 use Recombinator\Core\Config;
 use Recombinator\Support\ExternalCode;
+use Recombinator\Support\StringValues;
 use Recombinator\Support\TypeInference;
 
 /**
@@ -118,10 +119,10 @@ class RemoveUnusedMethodVisitor extends BaseVisitor
         /** @var array<string, list<Node\Stmt\ClassMethod>> $methods */
         $methods = [];
         $roots   = [];
+        $this->classes   = $classes;
+        $this->inference = new TypeInference($classes, $this->ast);
         $this->partition($nodes, $classes, $methods, $roots);
 
-        $this->classes      = $classes;
-        $this->inference    = new TypeInference($classes, $this->ast);
         $this->functions    = null;
         $this->callSites    = null;
         $this->namesMethod  = [];
@@ -252,10 +253,12 @@ class RemoveUnusedMethodVisitor extends BaseVisitor
      */
     private function partition(array $nodes, array $classes, array &$methods, array &$roots): void
     {
-        $finder = new NodeFinder();
-        $inside = $finder->findInstanceOf($nodes, Node\Stmt\ClassLike::class);
+        $finder  = new NodeFinder();
+        $inside  = $finder->findInstanceOf($nodes, Node\Stmt\ClassLike::class);
+        $plugins = $this->plugins($classes);
         foreach ($inside as $class) {
-            $protected = $class->name instanceof Node\Identifier && $this->config->isProtected($class->name->toString());
+            $protected = $class->name instanceof Node\Identifier
+                && ($this->config->isProtected($class->name->toString()) || isset($plugins[$class->name->toLowerString()]));
             foreach ($class->stmts as $stmt) {
                 if (!$stmt instanceof Node\Stmt\ClassMethod) {
                     $roots[] = $stmt;
@@ -282,17 +285,170 @@ class RemoveUnusedMethodVisitor extends BaseVisitor
     }
 
     /**
+     * Классы, создаваемые по имени, собранному во время выполнения (провайдеры Faker:
+     * `new (sprintf('Faker\Provider\%s', $p))`), и их предки. Такие классы — плагины:
+     * их методы вызывают по именам из данных (`'{{userName}}'` → `$provider->userName()`),
+     * поэтому все методы живы — как у внешнего кода, которым они были до встраивания.
+     *
+     * @param  array<string, Node\Stmt\ClassLike> $classes
+     * @return array<string, true>
+     */
+    private function plugins(array $classes): array
+    {
+        $result = [];
+        $queue  = array_map(static fn(string $n): string => strtolower(strtr($n, ['\\' => '_'])), StringValues::classNames($this->ast));
+        foreach ($classes as $name => $class) {
+            if ($class->getAttribute('dynamicPlugin') === true) {
+                $queue[] = (string) $name;
+            }
+        }
+
+        while ($queue !== []) {
+            $name  = array_pop($queue);
+            $class = $classes[$name] ?? null;
+            if (isset($result[$name]) || !$class instanceof Node\Stmt\Class_) {
+                continue;
+            }
+
+            $result[$name] = true;
+            if ($class->extends instanceof Node\Name) {
+                $queue[] = strtolower(ltrim($class->extends->toString(), '\\'));
+            }
+        }
+
+        return $result;
+    }
+
+    /**
      * Метод, который нельзя удалить при любом использовании имени.
      *
      * @param array<string, Node\Stmt\ClassLike> $classes
      */
     private function pinned(Node\Stmt\ClassMethod $method, Node\Stmt\ClassLike $class, array $classes): bool
     {
+        // __call вызывается только для отсутствующего (или недоступного) метода — см. magicCallReachable
+        if ($method->name->toLowerString() === '__call' && $class instanceof Node\Stmt\Class_ && !$this->magicCallReachable($class)) {
+            return false;
+        }
+
         if (str_starts_with($method->name->toString(), '__') || $method->attrGroups !== []) {
             return true;
         }
 
         return $this->declaredOutside($class, $method->name->toString(), $classes, 0);
+    }
+
+    /**
+     * Может ли быть вызван __call класса: вызов метода, которого у объекта класса нет
+     * (или он не публичный), на получателе, который может быть объектом класса или
+     * наследника. Имя по выражению — по конечному набору значений (StringValues);
+     * callable-массив `[$obj, 'm']` — как вызов.
+     */
+    private function magicCallReachable(Node\Stmt\Class_ $class): bool
+    {
+        if (!$class->name instanceof Node\Identifier || !$this->inference instanceof TypeInference || $this->extendedOutside($class)) {
+            return true;
+        }
+
+        $values = new StringValues($this->ast);
+        $self   = $class->name->toLowerString();
+        $call   = $class->getMethod('__call');
+        $accept = $call instanceof Node\Stmt\ClassMethod ? $this->acceptedPrefixes($call) : null;
+        foreach ($this->findNode(Node::class) as $node) {
+            [$receiver, $names] = match (true) {
+                $node instanceof Node\Expr\MethodCall, $node instanceof Node\Expr\NullsafeMethodCall => [
+                    $node->var,
+                    $node->name instanceof Node\Identifier ? [$node->name->toString()] : $values->of($node->name),
+                ],
+                $node instanceof Node\Expr\Array_ && count($node->items) === 2 && $node->items[1]?->value instanceof Node\Scalar\String_
+                    && $node->items[0] instanceof Node\ArrayItem => [$node->items[0]->value, [$node->items[1]->value->value]],
+                default => [null, []],
+            };
+            if (!$receiver instanceof Node\Expr) {
+                continue;
+            }
+
+            $missing = $names === null ? [null] : array_filter($names, fn(string $n): bool => !$this->publicMethod($class, $n));
+            // __call, который для прочих имён только бросает исключение, — по префиксам
+            if ($accept !== null) {
+                $missing = array_filter($missing, static fn(?string $n): bool => $n === null
+                    || array_any($accept, static fn(string $p): bool => str_starts_with(strtolower($n), $p)));
+            }
+
+            if ($missing === []) {
+                continue;
+            }
+
+            // Получатель — объект этого класса? $this внутри него, тип, связанный иерархией
+            $types = $this->inference->typeOf($receiver);
+            if ($types === null) {
+                return true;
+            }
+
+            foreach ($types as $type) {
+                if (
+                    $type === $self || isset($this->inference->ancestors($class)[$type])
+                    || ($declared = $this->classes[$type] ?? null) instanceof Node\Stmt\ClassLike && isset($this->inference->ancestors($declared)[$self])
+                ) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Префиксы имён, которые __call обрабатывает: тело — `if (str_starts_with($name,
+     * 'findBy')) { return …; }` … и в конце throw. Для прочих имён вызов — ошибка и без
+     * __call. null — тело другого вида.
+     *
+     * @return list<string>|null lowercase префиксы
+     */
+    private function acceptedPrefixes(Node\Stmt\ClassMethod $call): ?array
+    {
+        $param = $call->params[0]->var ?? null;
+        if (!$param instanceof Node\Expr\Variable || !is_string($param->name) || $call->stmts === null || $call->stmts === []) {
+            return null;
+        }
+
+        $prefixes = [];
+        $stmts    = array_values($call->stmts);
+        $last     = array_pop($stmts);
+        $throws   = $last instanceof Node\Stmt\Expression && $last->expr instanceof Node\Expr\Throw_;
+        if (!$throws) {
+            return null;
+        }
+
+        foreach ($stmts as $stmt) {
+            $cond = $stmt instanceof Node\Stmt\If_ && $stmt->elseifs === [] && !$stmt->else instanceof \PhpParser\Node\Stmt\Else_ ? $stmt->cond : null;
+            $args = $cond instanceof Node\Expr\FuncCall && $cond->name instanceof Node\Name
+                && ltrim($cond->name->toLowerString(), '\\') === 'str_starts_with' ? $cond->getArgs() : null;
+            if (
+                $args === null || !($args[0] ?? null)?->value instanceof Node\Expr\Variable || $args[0]->value->name !== $param->name
+                || !($args[1] ?? null)?->value instanceof Node\Scalar\String_
+            ) {
+                return null;
+            }
+
+            $prefixes[] = strtolower($args[1]->value->value);
+        }
+
+        return $prefixes;
+    }
+
+    /** Публичный метод объекта класса (свой или унаследованный, кроме __call). */
+    private function publicMethod(Node\Stmt\Class_ $class, string $name): bool
+    {
+        $method = $this->inference?->lookup($class, $name);
+
+        return $method instanceof Node\Stmt\ClassMethod && $method->isPublic() && $method->name->toLowerString() !== '__call';
+    }
+
+    private function extendedOutside(Node\Stmt\Class_ $class): bool
+    {
+        return $this->fileMap !== [] && $class->name instanceof Node\Identifier
+            && ExternalCode::forProgram($this->fileMap, $this->classes, $this->ast)->extendsOrImplements($class->name->toString());
     }
 
     /**
@@ -1078,6 +1234,11 @@ class RemoveUnusedMethodVisitor extends BaseVisitor
     /** @param array<string, true> $prefixes */
     private function matchesPrefix(string $name, array $prefixes): bool
     {
+        // Магические методы вызывает PHP, а не собранная строка
+        if (str_starts_with($name, '__')) {
+            return false;
+        }
+
         for ($length = strlen($name); $length > 0; $length--) {
             if (isset($prefixes[substr($name, 0, $length)])) {
                 return true;

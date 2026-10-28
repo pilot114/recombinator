@@ -27,6 +27,13 @@ class DeadBranchVisitor extends BaseVisitor
             }
         }
 
+        if ($node instanceof Node\Stmt\Do_) {
+            $result = $this->processDo($node);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+
         if ($node instanceof Node\Stmt\Switch_) {
             $result = $this->processSwitch($node);
             if ($result !== null) {
@@ -81,16 +88,77 @@ class DeadBranchVisitor extends BaseVisitor
         return null;
     }
 
+    /** Литерал, приводимый к false: false, null, 0, 0.0, '', '0', []. */
     private function isConstFalse(Node $node): bool
     {
-        return $node instanceof Node\Expr\ConstFetch
-            && strtolower($node->name->toString()) === 'false';
+        return match (true) {
+            $node instanceof Node\Expr\ConstFetch => in_array(strtolower($node->name->toString()), ['false', 'null'], true),
+            $node instanceof Node\Scalar\Int_, $node instanceof Node\Scalar\Float_ => $node->value == 0,
+            $node instanceof Node\Scalar\String_ => $node->value === '' || $node->value === '0',
+            $node instanceof Node\Expr\Array_ => $node->items === [],
+            default => false,
+        };
     }
 
+    /** Литерал, приводимый к true: true, ненулевое число, непустая строка (кроме '0'). */
     private function isConstTrue(Node $node): bool
     {
-        return $node instanceof Node\Expr\ConstFetch
-            && strtolower($node->name->toString()) === 'true';
+        return match (true) {
+            $node instanceof Node\Expr\ConstFetch => strtolower($node->name->toString()) === 'true',
+            $node instanceof Node\Scalar\Int_, $node instanceof Node\Scalar\Float_ => $node->value != 0,
+            $node instanceof Node\Scalar\String_ => $node->value !== '' && $node->value !== '0',
+            default => false,
+        };
+    }
+
+    /**
+     * `do { BODY } while (false)` без break/continue, относящихся к этому циклу, — BODY.
+     *
+     * @return array<Node>|int|null
+     */
+    private function processDo(Node\Stmt\Do_ $node): array|int|null
+    {
+        if (!$this->isConstFalse($node->cond) || $this->jumpsOut($node->stmts, 1)) {
+            return null;
+        }
+
+        return $node->stmts === [] ? NodeTraverser::REMOVE_NODE : $node->stmts;
+    }
+
+    /**
+     * Есть break/continue, выходящий за $levels уровней циклов (то есть к нашему циклу или
+     * дальше). Вложенные функции и классы — своя область.
+     *
+     * @param array<Node> $nodes
+     */
+    private function jumpsOut(array $nodes, int $levels): bool
+    {
+        foreach ($nodes as $node) {
+            if ($node instanceof Node\FunctionLike || $node instanceof Node\Stmt\ClassLike) {
+                continue;
+            }
+
+            if ($node instanceof Node\Stmt\Break_ || $node instanceof Node\Stmt\Continue_) {
+                $num = $node->num instanceof Node\Scalar\Int_ ? $node->num->value : ($node->num instanceof \PhpParser\Node\Expr ? PHP_INT_MAX : 1);
+                if ($num >= $levels) {
+                    return true;
+                }
+
+                continue;
+            }
+
+            $loop = $node instanceof Node\Stmt\For_ || $node instanceof Node\Stmt\Foreach_ || $node instanceof Node\Stmt\While_
+                || $node instanceof Node\Stmt\Do_ || $node instanceof Node\Stmt\Switch_;
+            foreach ($node->getSubNodeNames() as $name) {
+                $value = $node->$name;
+                $children = array_filter(is_array($value) ? $value : [$value], static fn(mixed $c): bool => $c instanceof Node);
+                if ($this->jumpsOut($children, $loop ? $levels + 1 : $levels)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -209,3 +209,29 @@ it('treats a literal followed by a number as a numeric name prefix only', functi
 
     expect($result)->not->toContain('function evict')->toContain('function e1');
 });
+
+it('keeps all methods of classes created by runtime-built names', function (): void {
+    $ast = new ParserFactory()->createForNewestSupportedVersion()->parse(
+        '<?php class Faker_Provider_Base { public function numerify() {} } class Faker_Provider_Person extends Faker_Provider_Base { public function userName() {} }
+        class Other { public function unused() {} }
+        function make($p) { return new (sprintf("Faker\\\\Provider\\\\%s", $p))(); } make("Person");',
+    ) ?? [];
+    $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
+    $ast = new NodeTraverser(new RemoveUnusedMethodVisitor())->traverse($ast);
+
+    $result = new Printer()->prettyPrint($ast);
+
+    expect($result)->toContain('function userName')->toContain('function numerify')->not->toContain('function unused');
+});
+
+it('removes __call that only accepts prefixes no call can reach', function (): void {
+    $result = applyRemoveUnusedMethod(
+        'class Repo { public function findAll() { return []; }
+            public function __call(string $method, array $args) { if (str_starts_with($method, "findBy")) { return $this->magic($method); } throw new \BadMethodCallException($method); }
+            private function magic($m) { return $m; } }
+        class Gen { public function __call($m, $a) { return $m; } }
+        $r = new Repo(); $r->findAll(); $g = new Gen(); $g->email(); $x->other();',
+    );
+
+    expect($result)->not->toContain('function magic')->toContain('class Gen')->toContain('public function __call($m, $a)');
+});

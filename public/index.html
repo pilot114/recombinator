@@ -233,6 +233,26 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   display: flex; align-items: center;
 }
 
+/* ── Поиск в результате (виртуальная прокрутка: Ctrl+F браузера видит только видимые строки) ── */
+#result-search {
+  display: none; align-items: center; gap: 4px; padding: 0 8px;
+  border-left: 1px solid var(--border);
+}
+#result-search.show { display: flex; }
+#rs-input {
+  width: 220px; background: var(--bg); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 3px 7px; font-family: var(--mono); font-size: 12px; outline: none;
+}
+#rs-input:focus { border-color: var(--accent); }
+#rs-count { min-width: 64px; font-size: 11px; color: var(--muted); text-align: right; }
+#result-search button {
+  background: none; border: 1px solid var(--border); color: var(--muted); border-radius: 4px;
+  width: 24px; height: 22px; cursor: pointer; font-size: 12px; line-height: 1;
+}
+#result-search button:hover { color: var(--text); background: var(--surface2); }
+#pane-result code mark.rs-hit { color: inherit; background: rgba(210, 153, 34, .35); border-radius: 2px; }
+#pane-result code mark.rs-hit.cur { background: rgba(255, 166, 0, .75); outline: 1px solid #ffa600; }
+
 /* ── View panes ── */
 .pane { flex: 1; overflow: auto; display: none; }
 .pane.show { display: block; }
@@ -588,6 +608,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
       <div class="vtab active" data-v="result">Результат</div>
       <div class="vtab" data-v="steps">Шаги <span class="badge" id="steps-badge" style="display:none">0</span></div>
       <span id="exec-time"></span>
+      <span id="result-search" title="Поиск в результате: Enter — следующее, Shift+Enter — предыдущее, Esc — закрыть">
+        <input id="rs-input" type="text" placeholder="Поиск в результате…" spellcheck="false" autocomplete="off">
+        <span id="rs-count"></span>
+        <button id="rs-prev" title="Предыдущее (Shift+Enter)">↑</button>
+        <button id="rs-next" title="Следующее (Enter)">↓</button>
+        <button id="rs-close" title="Закрыть (Esc)">✕</button>
+      </span>
     </div>
 
     <div class="pane show" id="pane-result">
@@ -886,6 +913,7 @@ function syncLnScroll() {
 function switchView(v) {
   document.querySelectorAll('.vtab').forEach(b => b.classList.toggle('active', b.dataset.v === v));
   document.querySelectorAll('.pane').forEach(p => p.classList.toggle('show', p.id === 'pane-' + v));
+  if (v !== 'result') $('result-search').classList.remove('show');
 }
 
 document.querySelectorAll('.vtab').forEach(b => b.addEventListener('click', () => switchView(b.dataset.v)));
@@ -1007,7 +1035,7 @@ function renderResultVirtual(pane, code) {
     `text-align:right;user-select:none;white-space:pre;`;
 
   const preEl = document.createElement('pre');
-  preEl.style.cssText = `flex:1;min-width:0;margin:0;padding:0 16px;overflow-x:auto;`;
+  preEl.style.cssText = `flex:1;min-width:0;margin:0;padding:0 16px;overflow-x:auto;position:relative;`;
   const codeEl = document.createElement('code');
   codeEl.className = 'language-php hljs';
   codeEl.style.cssText =
@@ -1033,7 +1061,57 @@ function renderResultVirtual(pane, code) {
     }
     lnEl.textContent = lnText;
     codeEl.innerHTML = codeHtml;
+
+    // Подсветка совпадений поиска: <mark> прямо в текстовых узлах кода — совпадает
+    // с текстом точно (отдельный слой поверх расходился бы на длинных строках)
+    const search = pane._search;
+    if (search && search.byLine.size) {
+      const ranges = [];
+      let offset = 0;
+      for (let i = first; i <= last; i++) {
+        for (const [start, idx, length] of search.byLine.get(i) ?? []) {
+          ranges.push([offset + start, offset + start + length, idx === search.current]);
+        }
+        offset += rawLines[i].length + 1;
+      }
+
+      markRanges(codeEl, ranges);
+    }
   }
+
+  // Доступ для поиска: строки, перерисовка, переход к совпадению
+  pane._vs = {
+    lines: rawLines,
+    refresh: update,
+    scrollToLine(line) {
+      const vh = pane.clientHeight || 600;
+      const top = line * VS_LH;
+      // Строка уже видна — вертикально не двигаем
+      if (top < pane.scrollTop || top + VS_LH > pane.scrollTop + vh) {
+        pane.scrollTop = Math.max(0, top - vh / 3);
+      }
+
+      update();
+
+      // По горизонтали — чтобы текущее совпадение было видно. Прокручивается ближайший
+      // предок с переполнением (тема highlight.js делает прокручиваемым сам <code>)
+      const mark = codeEl.querySelector('mark.rs-hit.cur');
+      let scroller = mark ? mark.parentElement : null;
+      while (scroller && scroller !== pane && scroller.scrollWidth <= scroller.clientWidth) {
+        scroller = scroller.parentElement;
+      }
+
+      if (mark && scroller) {
+        const box = scroller.getBoundingClientRect();
+        const hit = mark.getBoundingClientRect();
+        const left = box.left;
+        const gutter = 40;
+        if (hit.left < left + gutter || hit.right > box.left + scroller.clientWidth - gutter) {
+          scroller.scrollLeft += hit.left - left - scroller.clientWidth / 3;
+        }
+      }
+    },
+  };
 
   let raf = null;
   pane.addEventListener('scroll', () => {
@@ -1046,15 +1124,143 @@ function renderResultVirtual(pane, code) {
 
 // ── Render results ────────────────────────────────────────────────────────────
 
+/**
+ * Оборачивает диапазоны текста элемента (смещения в его textContent) в
+ * <mark class="rs-hit">; диапазон через несколько текстовых узлов (подсветка
+ * синтаксиса) — по куску в каждом.
+ */
+function markRanges(root, ranges) {
+  if (!ranges.length) return;
+  const nodes = [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  for (let pos = 0, node; (node = walker.nextNode()); pos += node.data.length) {
+    nodes.push([node, pos]);
+  }
+
+  // С конца: обёртка разбивает узел, смещения левее остаются верными
+  for (let r = ranges.length - 1; r >= 0; r--) {
+    const [start, end, current] = ranges[r];
+    for (let n = nodes.length - 1; n >= 0; n--) {
+      const [node, pos] = nodes[n];
+      const from = Math.max(start, pos), to = Math.min(end, pos + node.data.length);
+      if (from >= to) continue;
+
+      const range = document.createRange();
+      range.setStart(node, from - pos);
+      range.setEnd(node, to - pos);
+      const mark = document.createElement('mark');
+      mark.className = current ? 'rs-hit cur' : 'rs-hit';
+      range.surroundContents(mark);
+    }
+  }
+}
+
+// ── Поиск в результате ──────────────────────────────────────────────────────
+// Виртуальная прокрутка держит в DOM только видимые строки, поэтому Ctrl+F браузера
+// не находит остальное: ищем по всему тексту сами и прокручиваем к совпадению.
+
+const RS_MAX = 20000;
+
+function resultSearchRun() {
+  const pane  = $('pane-result');
+  const vs    = pane._vs;
+  const query = $('rs-input').value;
+  if (!vs) return;
+
+  const byLine = new Map();
+  const hits   = [];
+  if (query !== '') {
+    // По исходной строке без учёта регистра: toLowerCase() меняет длину некоторых
+    // символов (İ), и позиции в нижнем регистре разошлись бы с текстом
+    const re = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'giu');
+    for (let i = 0; i < vs.lines.length && hits.length < RS_MAX; i++) {
+      re.lastIndex = 0;
+      for (let m; (m = re.exec(vs.lines[i])) && hits.length < RS_MAX;) {
+        if (!byLine.has(i)) byLine.set(i, []);
+        byLine.get(i).push([m.index, hits.length, m[0].length]);
+        hits.push(i);
+        if (m[0].length === 0) re.lastIndex++;
+      }
+    }
+  }
+
+  // Ближайшее к текущей позиции прокрутки
+  const topLine = Math.floor(pane.scrollTop / VS_LH);
+  const nearest = hits.findIndex(line => line >= topLine);
+  pane._search = { byLine, hits, current: hits.length ? Math.max(0, nearest) : -1 };
+  resultSearchGo(0);
+}
+
+function resultSearchGo(delta) {
+  const pane   = $('pane-result');
+  const search = pane._search;
+  const count  = $('rs-count');
+  if (!search || !pane._vs) return;
+
+  if (!search.hits.length) {
+    count.textContent = $('rs-input').value ? 'нет' : '';
+    pane._vs.refresh();
+    return;
+  }
+
+  search.current = (search.current + delta + search.hits.length) % search.hits.length;
+  count.textContent = `${search.current + 1} / ${search.hits.length}${search.hits.length >= RS_MAX ? '+' : ''}`;
+  pane._vs.scrollToLine(search.hits[search.current]);
+}
+
+function resultSearchOpen() {
+  $('result-search').classList.add('show');
+  $('rs-input').focus();
+  $('rs-input').select();
+  if ($('rs-input').value) resultSearchRun();
+}
+
+function resultSearchClose() {
+  $('result-search').classList.remove('show');
+  const pane = $('pane-result');
+  pane._search = null;
+  $('rs-count').textContent = '';
+  if (pane._vs) pane._vs.refresh();
+}
+
+(function () {
+  let timer = null;
+  $('rs-input').addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(resultSearchRun, 150);
+  });
+  $('rs-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); clearTimeout(timer); if (!$('pane-result')._search) resultSearchRun(); else resultSearchGo(e.shiftKey ? -1 : 1); }
+    if (e.key === 'Escape') { e.preventDefault(); resultSearchClose(); }
+  });
+  $('rs-next').addEventListener('click', () => resultSearchGo(1));
+  $('rs-prev').addEventListener('click', () => resultSearchGo(-1));
+  $('rs-close').addEventListener('click', resultSearchClose);
+
+  // Ctrl+F на вкладке «Результат» с виртуальной прокруткой — свой поиск
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'f'
+      && $('pane-result').classList.contains('show') && $('pane-result')._vs) {
+      e.preventDefault();
+      resultSearchOpen();
+    }
+  });
+})();
+
 function renderResults(data) {
   // Result pane
   const pane = $('pane-result');
   if (pane._vsAbort) { pane._vsAbort.abort(); delete pane._vsAbort; }
+  pane._vs     = null;
+  pane._search = null;
   const finalCode = data.final || '';
   if (finalCode.split('\n').length >= VS_MIN) {
     renderResultVirtual(pane, finalCode);
+    // Поиск был открыт — повторить по новому результату
+    if ($('result-search').classList.contains('show') && $('rs-input').value) resultSearchRun();
   } else {
     pane.innerHTML = renderCodeWithLines(finalCode);
+    resultSearchClose();
   }
 
   // Steps pane

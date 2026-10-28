@@ -43,6 +43,18 @@ it('keeps a static property written by a called method', function (): void {
     expect($result)->toContain('return self::$f;');
 });
 
+it('treats arguments of an immediately called closure by its own parameters', function (): void {
+    $result = applyClosedWorld(
+        '<?php class P { public static string $c = "A"; public static array $l = []; }
+        $f = (static fn(string $c) => static fn() => $c)(P::$c);
+        (static function (array &$l): void { $l[] = 1; })(P::$l);
+        echo count(P::$l);',
+        new StaticPropConstVisitor(),
+    );
+
+    expect($result)->toContain('(static fn(string $c) => static fn() => $c)("A")')->toContain('count(P::$l)');
+});
+
 it('does not resolve static:: in a class with subclasses', function (): void {
     $result = applyClosedWorld(
         '<?php class P { protected static string $c = "A"; public static function c(): string { return static::$c; } }

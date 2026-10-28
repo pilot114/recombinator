@@ -166,7 +166,7 @@ class RemoveInterfacesVisitor extends BaseVisitor
                 $node instanceof Node\Expr\Instanceof_ => $add($node->class),
                 $node instanceof Node\Stmt\Catch_ => array_map($add, $node->types),
                 ($node instanceof Node\Expr\ClassConstFetch || $node instanceof Node\Expr\StaticCall) && $withStaticAccess => $add($node->class),
-                $node instanceof Node\Scalar\String_ => $names[strtolower(ltrim($node->value, '\\'))] = true,
+                $node instanceof Node\Scalar\String_ && $node->getAttribute('interfaceLabel') !== true => $names[strtolower(ltrim($node->value, '\\'))] = true,
                 default => null,
             };
         }

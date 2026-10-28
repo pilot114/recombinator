@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Modifiers;
+use Recombinator\Support\VisibilityConsistency;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
@@ -95,8 +96,9 @@ class StaticMethodExtractVisitor extends BaseVisitor
 
         // Кандидаты: статические методы классов верхнего уровня
         $candidates = [];
+        $plugins    = $this->plugins($nodes);
         foreach ($nodes as $class) {
-            if (!$class instanceof Node\Stmt\Class_ || !$class->name instanceof Node\Identifier) {
+            if (!$class instanceof Node\Stmt\Class_ || !$class->name instanceof Node\Identifier || isset($plugins[$class->name->toLowerString()])) {
                 continue;
             }
 
@@ -374,6 +376,39 @@ class StaticMethodExtractVisitor extends BaseVisitor
         return array_any($this->findNode(Node\Expr\FuncCall::class, $method->stmts ?? []), fn(\PhpParser\Node\Expr\FuncCall $call): bool => $call->name instanceof Node\Name && in_array($call->name->toLowerString(), ['func_get_args', 'func_get_arg', 'func_num_args'], true));
     }
 
+    /**
+     * Классы-плагины (UseImportVisitor: созданы по собранному имени) и их предки: их
+     * методы ищут по имени (`method_exists($provider, $format)`) — статические методы
+     * должны остаться в классе.
+     *
+     * @param  array<Node> $nodes
+     * @return array<string, true>
+     */
+    private function plugins(array $nodes): array
+    {
+        $classes = [];
+        foreach ($nodes as $node) {
+            if ($node instanceof Node\Stmt\Class_ && $node->name instanceof Node\Identifier) {
+                $classes[$node->name->toLowerString()] = $node;
+            }
+        }
+
+        $result = [];
+        foreach ($classes as $class) {
+            for ($current = $class->getAttribute('dynamicPlugin') === true ? $class : null; $current instanceof Node\Stmt\Class_;) {
+                $name = $current->name instanceof Node\Identifier ? $current->name->toLowerString() : '';
+                if (isset($result[$name])) {
+                    break;
+                }
+
+                $result[$name] = true;
+                $current       = $current->extends instanceof Node\Name ? $classes[strtolower(ltrim($current->extends->toString(), '\\'))] ?? null : null;
+            }
+        }
+
+        return $result;
+    }
+
     /** Тело обёртки: `return C_m($a, ...$rest);` (без return для void/never). */
     private function forward(Node\Stmt\ClassMethod $method, string $function): Node\Stmt
     {
@@ -560,6 +595,18 @@ class StaticMethodExtractVisitor extends BaseVisitor
         }
 
         return false;
+    }
+
+    /**
+     * Расширенная здесь (и в FlattenInheritanceVisitor раньше в проходе) видимость
+     * переносится на одноимённые члены наследников.
+     */
+    #[\Override]
+    public function afterTraverse(array $nodes): ?array
+    {
+        VisibilityConsistency::apply($nodes);
+
+        return null;
     }
 
     /** Статические свойства, константы и конструктор становятся доступны функциям. */

@@ -41,6 +41,12 @@ final class TypeInference
     /** @var array<string, list<Node\Stmt\ClassMethod>>|null */
     private ?array $methodsByName = null;
 
+    /** @var array<string, list<Node\Stmt\Function_>>|null */
+    private ?array $functions = null;
+
+    /** @var array<string, true> функции, тип результата которых сейчас выводится */
+    private array $returning = [];
+
     /** @var list<Node\Stmt\Class_>|null все классы программы (в том числе анонимные) */
     private ?array $allClasses = null;
 
@@ -51,6 +57,9 @@ final class TypeInference
     private array $subtypes = [];
 
     /** @param array<string, Node\Stmt\ClassLike> $classes lowercase имя → объявление */
+    /** @var Node\Stmt\Function_|false|null false — ещё не построена */
+    private Node\Stmt\Function_|false|null $topLevel = false;
+
     public function __construct(private readonly array $classes, private readonly array $ast)
     {
     }
@@ -85,10 +94,111 @@ final class TypeInference
             $expr instanceof Node\Expr\Clone_ => $this->typeOf($expr->expr, $next),
             $expr instanceof Node\Expr\Assign => $this->typeOf($expr->expr, $next),
             $expr instanceof Node\Expr\PropertyFetch, $expr instanceof Node\Expr\NullsafePropertyFetch => $this->propertyFetchType($expr, $next),
+            $expr instanceof Node\Expr\MethodCall && $this->reflectionInstance($expr) !== null => [$this->reflectionInstance($expr)],
             $expr instanceof Node\Expr\MethodCall, $expr instanceof Node\Expr\NullsafeMethodCall => $this->methodResultType($expr, $next),
             $expr instanceof Node\Expr\StaticCall => $this->staticResultType($expr),
+            $expr instanceof Node\Expr\ConstFetch && $expr->name->toLowerString() === 'null' => [],
+            $expr instanceof Node\Expr\Ternary => $this->unionOf([$expr->if ?? $expr->cond, $expr->else], $next),
+            $expr instanceof Node\Expr\BinaryOp\Coalesce => $this->unionOf([$expr->left, $expr->right], $next),
+            $expr instanceof Node\Expr\FuncCall => $this->functionResultType($expr),
             default => null,
         };
+    }
+
+    /**
+     * @param  list<Node\Expr> $exprs
+     * @return list<string>|null
+     */
+    private function unionOf(array $exprs, int $depth): ?array
+    {
+        $result = [];
+        foreach ($exprs as $expr) {
+            $types = $this->typeOf($expr, $depth);
+            if ($types === null) {
+                return null;
+            }
+
+            array_push($result, ...$types);
+        }
+
+        return array_values(array_unique($result));
+    }
+
+    /** Результат функции программы — по объявленному (исходному) типу. @return list<string>|null */
+    private function functionResultType(Node\Expr\FuncCall $call): ?array
+    {
+        if (!$call->name instanceof Node\Name) {
+            return null;
+        }
+
+        if ($this->functions === null) {
+            $this->functions = [];
+            foreach (new NodeFinder()->findInstanceOf($this->ast, Node\Stmt\Function_::class) as $function) {
+                $this->functions[$function->name->toLowerString()][] = $function;
+            }
+        }
+
+        $declared = $this->functions[strtolower(ltrim($call->name->toString(), '\\'))] ?? [];
+        if (count($declared) !== 1) {
+            return null;
+        }
+
+        $type = $declared[0]->getAttribute('originalReturnType') ?? $declared[0]->returnType;
+        if ($type === null) {
+            return $this->returnedType($declared[0]);
+        }
+
+        $bare = $type instanceof Node\NullableType ? $type->type : $type;
+        if ($bare instanceof Node\Name && in_array($bare->toLowerString(), ['self', 'static'], true)) {
+            $owner = $declared[0]->getAttribute('extractedFrom');
+
+            return is_string($owner) ? [strtolower($owner)] : null;
+        }
+
+        return $this->typeNames($type, null);
+    }
+
+    /**
+     * Тип результата функции без объявленного типа — по её return (не во вложенных
+     * функциях); рекурсия — неизвестно.
+     *
+     * @return list<string>|null
+     */
+    private function returnedType(Node\Stmt\Function_ $function): ?array
+    {
+        $key = 'ret:' . spl_object_id($function);
+        if (isset($this->returning[$key])) {
+            return null;
+        }
+
+        $this->returning[$key] = true;
+        $result                = [];
+        $returns               = new NodeFinder()->find($function->stmts, static function (Node $n) use ($function): bool {
+            if (!$n instanceof Node\Stmt\Return_) {
+                return false;
+            }
+
+            for ($p = $n->getAttribute('parent'); $p instanceof Node; $p = $p->getAttribute('parent')) {
+                if ($p instanceof Node\FunctionLike) {
+                    return $p === $function;
+                }
+            }
+
+            return false;
+        });
+        foreach ($returns as $return) {
+            $types = $return instanceof Node\Stmt\Return_ && $return->expr instanceof Node\Expr ? $this->typeOf($return->expr) : null;
+            if ($types === null) {
+                $result = null;
+                break;
+            }
+
+            array_push($result, ...$types);
+        }
+
+        unset($this->returning[$key]);
+
+        return $result === null || $result === [] ? null : array_values(array_unique($result));
     }
 
     /**
@@ -324,6 +434,12 @@ final class TypeInference
         if (in_array($lower, ['self', 'static', 'parent'], true)) {
             // `new static` — объект этого класса или наследника: тип — сам класс
             $class = $context instanceof Node ? $this->enclosingClass($context) : null;
+            // Функция, вынесенная из статического метода (StaticMethodExtractVisitor)
+            $extracted = $context instanceof Node ? $this->enclosingFunction($context)?->getAttribute('extractedFrom') : null;
+            if (!$class instanceof Node\Stmt\Class_ && is_string($extracted)) {
+                $class = $this->classes[strtolower($extracted)] ?? null;
+            }
+
             if (!$class instanceof Node\Stmt\Class_ || !$class->name instanceof Node\Identifier) {
                 return null;
             }
@@ -341,7 +457,7 @@ final class TypeInference
     /** @return list<string>|null */
     private function variableType(Node\Expr\Variable $var, int $depth): ?array
     {
-        $function = $this->enclosingFunction($var);
+        $function = $this->enclosingFunction($var) ?? ($this->enclosingClass($var) instanceof \PhpParser\Node\Stmt\ClassLike ? null : $this->topLevel());
         if (!$function instanceof Node\FunctionLike || !is_string($var->name)) {
             return null;
         }
@@ -360,6 +476,42 @@ final class TypeInference
         $result             = $this->computeVariable($function, $var->name, $depth);
 
         return $this->locals[$key] = $result;
+    }
+
+    /** `(new \ReflectionClass(C::class))->newInstanceWithoutConstructor()` (гидратация снимка) → C. */
+    private function reflectionInstance(Node\Expr\MethodCall $call): ?string
+    {
+        $new = $call->var;
+        $arg = $new instanceof Node\Expr\New_ ? ($new->args[0] ?? null) : null;
+
+        return $call->name instanceof Node\Identifier && $call->name->toLowerString() === 'newinstancewithoutconstructor'
+            && $new instanceof Node\Expr\New_ && $new->class instanceof Node\Name && strtolower(ltrim($new->class->toString(), '\\')) === 'reflectionclass'
+            && $arg instanceof Node\Arg && $arg->value instanceof Node\Expr\ClassConstFetch && $arg->value->class instanceof Node\Name
+            && $arg->value->name instanceof Node\Identifier && $arg->value->name->toLowerString() === 'class'
+            ? ltrim($arg->value->class->toString(), '\\')
+            : null;
+    }
+
+    /** Псевдофункция из кода верхнего уровня; null — переменные могут меняться через global/$GLOBALS. */
+    private function topLevel(): ?Node\Stmt\Function_
+    {
+        if ($this->topLevel === false) {
+            $global = new NodeFinder()->findFirst($this->ast, static fn(Node $n): bool => $n instanceof Node\Stmt\Global_
+                || $n instanceof Node\Expr\Variable && $n->name === 'GLOBALS');
+            $stmts = [];
+            foreach ($this->ast as $node) {
+                foreach ($node instanceof Node\Stmt\Namespace_ ? $node->stmts : [$node] as $stmt) {
+                    if ($stmt instanceof Node\Stmt && !$stmt instanceof Node\Stmt\ClassLike && !$stmt instanceof Node\Stmt\Function_) {
+                        $stmts[] = $stmt;
+                    }
+                }
+            }
+
+            // Узлы не переподключаются: parent у инструкций остаётся прежним
+            $this->topLevel = $global instanceof Node ? null : new Node\Stmt\Function_('__toplevel', ['stmts' => $stmts]);
+        }
+
+        return $this->topLevel;
     }
 
     /**
@@ -383,6 +535,22 @@ final class TypeInference
         $blocked = $index['dynamic'] || isset($index['blocked'][$name]);
         if ($blocked) {
             return null;
+        }
+
+        // Защищённый вызов: `($t = R) instanceof C ? $t->m() : …` — единственная запись в условии
+        if ($writes === 1) {
+            $child = $var;
+            for ($parent = $var->getAttribute('parent'); $parent instanceof Node && $parent !== $function; $parent = $parent->getAttribute('parent')) {
+                if (
+                    $parent instanceof Node\Expr\Ternary && $child === $parent->if && $parent->cond instanceof Node\Expr\Instanceof_
+                    && $parent->cond->expr instanceof Node\Expr\Assign && $parent->cond->expr->var instanceof Node\Expr\Variable
+                    && $parent->cond->expr->var->name === $name && $parent->cond->class instanceof Node\Name
+                ) {
+                    return [strtolower(ltrim($parent->cond->class->toString(), '\\'))];
+                }
+
+                $child = $parent;
+            }
         }
 
         // Ветка проверки
@@ -601,7 +769,12 @@ final class TypeInference
         foreach ($owners as $owner) {
             foreach ($this->concrete($owner) ?? [null] as $class) {
                 $type  = $class instanceof Node\Stmt\Class_ ? $this->propertyType($class, $fetch->name->toString()) : false;
-                $names = $type === false ? null : $this->typeNames($type, $class);
+                $names = match (true) {
+                    $type === false => null,
+                    // Без типа: приватное свойство — по присваиваниям в классе
+                    !$type instanceof \PhpParser\Node && $class instanceof Node\Stmt\Class_ => $this->assignedPropertyType($class, $fetch->name->toString(), $depth),
+                    default => $this->typeNames($type, $class),
+                };
                 if ($names === null) {
                     return null;
                 }
@@ -611,6 +784,48 @@ final class TypeInference
         }
 
         return array_values(array_unique($result));
+    }
+
+    /**
+     * Тип приватного свойства без объявленного типа — объединение типов всех
+     * `$this->p = …` в объявившем его классе (`null` типа не добавляет).
+     *
+     * @return list<string>|null
+     */
+    private function assignedPropertyType(Node\Stmt\Class_ $class, string $name, int $depth): ?array
+    {
+        $declaring = $class;
+        while ($declaring instanceof Node\Stmt\Class_ && !$declaring->getProperty($name) instanceof Node\Stmt\Property) {
+            $declaring = $declaring->extends instanceof Node\Name ? $this->classes[strtolower(ltrim($declaring->extends->toString(), '\\'))] ?? null : null;
+        }
+
+        $property = $declaring instanceof Node\Stmt\Class_ ? $declaring->getProperty($name) : null;
+        if (!$property instanceof Node\Stmt\Property || !$property->isPrivate() || !$declaring instanceof Node\Stmt\Class_) {
+            return null;
+        }
+
+        $result = [];
+        foreach (new NodeFinder()->findInstanceOf($declaring->stmts, Node\Expr\Assign::class) as $assign) {
+            if (
+                !$assign->var instanceof Node\Expr\PropertyFetch || !$assign->var->name instanceof Node\Identifier
+                || $assign->var->name->toString() !== $name
+            ) {
+                continue;
+            }
+
+            if (!$assign->var->var instanceof Node\Expr\Variable || $assign->var->var->name !== 'this') {
+                return null; // запись в чужой объект того же класса
+            }
+
+            $types = $this->typeOf($assign->expr, $depth + 1);
+            if ($types === null) {
+                return null;
+            }
+
+            array_push($result, ...$types);
+        }
+
+        return $result === [] ? null : array_values(array_unique($result));
     }
 
     /** @return list<string>|null */

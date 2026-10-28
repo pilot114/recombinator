@@ -75,3 +75,15 @@ it('removes empty if(true) body without error', function (): void {
     $result = applyDeadBranch('<?php if (true) {}', $this->visitor);
     expect($result)->toBe('');
 });
+
+it('treats null, 0 and empty literals as false and unwraps do-while(false) without jumps', function (): void {
+    $result = applyDeadBranch(
+        '<?php do { if (null) { $r = 1; break 1; } foreach ($a as $x) { if ($x) { break; } } $r = 2; } while (false);
+        do { if ($y) { break; } $z = 1; } while (false); if ("0") { echo 1; } if (1) { echo 2; }',
+        new DeadBranchVisitor(),
+    );
+
+    expect($result)->not->toContain('$r = 1')->toContain('do {')->toContain("foreach (\$a as \$x)")
+        ->not->toContain('echo 1')->toContain('echo 2');
+    expect(substr_count($result, 'do {'))->toBe(1);
+});

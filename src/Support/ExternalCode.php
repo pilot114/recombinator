@@ -39,7 +39,22 @@ final class ExternalCode
         private readonly array $fileMap,
         private readonly array $classes,
         private readonly ?array $seeds = null,
+        private readonly bool $autoloadRoots = true,
     ) {
+    }
+
+    /**
+     * Файлы с классами, которые программа может загрузить автозагрузкой сама — без
+     * файлов autoload_files.php (их подключение уже встроено или удалено как
+     * ничего не делающее). Пусто — автозагрузчик Composer программе не нужен.
+     *
+     * @return list<string>
+     */
+    public function loadableClassFiles(): array
+    {
+        $own = new self($this->fileMap, $this->classes, $this->seeds, false);
+
+        return array_values(array_filter($own->files(), static fn(string $code): bool => self::declaredNames($code) !== []));
     }
 
     /**
@@ -52,13 +67,24 @@ final class ExternalCode
      */
     public static function forProgram(array $fileMap, array $classes, array $ast): self
     {
-        $seeds = ['names' => [], 'prefixes' => []];
+        $seeds  = ['names' => [], 'prefixes' => []];
+        $values = new StringValues($ast);
         foreach (new \PhpParser\NodeFinder()->findInstanceOf($ast, \PhpParser\Node::class) as $node) {
             if ($node instanceof \PhpParser\Node\Scalar\String_) {
                 $seeds['names'][strtolower(ltrim($node->value, '\\'))] = true;
-            } elseif ($node instanceof \PhpParser\Node\Name && !isset($classes[strtolower($node->toString())])) {
+            } elseif ($node instanceof \PhpParser\Node\Name && !isset($classes[strtolower($node->toString())]) && !self::isBuiltin($node->toString())) {
                 $seeds['names'][strtolower(ltrim($node->toString(), '\\'))] = true;
             } elseif ($node instanceof \PhpParser\Node\Scalar\InterpolatedString || $node instanceof \PhpParser\Node\Expr\BinaryOp\Concat) {
+                // Конечный набор значений — точные имена вместо префикса
+                $exact = $values->of($node);
+                if ($exact !== null) {
+                    foreach ($exact as $value) {
+                        $seeds['names'][strtolower(ltrim($value, '\\'))] = true;
+                    }
+
+                    continue;
+                }
+
                 $prefix = self::literalPrefix($node, 0);
                 if (self::namespacePrefix($prefix)) {
                     $seeds['prefixes'][strtolower(ltrim($prefix, '\\'))] = true;
@@ -67,6 +93,15 @@ final class ExternalCode
         }
 
         return new self($fileMap, $classes, $seeds);
+    }
+
+    /** Встроенный класс PHP (`\ValueError`): полифил с тем же именем не загружается. */
+    private static function isBuiltin(string $name): bool
+    {
+        $name = ltrim($name, '\\');
+
+        return (class_exists($name, false) || interface_exists($name, false) || enum_exists($name, false))
+            && new \ReflectionClass($name)->isInternal();
     }
 
     /**
@@ -179,7 +214,7 @@ final class ExternalCode
 
         // Файлы без классов (функции, бутстрапы) Composer подключает вместе с autoload.php
         $autoloaded = $this->autoloadFiles();
-        $queue      = array_keys(array_filter(
+        $queue      = !$this->autoloadRoots ? [] : array_keys(array_filter(
             $external,
             static fn(string $code, string $key): bool => self::declaredNames($code) === []
                 && ($autoloaded === null ? str_starts_with($key, 'vendor/') : isset($autoloaded[$key])),

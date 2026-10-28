@@ -80,7 +80,38 @@
       },
       "probes": {
         "doctrine": "$cnt = require 'bootstrap.php'; $cnt->register(new UMA\\DoctrineDemo\\DI\\Doctrine()); return $cnt->get(Doctrine\\ORM\\EntityManager::class);"
-      }
+      },
+      "invariants": {
+        "Doctrine_ORM_Configuration": {
+          "isNativeLazyObjectsEnabled()": true
+        }
+      },
+      "profile": [
+        {
+          "method": "GET",
+          "uri": "/users"
+        },
+        {
+          "method": "POST",
+          "uri": "/users"
+        },
+        {
+          "method": "GET",
+          "uri": "/nope"
+        }
+      ],
+      "ini": {
+        "sys_temp_dir": "/tmp"
+      },
+      "env": {
+        "DOCTRINE_DEPRECATIONS": null
+      },
+      "warmup": [
+        "UMA_DIC_Container->get('Doctrine_ORM_EntityManager')",
+        "UMA_DIC_Container->get('Doctrine_ORM_EntityManager')->getClassMetadata('UMA_DoctrineDemo_Domain_User')",
+        "UMA_DIC_Container->get('UMA_DoctrineDemo_Action_ListUsers')",
+        "UMA_DIC_Container->get('UMA_DoctrineDemo_Action_CreateUser')"
+      ]
     }
   },
   "08-syntax-zoo": {

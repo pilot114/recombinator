@@ -26,6 +26,9 @@ class InvariantPropertyVisitor extends BaseVisitor
 {
     private ?TypeInference $inference = null;
 
+    /** @var array<string, list<Node\Stmt\ClassMethod>>|null */
+    private ?array $methodsByName = null;
+
     /** @var array<string, Node\Stmt\ClassLike> */
     private array $classes = [];
 
@@ -37,7 +40,8 @@ class InvariantPropertyVisitor extends BaseVisitor
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
-        $this->inference = null;
+        $this->inference     = null;
+        $this->methodsByName = null;
         if ($this->environment->invariants === []) {
             return null;
         }
@@ -68,6 +72,13 @@ class InvariantPropertyVisitor extends BaseVisitor
             return $set === null ? null : new Node\Expr\ConstFetch(new Node\Name(($node instanceof Node\Expr\Isset_ ? $set : !$set) ? 'true' : 'false'));
         }
 
+        // Результат метода, заданный инвариантом (`"isNativeLazyObjectsEnabled()": true`)
+        if ($node instanceof Node\Expr\MethodCall && $node->name instanceof Node\Identifier && $this->sideEffectFree($node->var)) {
+            [$value, $found] = $this->valueFor($node->var, $node->name->toString() . '()');
+
+            return $found ? $this->literal($value) : null;
+        }
+
         if (
             !$node instanceof Node\Expr\PropertyFetch && !$node instanceof Node\Expr\NullsafePropertyFetch
             || !$node->name instanceof Node\Identifier || $this->isWritten($node)
@@ -78,6 +89,63 @@ class InvariantPropertyVisitor extends BaseVisitor
         [$value, $found] = $this->valueOf($node);
 
         return $found ? $this->literal($value) : null;
+    }
+
+    /**
+     * Вычисление получателя можно опустить: переменные, свойства и геттеры (методы
+     * программы с этим именем — все вида `return $this->свойство;`).
+     */
+    private function sideEffectFree(Node\Expr $expr): bool
+    {
+        return match (true) {
+            $expr instanceof Node\Expr\Variable => true,
+            $expr instanceof Node\Expr\PropertyFetch => $this->sideEffectFree($expr->var),
+            $expr instanceof Node\Expr\MethodCall => $expr->name instanceof Node\Identifier && $expr->args === [] && $this->sideEffectFree($expr->var)
+                && $this->getterOnly($expr->name->toLowerString()),
+            default => false,
+        };
+    }
+
+    private function getterOnly(string $name): bool
+    {
+        if ($this->methodsByName === null) {
+            $this->methodsByName = [];
+            foreach ($this->findNode(Node\Stmt\ClassMethod::class) as $method) {
+                $this->methodsByName[$method->name->toLowerString()][] = $method;
+            }
+        }
+
+        $methods = $this->methodsByName[$name] ?? [];
+
+        return $methods !== [] && array_all($methods, static fn(Node\Stmt\ClassMethod $m): bool => count($m->stmts ?? []) === 1
+            && $m->stmts[0] instanceof Node\Stmt\Return_ && $m->stmts[0]->expr instanceof Node\Expr\PropertyFetch
+            && $m->stmts[0]->expr->var instanceof Node\Expr\Variable && $m->stmts[0]->expr->var->name === 'this');
+    }
+
+    /**
+     * Инвариант по типу получателя: у всех возможных классов один и тот же.
+     *
+     * @return array{mixed, bool}
+     */
+    private function valueFor(Node\Expr $receiver, string $name): array
+    {
+        $types = $this->inference?->typeOf($receiver);
+        if ($types === null || $types === []) {
+            return [null, false];
+        }
+
+        $value = null;
+        $found = false;
+        foreach ($types as $type) {
+            [$typeValue, $typeFound] = $this->invariantFor($type, $name);
+            if (!$typeFound || $found && $typeValue !== $value) {
+                return [null, false];
+            }
+
+            [$value, $found] = [$typeValue, true];
+        }
+
+        return [$value, $found];
     }
 
     /**

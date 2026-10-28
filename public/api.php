@@ -152,6 +152,14 @@ use Recombinator\Transformation\Visitor\TargetEnvironmentVisitor;
 use Recombinator\Transformation\Visitor\PolyfillRequireVisitor;
 use Recombinator\Transformation\Visitor\InvariantPropertyVisitor;
 use Recombinator\Transformation\Visitor\UnwrittenArrayKeyVisitor;
+use Recombinator\Transformation\Visitor\InterfaceTypeCheckVisitor;
+use Recombinator\Transformation\Visitor\RuntimeAutoloadVisitor;
+use Recombinator\Transformation\Visitor\AnonymousClassHoistVisitor;
+use Recombinator\Transformation\Visitor\CallSiteInlinerVisitor;
+use Recombinator\Transformation\Visitor\ClosureClassVisitor;
+use Recombinator\Transformation\Visitor\PureCallEvaluatorVisitor;
+use Recombinator\Transformation\Visitor\HeapSnapshotVisitor;
+use Recombinator\Transformation\Visitor\ProfileGuardVisitor;
 use Recombinator\Transformation\Visitor\ConstantArgumentVisitor;
 use Recombinator\Transformation\Visitor\MagicConstantVisitor;
 use Recombinator\Transformation\Visitor\GlobalConstantVisitor;
@@ -341,6 +349,7 @@ $environment = TargetEnvironment::fromArray($environmentData);
 if ($projectDir !== null) {
     $environment = $environment->withProjectDir((string) realpath($projectDir));
 }
+
 $envArray    = $environment->toArray();
 $envHash     = $environment->isEmpty() ? '' : sha1((string) json_encode($envArray));
 $inputKey    = sha1(serialize([$code, $fileMap, $entryRel ?? '']));
@@ -355,10 +364,22 @@ if ($projectDir !== null && isset($environment->probes['doctrine'])) {
         __DIR__ . '/../var/cache/probes',
     ));
 }
+
 $runFile  = $runCacheDir . '/' . $runKey . '.run';
 $lockFile = $runCacheDir . '/' . $runKey . '.lock';
 if (!is_dir($runCacheDir)) {
     @mkdir($runCacheDir, 0777, true);
+}
+
+// Завершённый прогон отвечает из лёгкого файла (шаги и результат, без AST): полный
+// .run после распаковки — сотни мегабайт, его десериализация занимает минуту
+$doneFile = $runCacheDir . '/' . $runKey . '.done';
+if (is_file($doneFile)) {
+    $raw  = @gzuncompress((string) file_get_contents($doneFile));
+    $done = $raw !== false ? @unserialize($raw, ['allowed_classes' => false]) : null;
+    if (is_array($done)) {
+        respond($done, 0, false, true);
+    }
 }
 
 // Один прогон одного входа за раз: параллельный запрос просто ждёт
@@ -413,6 +434,7 @@ function respond(array $run, int $stepsFrom, bool $partial, bool $cached): never
 }
 
 if ($run !== null && $run['done']) {
+    saveDone($doneFile, $run); // кэш прежней версии — лёгкий файл ещё не записан
     respond($run, 0, false, true);
 }
 
@@ -427,12 +449,14 @@ $stepsFrom = max(0, min((int) ($input['steps_from'] ?? 0), count($run['steps'] ?
 function previousRun(string $runCacheDir, string $inputKey, string $code, string $envHash, array $environment = []): ?array
 {
     // Свой указатель (то же окружение), затем прогон без допущений: допущения только добавляются
-    $files = [];
-    foreach (array_unique([$inputKey . ($envHash !== '' ? '.' . $envHash : ''), $inputKey]) as $name) {
+    $files   = [];
+    $trusted = null; // прогон по указателю своего окружения: его окружение не проверяется
+    foreach (array_unique([$inputKey . ($envHash !== '' ? '.' . $envHash : ''), $inputKey]) as $index => $name) {
         $pointer   = $runCacheDir . '/' . $name . '.latest';
         $candidate = is_file($pointer) ? $runCacheDir . '/' . trim((string) file_get_contents($pointer)) . '.run' : null;
         if ($candidate !== null && is_file($candidate)) {
             $files[] = $candidate;
+            $trusted ??= $index === 0 && $envHash !== '' ? $candidate : null;
         }
     }
 
@@ -455,7 +479,7 @@ function previousRun(string $runCacheDir, string $inputKey, string $code, string
         $old = $raw !== false && str_contains($raw, $needle) ? @unserialize($raw) : null;
         // Окружение прошлого прогона — то же или его часть: допущения только добавляются
         $oldEnv  = is_array($old) ? $old['environment'] ?? null : null;
-        $sameEnv = is_array($old) && (in_array($old['environment_hash'] ?? '', ['', $envHash], true)
+        $sameEnv = is_array($old) && ($file === $trusted || in_array($old['environment_hash'] ?? '', ['', $envHash], true)
             || is_array($oldEnv) && array_all($oldEnv, static fn(mixed $v, string $k): bool => ($environment[$k] ?? null) === $v));
         if ($sameEnv && ($old['done'] ?? false) && ($old['input_key'] ?? $inputKey) === $inputKey && $old['original'] === $code && $sameEnv) {
             $old['resumed_from'] = basename($file, '.run');
@@ -532,12 +556,75 @@ $run['environment_hash'] = $envHash;
 $run['environment']      = $envArray;
 
 /** Сохраняет состояние прогона (атомарно: через временный файл). */
+/**
+ * Снимает служебные ссылки (`parent`, `next`, `previous`, `origNode`) везде, где есть
+ * узлы: в атрибутах, в хранилище областей видимости. Иначе через `parent` в файл
+ * попадает весь граф, а unserialize с сотнями тысяч обратных ссылок (`r:N`) работает
+ * квадратично — минута на загрузку прогона.
+ *
+ * @param \SplObjectStorage<object, true> $seen
+ */
+function stripDeep(mixed $value, \SplObjectStorage $seen): void
+{
+    if (is_array($value)) {
+        foreach ($value as $item) {
+            stripDeep($item, $seen);
+        }
+
+        return;
+    }
+
+    if (!is_object($value) || isset($seen[$value]) || $value instanceof \Closure) {
+        return;
+    }
+
+    $seen[$value] = true;
+    if ($value instanceof PhpParser\Node) {
+        $attributes = $value->getAttributes();
+        unset($attributes['parent'], $attributes['next'], $attributes['previous'], $attributes['origNode']);
+        $value->setAttributes($attributes);
+        foreach ($attributes as $attribute) {
+            stripDeep($attribute, $seen);
+        }
+
+        foreach ($value->getSubNodeNames() as $name) {
+            stripDeep($value->$name, $seen);
+        }
+
+        return;
+    }
+
+    for ($class = new \ReflectionObject($value); $class !== false; $class = $class->getParentClass()) {
+        foreach ($class->getProperties() as $property) {
+            if (!$property->isStatic() && $property->isInitialized($value)) {
+                stripDeep($property->getValue($value), $seen);
+            }
+        }
+    }
+}
+
 function saveRun(string $runFile, array $run): void
 {
-    $run['ast'] = stripConnections($run['ast']);
+    $seen = new \SplObjectStorage();
+    foreach (['ast', 'main_ast', 'scope_store'] as $key) {
+        stripDeep($run[$key] ?? null, $seen);
+    }
+
     $tmp        = $runFile . '.' . getmypid() . '.tmp';
     file_put_contents($tmp, gzcompress(serialize($run), 1));
     rename($tmp, $runFile);
+    if (!empty($run['done'])) {
+        saveDone(substr($runFile, 0, -strlen('.run')) . '.done', $run);
+    }
+}
+
+/** Лёгкая копия завершённого прогона — только то, что отдаёт respond(). */
+function saveDone(string $doneFile, array $run): void
+{
+    $light = array_intersect_key($run, array_flip(['original', 'final', 'steps', 'passes', 'total_time_ms', 'steps_base']));
+    $tmp   = $doneFile . '.' . getmypid() . '.tmp';
+    file_put_contents($tmp, gzcompress(serialize($light), 1));
+    rename($tmp, $doneFile);
 }
 
 // Проход, не уложившийся в лимит, — фатальная ошибка PHP; сообщаем о ней клиенту JSON-ом.
@@ -604,7 +691,8 @@ $sandbox = new Sandbox($run['exec_cache']);
 // Кэш enum-методов: enum к поздним проходам уже встроен, а значения его методов нужны
 $enumCache = $run['enum_cache'];
 
-$makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap, $entryRel, $environment, $projectDir): array {
+$execCache = $run['exec_cache'];
+$makeMainVisitors = static function () use ($ss, $sandbox, $execCache, $enumCache, $fileMap, $entryRel, $environment, $projectDir): array {
     $visitors = [];
     if (!empty($fileMap)) {
         $visitors[] = new FileMapIncludeVisitor($fileMap, $entryRel);
@@ -615,12 +703,24 @@ $makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap,
     }
 
     // Замкнутый мир: все классы программы известны, только если их подтянули из карты файлов
-    $closedWorld = !empty($fileMap) ? [new ClassExistsFoldVisitor(), new UnwrittenArrayKeyVisitor()] : [];
+    $closedWorld = !empty($fileMap) ? [new ClassExistsFoldVisitor(), new UnwrittenArrayKeyVisitor(), new AnonymousClassHoistVisitor(), new InterfaceTypeCheckVisitor($fileMap), new RuntimeAutoloadVisitor($fileMap)] : [];
     // Допущения о целевом сервере: class_exists, extension_loaded, PHP_VERSION_ID, getenv…
     if (!$environment->isEmpty()) {
         $closedWorld[] = new TargetEnvironmentVisitor($environment, $fileMap, $projectDir === null ? null : (string) realpath($projectDir));
         $closedWorld[] = new PolyfillRequireVisitor($environment, $fileMap, $entryRel);
         $closedWorld[] = new InvariantPropertyVisitor($environment);
+        $closedWorld[] = new HeapSnapshotVisitor(
+            $environment,
+            $projectDir === null ? null : (string) realpath($projectDir),
+            $entryRel,
+            __DIR__ . '/../var/cache/probes',
+        );
+        $closedWorld[] = new ProfileGuardVisitor(
+            $environment,
+            $projectDir === null ? null : (string) realpath($projectDir),
+            $entryRel,
+            __DIR__ . '/../var/cache/probes',
+        );
     }
 
     return array_merge($visitors, [
@@ -675,12 +775,15 @@ $makeMainVisitors = static function () use ($ss, $sandbox, $enumCache, $fileMap,
         new FunctionScopeVisitor($ss),
         new CallFunctionVisitor($ss),
         new PureFunctionEvaluatorVisitor(),
+        new PureCallEvaluatorVisitor($execCache),
         new RemoveUnusedFunctionVisitor(null, $fileMap),
 
         // Развёртка живых объектов: new из аргументов, процедуры, состояние, замыкания
         new NewArgHoistVisitor(),
         new ObjectMethodInlinerVisitor(),
         new SmallCallInlinerVisitor($fileMap),
+        new CallSiteInlinerVisitor(),
+        new ClosureClassVisitor(),
         new ObjectStateSpecializerVisitor(),
         new ContainerEntryVisitor($environment->assumes('containerEntriesImmutable')),
         new ClosureCallInlinerVisitor(),

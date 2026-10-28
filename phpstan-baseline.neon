@@ -211,18 +211,6 @@ parameters:
 			path: src/Transformation/Visitor/FlattenInheritanceVisitor.php
 
 		-
-			message: '#^Class PhpParser\\Node\\Expr\\YieldFrom_ not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: src/Transformation/Visitor/ForeachLiteralUnrollerVisitor.php
-
-		-
-			message: '#^Class PhpParser\\Node\\Stmt\\Throw_ not found\.$#'
-			identifier: class.notFound
-			count: 1
-			path: src/Transformation/Visitor/ForeachLiteralUnrollerVisitor.php
-
-		-
 			message: '#^Parameter \#3 \$replacement of method Recombinator\\Transformation\\Visitor\\ForeachLiteralUnrollerVisitor\:\:substitute\(\) expects PhpParser\\Node\\Expr, PhpParser\\Node given\.$#'
 			identifier: argument.type
 			count: 2

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
@@ -20,7 +21,8 @@ use PhpParser\NodeVisitorAbstract;
  * Условия для разворачивания:
  * - Итерируемое выражение — литеральный Array_ (не переменная, не вызов)
  * - Не более 20 элементов (защита от взрыва)
- * - Тело не содержит break/continue/return/yield/throw
+ * - Тело не содержит continue/yield; break (любого уровня) — развёртка оборачивается в
+ *   `do { … } while (false)`, который занимает уровень цикла, и уровни break не меняются
  * - Переменная цикла — простое $variable
  */
 #[VisitorMeta('Разворачивание foreach по литеральному массиву')]
@@ -48,7 +50,9 @@ class ForeachLiteralUnrollerVisitor extends BaseVisitor
             return parent::leaveNode($node);
         }
 
-        if ($this->hasFlowControl($node->stmts)) {
+        $jumps = new NodeFinder()->find($node->stmts, static fn(Node $n): bool => $n instanceof Node\Stmt\Break_ || $n instanceof Node\Stmt\Continue_
+            || $n instanceof Node\Expr\Yield_ || $n instanceof Node\Expr\YieldFrom);
+        if (array_any($jumps, static fn(Node $n): bool => !$n instanceof Node\Stmt\Break_) || $this->assignsLoopVar($node)) {
             return parent::leaveNode($node);
         }
 
@@ -84,51 +88,18 @@ class ForeachLiteralUnrollerVisitor extends BaseVisitor
             $autoIndex++;
         }
 
-        return $result;
+        return $jumps === [] ? $result : [new Node\Stmt\Do_(new Node\Expr\ConstFetch(new Node\Name('false')), $result)];
     }
 
-    /**
-     * Returns true if the statement list contains break/continue/return/yield/throw
-     * at any nesting level (conservative — don't unroll if uncertain).
-     */
-    private function hasFlowControl(array $stmts): bool
+    /** Тело пишет в переменную цикла (или ключа) — подстановка значения неверна. */
+    private function assignsLoopVar(Node\Stmt\Foreach_ $node): bool
     {
-        foreach ($stmts as $stmt) {
-            if (
-                $stmt instanceof Node\Stmt\Break_
-                || $stmt instanceof Node\Stmt\Continue_
-                || $stmt instanceof Node\Stmt\Return_
-                || $stmt instanceof Node\Stmt\Throw_
-            ) {
-                return true;
-            }
+        $names = array_filter([$node->valueVar, $node->keyVar], static fn(?Node $v): bool => $v instanceof Node\Expr\Variable);
+        $names = array_map(static fn(Node\Expr\Variable $v): mixed => $v->name, $names);
 
-            if ($stmt instanceof Node\Stmt\Expression) {
-                $expr = $stmt->expr;
-                if ($expr instanceof Node\Expr\Yield_ || $expr instanceof Node\Expr\YieldFrom_) {
-                    return true;
-                }
-            }
-
-            // Recurse into nested blocks
-            if ($stmt instanceof Node\Stmt\If_) {
-                if ($this->hasFlowControl($stmt->stmts)) {
-                    return true;
-                }
-
-                foreach ($stmt->elseifs as $elseif) {
-                    if ($this->hasFlowControl($elseif->stmts)) {
-                        return true;
-                    }
-                }
-
-                if ($stmt->else instanceof \PhpParser\Node\Stmt\Else_ && $this->hasFlowControl($stmt->else->stmts)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
+        return new NodeFinder()->findFirst($node->stmts, static fn(Node $n): bool => ($n instanceof Node\Expr\Assign || $n instanceof Node\Expr\AssignRef
+            || $n instanceof Node\Expr\AssignOp) && $n->var instanceof Node\Expr\Variable && in_array($n->var->name, $names, true)
+            || $n instanceof Node\Expr\Variable && !is_string($n->name)) instanceof Node;
     }
 
     /**
@@ -156,6 +127,22 @@ class ForeachLiteralUnrollerVisitor extends BaseVisitor
                 private readonly string $varName,
                 private readonly Node\Expr $replacement,
             ) {
+            }
+
+            public function enterNode(Node $node): ?Node
+            {
+                // 'C'::m(), new 'C' — на месте класса имя (до замены самой переменной)
+                if (
+                    ($node instanceof Node\Expr\StaticCall || $node instanceof Node\Expr\ClassConstFetch || $node instanceof Node\Expr\StaticPropertyFetch
+                        || $node instanceof Node\Expr\New_) && $node->class instanceof Node\Expr\Variable && $node->class->name === $this->varName
+                    && $this->replacement instanceof Node\Scalar\String_ && preg_match('/^\\\\?[A-Za-z_][\w\\\\]*$/', $this->replacement->value) === 1
+                ) {
+                    $node->class = new Node\Name\FullyQualified(ltrim($this->replacement->value, '\\'));
+
+                    return $node;
+                }
+
+                return null;
             }
 
             public function leaveNode(Node $node): ?Node

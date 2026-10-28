@@ -96,3 +96,34 @@ it('keeps inherited static methods bound late or overridden', function (string $
     'overridden'   => ['<?php class P { static function m() { return 1; } } class C extends P { static function m() { return 2; } } P::m();'],
     'arg list'     => ['<?php class P { static function m() { return func_get_args(); } } class C extends P {} P::m(1);'],
 ]);
+
+it('widens visibility of redeclared static members in subclasses', function (): void {
+    $ast = new PhpParser\ParserFactory()->createForNewestSupportedVersion()->parse(
+        '<?php class Text { protected static $base = ""; public static function words() { return static::$base; } }
+        class EnText extends Text { protected static $base = "Alice"; }
+        echo Text::words();',
+    ) ?? [];
+    Recombinator\Support\VisibilityConsistency::apply($ast);
+    $ast[0]->stmts[0]->flags = PhpParser\Modifiers::PUBLIC | PhpParser\Modifiers::STATIC;
+    Recombinator\Support\VisibilityConsistency::apply($ast);
+
+    expect(new PhpParser\PrettyPrinter\Standard()->prettyPrint($ast))->toContain('class EnText extends Text
+{
+    public static $base = "Alice";');
+});
+
+it('keeps static methods of dynamically created plugin classes', function (): void {
+    $ast = new PhpParser\ParserFactory()->createForNewestSupportedVersion()->parse(
+        '<?php class Base { public static function pick() { return 1; } }
+        class Internet extends Base { public static function freeEmailDomain() { return static::pick(); } }
+        echo Internet::freeEmailDomain();',
+    ) ?? [];
+    $ast[1]->setAttribute('dynamicPlugin', true);
+    $ast    = new PhpParser\NodeTraverser(new PhpParser\NodeVisitor\NodeConnectingVisitor())->traverse($ast);
+    $ast    = new PhpParser\NodeTraverser(new Recombinator\Transformation\Visitor\StaticMethodExtractVisitor())->traverse($ast);
+
+    $result = new PhpParser\PrettyPrinter\Standard()->prettyPrint($ast);
+
+    expect($result)->toContain('public static function freeEmailDomain()')->toContain('public static function pick()')
+        ->not->toContain('function Internet_freeEmailDomain');
+});

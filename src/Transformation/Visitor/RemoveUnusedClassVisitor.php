@@ -8,6 +8,7 @@ use PhpParser\Node;
 use PhpParser\NodeFinder;
 use PhpParser\NodeVisitor;
 use Recombinator\Core\Config;
+use Recombinator\Support\StringValues;
 
 /**
  * Удаляет классы (интерфейсы, трейты, enum), недостижимые из исполняемого кода.
@@ -42,10 +43,14 @@ class RemoveUnusedClassVisitor extends BaseVisitor
 
     private readonly Config $config;
 
+    /** @var \SplObjectStorage<Node\Expr, list<string>> выражение имени класса → возможные плоские имена */
+    private \SplObjectStorage $computed;
+
     public function __construct(?Config $config = null)
     {
-        $this->config = $config ?? new Config();
-        $this->dead   = new \SplObjectStorage();
+        $this->config   = $config ?? new Config();
+        $this->dead     = new \SplObjectStorage();
+        $this->computed = new \SplObjectStorage();
     }
 
     #[\Override]
@@ -80,6 +85,17 @@ class RemoveUnusedClassVisitor extends BaseVisitor
 
         if ($classes === []) {
             return null;
+        }
+
+        // Имена, собранные во время выполнения (`new (sprintf('Faker\Provider\%s', $p))`):
+        // значения известны конечным набором — классы с ними загружаются из кода сайта
+        $this->computed = new \SplObjectStorage();
+        $values         = new StringValues($nodes);
+        foreach (StringValues::classNameSites($nodes) as $site) {
+            $this->computed[$site] = array_map(
+                static fn(string $v): string => strtolower(strtr(ltrim($v, '\\'), ['\\' => '_'])),
+                $values->of($site) ?? [],
+            );
         }
 
         $live  = [];
@@ -183,6 +199,12 @@ class RemoveUnusedClassVisitor extends BaseVisitor
         };
 
         foreach (new NodeFinder()->find($nodes, static fn(Node $n): bool => true) as $node) {
+            if ($node instanceof Node\Expr && isset($this->computed[$node])) {
+                foreach ($this->computed[$node] as $flat) {
+                    $names[$flat] = true;
+                }
+            }
+
             match (true) {
                 $node instanceof Node\Expr\New_, $node instanceof Node\Expr\StaticCall,
                 $node instanceof Node\Expr\ClassConstFetch, $node instanceof Node\Expr\StaticPropertyFetch => $add($node->class),

@@ -168,6 +168,14 @@ class StaticPropConstVisitor extends BaseVisitor
             return BodyInliner::mayPassByRef($call, $index);
         }
 
+        // Немедленный вызов замыкания: (fn($a) => …)($x) — по параметрам самого замыкания
+        if ($call instanceof Node\Expr\FuncCall && ($call->name instanceof Node\Expr\Closure || $call->name instanceof Node\Expr\ArrowFunction)) {
+            $params = $call->name->params;
+            $param  = $arg->name instanceof Node\Identifier ? null : ($params[$index] ?? ($params !== [] && end($params)->variadic ? end($params) : null));
+
+            return $arg->name instanceof Node\Identifier || $param?->byRef === true;
+        }
+
         $name = match (true) {
             $call instanceof Node\Expr\FuncCall => $call->name instanceof Node\Name ? strtolower($call->name->getLast()) : null,
             $call instanceof Node\Expr\New_ => '__construct',
