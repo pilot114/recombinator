@@ -282,6 +282,10 @@ final class PurityAnalyzer
             return 'dynamic call';
         }
 
+        if ($call->isPartialFunctionApplication()) {
+            return 'partial application'; // f(...), f(?, 1): аргументы не по позициям — консервативно
+        }
+
         $name = strtolower(ltrim($call->name->toString(), '\\'));
         if (isset($this->functions['fn:' . $name])) {
             $this->deps[$key][] = 'fn:' . $name;

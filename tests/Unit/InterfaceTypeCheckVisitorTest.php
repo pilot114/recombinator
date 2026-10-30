@@ -68,3 +68,16 @@ it('treats interface names used as labels or in replaceable checks as removable'
     expect($result)->toContain('function f(\Number $e)')
         ->toContain('return [\is_a($name, \'Entity\', true), \is_a($obj, \'Entity\', true)];');
 });
+
+it('skips first-class callables of check functions', function (): void {
+    set_error_handler(static fn(int $no, string $message): never => throw new ErrorException($message));
+    try {
+        $result = applyInterfaceTypeCheck(
+            'interface I {} class A implements I {} function f($x) { return $x instanceof I; } $check = is_subclass_of(...);',
+        );
+    } finally {
+        restore_error_handler();
+    }
+
+    expect($result)->toContain('$check = is_subclass_of(...);');
+});

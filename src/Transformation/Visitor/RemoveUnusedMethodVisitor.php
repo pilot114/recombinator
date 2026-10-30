@@ -423,7 +423,8 @@ class RemoveUnusedMethodVisitor extends BaseVisitor
         foreach ($stmts as $stmt) {
             $cond = $stmt instanceof Node\Stmt\If_ && $stmt->elseifs === [] && !$stmt->else instanceof \PhpParser\Node\Stmt\Else_ ? $stmt->cond : null;
             $args = $cond instanceof Node\Expr\FuncCall && $cond->name instanceof Node\Name
-                && ltrim($cond->name->toLowerString(), '\\') === 'str_starts_with' ? $cond->getArgs() : null;
+                && ltrim($cond->name->toLowerString(), '\\') === 'str_starts_with' && !$cond->isPartialFunctionApplication()
+                ? $cond->getArgs() : null;
             if (
                 $args === null || !($args[0] ?? null)?->value instanceof Node\Expr\Variable || $args[0]->value->name !== $param->name
                 || !($args[1] ?? null)?->value instanceof Node\Scalar\String_

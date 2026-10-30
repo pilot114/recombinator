@@ -383,7 +383,7 @@ class TargetEnvironmentVisitor extends BaseVisitor
                     $result[$const->name->toString()] = ($result[$const->name->toString()] ?? 0) + 1;
                 }
             } elseif ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name && ltrim($node->name->toLowerString(), '\\') === 'define') {
-                $first = ($node->getArgs()[0] ?? null)?->value;
+                $first = $node->isPartialFunctionApplication() ? null : ($node->getArgs()[0] ?? null)?->value;
                 if (!$first instanceof Node\Scalar\String_) {
                     return null;
                 }
@@ -408,6 +408,7 @@ class TargetEnvironmentVisitor extends BaseVisitor
             $define = $stmt instanceof Node\Stmt\Expression ? $stmt->expr : null;
             if (
                 $define instanceof Node\Expr\FuncCall && $define->name instanceof Node\Name && ltrim($define->name->toLowerString(), '\\') === 'define'
+                && !$define->isPartialFunctionApplication()
                 && ($define->getArgs()[0] ?? null)?->value instanceof Node\Scalar\String_ && ltrim($define->getArgs()[0]->value->value, '\\') === $name
             ) {
                 return true;

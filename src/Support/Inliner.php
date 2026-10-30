@@ -304,6 +304,7 @@ class InlinerNameCollector extends NodeVisitorAbstract
             $node instanceof FuncCall
             && $node->name instanceof Name
             && strtolower($node->name->toString()) === 'define'
+            && !$node->isPartialFunctionApplication()
         ) {
             $args = $node->getArgs();
 
@@ -393,7 +394,7 @@ class InlinerPrefixApplier extends NodeVisitorAbstract
         $name = $node->name->toString();
 
         // Handle define('CONST_NAME', value) — rename the constant's string key
-        if (strtolower($name) === 'define') {
+        if (strtolower($name) === 'define' && !$node->isPartialFunctionApplication()) {
             $args = $node->getArgs();
 
             if (isset($args[0]) && $args[0]->value instanceof String_) {

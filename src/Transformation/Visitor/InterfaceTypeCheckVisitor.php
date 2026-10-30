@@ -150,7 +150,7 @@ class InterfaceTypeCheckVisitor extends BaseVisitor
         }
 
         // is_subclass_of($x, 'I'), in_array('I', class_implements($x)) → is_a($x, 'A', true) || …
-        if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name) {
+        if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name && !$node->isPartialFunctionApplication()) {
             foreach ($node->getArgs() as $arg) {
                 $names = $arg->value instanceof Node\Scalar\String_ ? $this->replace[strtolower(ltrim($arg->value->value, '\\'))] ?? null : null;
                 $subject = $names !== null && $arg->value instanceof Node\Scalar\String_ ? $this->checkedSubject($node, $arg->value) : null;
@@ -480,7 +480,7 @@ class InterfaceTypeCheckVisitor extends BaseVisitor
     {
         $call     = $arg->getAttribute('parent');
         $position = $call instanceof Node\Expr\CallLike ? array_search($arg, $call->args, true) : false;
-        if (!is_int($position) || $arg->name instanceof Node\Identifier) {
+        if (!is_int($position) || $arg->name instanceof Node\Identifier || $call->isPartialFunctionApplication()) {
             return false;
         }
 
@@ -614,11 +614,16 @@ class InterfaceTypeCheckVisitor extends BaseVisitor
     /** Проверяемое выражение проверки «реализует ли $x интерфейс-строку». */
     private function checkedSubject(Node\Expr\FuncCall $call, Node\Scalar\String_ $string): ?Node\Expr
     {
+        if ($call->isPartialFunctionApplication()) {
+            return null;
+        }
+
         $name = $call->name instanceof Node\Name ? ltrim($call->name->toLowerString(), '\\') : '';
         $args       = $call->getArgs();
         $implements = ($args[1] ?? null)?->value;
         $implements = $implements instanceof Node\Expr\FuncCall && $implements->name instanceof Node\Name
-            && ltrim($implements->name->toLowerString(), '\\') === 'class_implements' ? ($implements->getArgs()[0] ?? null)?->value : null;
+            && ltrim($implements->name->toLowerString(), '\\') === 'class_implements' && !$implements->isPartialFunctionApplication()
+            ? ($implements->getArgs()[0] ?? null)?->value : null;
         $subject = match (true) {
             $name === 'is_subclass_of' && ($args[1] ?? null)?->value === $string && count($args) === 2 => $args[0]->value,
             $name === 'in_array' && ($args[0] ?? null)?->value === $string => $implements,

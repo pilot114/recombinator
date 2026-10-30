@@ -279,3 +279,18 @@ class C extends B { public function __construct(string $id) { parent::__construc
         ->and($result)->toContain('function __parent___parent___construct(')
         ->and($result)->toContain('$this->__parent___parent___construct($id);');
 });
+
+it('leaves reads of properties declared in a parent class unknown', function (): void {
+    set_error_handler(static fn(int $no, string $message): never => throw new ErrorException($message));
+    try {
+        $result = applyUnfoldVisitor(
+            '<?php class Base { protected $rc; } class App extends Base { private $y; public function __construct() { $this->y = 1; } '
+            . 'public function get() { return $this->rc; } } $app = new App(); $r = $app->get();',
+            new ObjectStateSpecializerVisitor()
+        );
+    } finally {
+        restore_error_handler();
+    }
+
+    expect($result)->toContain('$r = $app->get();');
+});

@@ -283,7 +283,7 @@ final class StringValues
         $required = count(array_filter($function->getParams(), static fn(Node\Param $p): bool => !$p->default instanceof \PhpParser\Node\Expr && !$p->variadic));
         $values   = [];
         foreach ($calls as $call) {
-            if ($call->isFirstClassCallable()) {
+            if ($call->isPartialFunctionApplication()) {
                 return null;
             }
 

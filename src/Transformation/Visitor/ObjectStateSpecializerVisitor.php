@@ -838,7 +838,7 @@ class ObjectStateSpecializerVisitor extends BaseVisitor
         }
 
         if ($expr instanceof Node\Expr\PropertyFetch && $this->isThis($expr->var) && $expr->name instanceof Node\Identifier) {
-            return $ctx->state->props[$expr->name->toString()]?->toExpr();
+            return ($ctx->state->props[$expr->name->toString()] ?? null)?->toExpr();
         }
 
         if (

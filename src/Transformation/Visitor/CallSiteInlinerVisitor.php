@@ -893,8 +893,12 @@ class CallSiteInlinerVisitor extends BaseVisitor
      */
     private function inline(Node\Stmt\Function_|Node\Stmt\ClassMethod $function, Node\Expr\FuncCall|Node\Expr\MethodCall|Node\Expr\StaticCall $call, ?array $method = null): ?array
     {
+        if ($call->isPartialFunctionApplication()) {
+            return null; // f(...), f(?, 1) — создание замыкания, не вызов
+        }
+
         $args = $call->getArgs();
-        if (count($call->args) !== count($args) || count($args) > count($function->params)) {
+        if (count($args) > count($function->params)) {
             return null;
         }
 
