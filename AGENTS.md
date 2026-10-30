@@ -11,7 +11,7 @@ Three-phase refactoring approach:
 
 ## Conventions
 
-- New visitors extend `BaseVisitor` in `src/Transformation/Visitor/` and must be registered in the `Parser` visitor pipeline.
+- New visitors extend `BaseVisitor` in `src/Transformation/Visitor/` and must be added to both pipelines: `public/api.php` (web UI) and `bin/zoo.php`. `Parser` holds only a legacy subset — do not register there.
 - `declare(strict_types=1)` everywhere.
 - Feature tests use fixtures in `tests/Feature/fixtures/` and snapshots in `tests/Feature/snapshots/`.
 
