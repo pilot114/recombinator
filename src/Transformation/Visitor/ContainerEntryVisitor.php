@@ -353,7 +353,8 @@ class ContainerEntryVisitor extends BaseVisitor
 
     /**
      * get($id): последний оператор — `return $this->P[$id]`, остальные — ветка вызова
-     * фабрики, защищённая проверкой `instanceof \Closure` (прямо или через метод).
+     * фабрики, защищённая проверкой `instanceof \Closure` (прямо или через метод), и
+     * проверки с throw (так get выглядит после встраивания resolved()).
      */
     private function getterMethod(Node\Stmt\Class_ $class, string $store): ?string
     {
@@ -366,7 +367,7 @@ class ContainerEntryVisitor extends BaseVisitor
 
             $guarded = true;
             foreach (array_slice($stmts, 0, -1) as $stmt) {
-                if (!$stmt instanceof Node\Stmt\If_ || !$this->closureGuard($stmt->cond, $class, $store)) {
+                if (!$this->throwGuard($stmt) && (!$stmt instanceof Node\Stmt\If_ || !$this->closureGuard($stmt->cond, $class, $store))) {
                     $guarded = false;
                 }
             }
@@ -379,9 +380,21 @@ class ContainerEntryVisitor extends BaseVisitor
         return null;
     }
 
+    /** `if (…) { throw …; }` — проверка, которая значение не возвращает и записи не меняет. */
+    private function throwGuard(Node\Stmt $stmt): bool
+    {
+        return $stmt instanceof Node\Stmt\If_ && $stmt->elseifs === [] && !$stmt->else instanceof Node\Stmt\Else_ && count($stmt->stmts) === 1
+            && $stmt->stmts[0] instanceof Node\Stmt\Expression && $stmt->stmts[0]->expr instanceof Node\Expr\Throw_;
+    }
+
     /** Условие истинно только для записи-замыкания: `!$this->resolved($id)`, `$this->P[$id] instanceof \Closure`. */
     private function closureGuard(Node\Expr $cond, Node\Stmt\Class_ $class, string $store): bool
     {
+        // !!$this->P[$id] instanceof \Closure — след встроенного `!$this->resolved($id)`
+        if ($cond instanceof Node\Expr\BooleanNot && $cond->expr instanceof Node\Expr\BooleanNot) {
+            return $this->closureGuard($cond->expr->expr, $class, $store);
+        }
+
         if ($cond instanceof Node\Expr\Instanceof_) {
             return $this->isStoreElement($cond->expr, $store) && $cond->class instanceof Node\Name
                 && strtolower(ltrim($cond->class->toString(), '\\')) === 'closure';
@@ -400,8 +413,7 @@ class ContainerEntryVisitor extends BaseVisitor
             return $last instanceof Node\Stmt\Return_ && $last->expr instanceof Node\Expr\BooleanNot
                 && $last->expr->expr instanceof Node\Expr\Instanceof_
                 && $this->closureGuard($last->expr->expr, $class, $store)
-                && array_all(array_slice($stmts, 0, -1), fn(Node\Stmt $s): bool => $s instanceof Node\Stmt\If_
-                    && count($s->stmts) === 1 && $s->stmts[0] instanceof Node\Stmt\Expression && $s->stmts[0]->expr instanceof Node\Expr\Throw_);
+                && array_all(array_slice($stmts, 0, -1), $this->throwGuard(...));
         }
 
         return false;

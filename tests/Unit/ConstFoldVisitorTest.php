@@ -34,6 +34,11 @@ function applyConstFold(string $code): string
     return $printer->prettyPrint($ast);
 }
 
+it('drops a cast of a literal to its own type', function (): void {
+    $result = applyConstFold('<?php $a = (string) "x"; $b = (int) 1; $c = (bool) true; $d = (int) "1";');
+    expect($result)->toContain('$a = "x";')->toContain('$b = 1;')->toContain('$c = true;')->toContain('$d = (int) "1";');
+});
+
 // ── Identical (===) ───────────────────────────────────────────────────────────
 
 it('folds identical strings to true', function (): void {

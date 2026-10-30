@@ -6,6 +6,9 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Transformation\Visitor\CoalesceNullRemoveVisitor;
+use Recombinator\Transformation\Visitor\ConstFoldVisitor;
+use Recombinator\Transformation\Visitor\DeadBranchVisitor;
 use Recombinator\Transformation\Visitor\LocalConstantVisitor;
 
 function applyLocalConstant(string $code): string
@@ -59,4 +62,51 @@ it('substitutes elements of a literal array read by literal keys, also at top le
 
 it('keeps top-level variables visible to functions through global', function (): void {
     expect(applyLocalConstant('$v = 1; function g() { global $v; $v = 2; } g(); echo $v;'))->toContain('echo $v;');
+});
+
+it('uses the value until the next write: also before a call that may take it by reference', function (): void {
+    $result = applyLocalConstant('function f() { $v = 1; echo $v; if ($v > 0) { $v = 2; } g($v); }
+        function h() { $o = ["a" => 1]; $x = $o["a"] + ($o["b"] ?? 3); return new W($o, $x); }');
+
+    expect($result)->toContain('echo 1;')
+        ->toContain('if (1 > 0) {')
+        ->toContain('g($v);')
+        ->toContain('$x = 1 + (null ?? 3);');
+});
+
+it('keeps locals passed to a call before the assignment', function (): void {
+    // Вызов мог сохранить ссылку на переменную и изменить её позже
+    expect(applyLocalConstant('function f() { g($v); $v = 1; h(); return $v; }'))->toContain('return $v;');
+});
+
+it('folds an inlined call with a literal array argument and cast parameters', function (): void {
+    // DriverManager::getConnection(['driver' => 'pdo_sqlite']) после CallSiteInlinerVisitor
+    $code = 'function f($config) {
+        $params1 = ["driver" => "pdo_sqlite", "path" => "/x"];
+        $driver11 = $params1["driver"] ?? null;
+        if ($driver11 !== null) { $driver11 = (string) $driver11; }
+        $driverClass11 = $params1["driverClass"] ?? null;
+        if ($driverClass11 !== null) { $driverClass11 = (string) $driverClass11; }
+        if ($driverClass11 === null) {
+            if ($driver11 === null) { throw new DriverRequired("x"); }
+            if (!isset(["pdo_mysql" => "My", "pdo_sqlite" => "Lite"][$driver11])) { throw new UnknownDriver(\sprintf("%s", $driver11)); }
+            $driverClass11 = ["pdo_mysql" => "My", "pdo_sqlite" => "Lite"][$driver11];
+        } elseif (!\is_a($driverClass11, "Driver", true)) {
+            throw new InvalidDriverClass(\sprintf("%s", $driverClass11));
+        }
+        $driver1 = new $driverClass11();
+        $wrapperClass1 = $params1["wrapperClass"] ?? "Connection";
+        return new $wrapperClass1($params1, $driver1, $config);
+    }';
+    $ast = new ParserFactory()->createForNewestSupportedVersion()->parse('<?php ' . $code) ?? [];
+    for ($i = 0; $i < 20; $i++) {
+        foreach ([new LocalConstantVisitor(), new CoalesceNullRemoveVisitor(), new ConstFoldVisitor(), new DeadBranchVisitor()] as $visitor) {
+            $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
+            $ast = new NodeTraverser($visitor)->traverse($ast);
+        }
+    }
+
+    expect(new Printer()->prettyPrint($ast))->toContain('$driver1 = new ("Lite")();')
+        ->toContain('return new ("Connection")($params1, $driver1, $config);')
+        ->not->toContain('"My"');
 });

@@ -47,6 +47,22 @@ it('substitutes literal entries read inside factories', function (): void {
         ->toContain('return [["dev" => true, "dir" => ROOT . "/x"]["dev"], $c->get("other")];');
 });
 
+it('recognizes get() with resolved() already inlined', function (): void {
+    // Так get() выглядит после встраивания resolved(): проверка с throw и `!!… instanceof \Closure`
+    $container = str_replace(
+        'if (!$this->resolved($id)) {',
+        'if (!array_key_exists($id, $this->items)) { throw new LogicException("x"); }
+        if (!!$this->items[$id] instanceof \Closure) {',
+        CONTAINER,
+    );
+    $ast = new ParserFactory()->createForNewestSupportedVersion()->parse($container . '$cnt = new Box(["settings" => ["dev" => true]]);
+        $cnt->set("em", static function ($c) { return $c->get("settings")["dev"]; });') ?? [];
+    $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
+    $ast = new NodeTraverser(new ContainerEntryVisitor())->traverse($ast);
+
+    expect(new Printer()->prettyPrint($ast))->toContain('return ["dev" => true]["dev"];');
+});
+
 it('ignores writers on values that cannot be the container', function (): void {
     $result = applyContainerEntry(
         '$cnt = new Box(["settings" => 1]);

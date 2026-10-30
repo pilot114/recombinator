@@ -37,6 +37,17 @@ class ConstFoldVisitor extends BaseVisitor
             }
         }
 
+        // (string) 'x', (int) 1 — приведение литерала к его же типу (след встроенного параметра)
+        if (
+            $node instanceof Node\Expr\Cast\String_ && $node->expr instanceof Node\Scalar\String_
+            || $node instanceof Node\Expr\Cast\Int_ && $node->expr instanceof Node\Scalar\Int_
+            || $node instanceof Node\Expr\Cast\Double && $node->expr instanceof Node\Scalar\Float_
+            || $node instanceof Node\Expr\Cast\Bool_ && $node->expr instanceof Node\Expr\ConstFetch
+                && in_array($node->expr->name->toLowerString(), ['true', 'false'], true)
+        ) {
+            return $node->expr;
+        }
+
         if ($node instanceof Node\Expr\Ternary) {
             $folded = $this->foldTernary($node);
             if ($folded instanceof \PhpParser\Node) {

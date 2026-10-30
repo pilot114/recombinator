@@ -8,6 +8,7 @@ use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor;
 use PhpParser\NodeVisitorAbstract;
+use Recombinator\Transformation\BodyInliner;
 
 /**
  * Подставляет литерал локальной переменной внутри функции или метода:
@@ -21,13 +22,21 @@ use PhpParser\NodeVisitorAbstract;
  *       return new ('SQLite_Driver')();
  *   }
  *
- * Переменной присвоен литерал (строка, число, true/false/null, константа класса) ровно
- * одной инструкцией верхнего уровня тела, других записей нет: ни присваивания, ни
- * ссылки, ни foreach/list/unset/global/static, ни передачи в вызов (может быть по
- * ссылке), ни `$$`, extract, compact, get_defined_vars. Подставляются чтения в
- * следующих инструкциях; чтения до присваивания (значение параметра) остаются.
- * Вложенные замыкания не трогаются — у них своя область видимости.
- * Присваивание, после которого чтений не осталось, удаляется.
+ * Переменной присвоен литерал (строка, число, true/false/null, константа класса)
+ * инструкцией верхнего уровня тела. Значение держится до следующей инструкции с записью
+ * (присваивание, foreach/list/unset, передача в вызов — может быть по ссылке):
+ * подставляются чтения в инструкциях между ними и в той части инструкции с записью,
+ * что вычисляется раньше записи (условие if, правая часть `$v = …`). Так сворачивается
+ * и код, встроенный CallSiteInlinerVisitor:
+ *
+ *   $driver = 'pdo_sqlite'; if ($driver !== null) { $driver = (string) $driver; }
+ *
+ * Не подставляется при ссылках на переменную (`&`, global, static, use по ссылке),
+ * передаче её в вызов до присваивания, `goto`, `$$`, extract, compact, get_defined_vars.
+ * Чтения до присваивания (значение параметра) остаются. Вложенные замыкания не
+ * трогаются — у них своя область видимости. Отсутствующий ключ литерального массива
+ * в `$v['k'] ?? …` — null. Присваивание, после которого чтений не осталось (или их нет
+ * до перезаписи), удаляется.
  *
  * VarToScalarVisitor работает с кодом верхнего уровня; это правило — его аналог для тел.
  */
@@ -109,18 +118,59 @@ class LocalConstantVisitor extends BaseVisitor
             }
 
             $name = $assign->var->name;
-            if ($this->writes($stmts, $name) !== 1 || $topLevel && isset($this->globals[$name])) {
+            if ($topLevel && isset($this->globals[$name]) || $this->aliased($stmts, $index, $name)) {
                 continue;
             }
 
-            $after   = array_slice($stmts, $index + 1, null, true);
-            $replace = $this->replaceReads($after, $name, $assign->expr);
+            // Значение держится до первой инструкции с записью (или передачей в вызов — возможно, по ссылке)
+            $end = count($stmts);
+            foreach (array_slice($stmts, $index + 1, null, true) as $position => $later) {
+                if ($this->writes([$later], $name) > 0) {
+                    $end = $position;
+                    break;
+                }
+            }
+
+            if ($end < count($stmts) && $this->hasGoto($stmts)) {
+                continue; // goto может вернуть выполнение за запись
+            }
+
+            $range   = array_slice($stmts, $index + 1, $end - $index - 1, true);
+            $before  = $this->reads($range, $name);
+            $replace = $this->replaceReads($range, $name, $assign->expr);
             foreach ($replace as $position => $newStmt) {
                 $stmts[$position] = $newStmt;
             }
 
-            $changed = $replace !== array_slice($stmts, $index + 1, null, true);
-            if ($this->reads(array_slice($stmts, $index + 1), $name) === 0) {
+            $range   = array_slice($stmts, $index + 1, $end - $index - 1, true);
+            $changed = $this->reads($range, $name) < $before;
+
+            // В инструкции с записью значение видно там, где она вычисляется раньше записи
+            $writer = $stmts[$end] ?? null;
+            $head   = match (true) {
+                $writer instanceof Node\Stmt\If_ => $writer->cond,
+                $writer instanceof Node\Stmt\Expression && $writer->expr instanceof Node\Expr\Assign
+                    && $writer->expr->var instanceof Node\Expr\Variable && $writer->expr->var->name === $name => $writer->expr->expr,
+                default => null,
+            };
+            if ($head instanceof Node\Expr && $this->writes([$head], $name) === 0 && $this->reads([$head], $name) > 0) {
+                $head = $this->replaceReads([$head], $name, $assign->expr)[0];
+                if ($writer instanceof Node\Stmt\If_) {
+                    $writer->cond = $head;
+                } else {
+                    assert($writer instanceof Node\Stmt\Expression && $writer->expr instanceof Node\Expr\Assign);
+                    $writer->expr->expr = $head;
+                }
+
+                $changed = $changed || $this->reads([$head], $name) === 0;
+            }
+
+            // Присваивание без чтений: дальше нет ни одного, или их нет до перезаписи `$v = …`
+            $overwritten = $writer instanceof Node\Stmt\Expression && $head instanceof Node\Expr;
+            if (
+                $this->reads(array_slice($stmts, $index + 1), $name) === 0
+                || $overwritten && $this->reads($range, $name) === 0 && $this->reads([$head], $name) === 0
+            ) {
                 unset($stmts[$index]);
                 $changed = true;
             }
@@ -181,6 +231,48 @@ class LocalConstantVisitor extends BaseVisitor
         return $current;
     }
 
+    /**
+     * Переменная может измениться не своей записью: ссылка на неё (`&`, global, static,
+     * use по ссылке) или передача в вызов до присваивания — вызов мог сохранить ссылку.
+     *
+     * @param array<int, Node\Stmt> $stmts
+     */
+    private function aliased(array $stmts, int $index, string $name): bool
+    {
+        $is = static function (?Node $node) use ($name): bool {
+            while ($node instanceof Node\Expr\ArrayDimFetch || $node instanceof Node\Expr\PropertyFetch) {
+                $node = $node->var;
+            }
+
+            return $node instanceof Node\Expr\Variable && $node->name === $name;
+        };
+
+        foreach ($this->own($stmts) as $node) {
+            $aliased = match (true) {
+                $node instanceof Node\Expr\AssignRef => $is($node->var) || $is($node->expr),
+                $node instanceof Node\Stmt\Global_ => array_any($node->vars, $is),
+                $node instanceof Node\Stmt\Static_ => array_any($node->vars, static fn(Node\StaticVar $v): bool => $is($v->var)),
+                $node instanceof Node\Expr\ClosureUse => $node->byRef && $is($node->var),
+                $node instanceof Node\Stmt\Foreach_ => $node->byRef && $is($node->valueVar),
+                default => false,
+            };
+            if ($aliased) {
+                return true;
+            }
+        }
+
+        return array_any(
+            $this->own(array_slice($stmts, 0, $index)),
+            static fn(Node $node): bool => $node instanceof Node\Arg && $node->value instanceof Node\Expr\Variable && $node->value->name === $name,
+        );
+    }
+
+    /** @param array<int, Node\Stmt> $stmts */
+    private function hasGoto(array $stmts): bool
+    {
+        return array_any($this->own($stmts), static fn(Node $n): bool => $n instanceof Node\Stmt\Goto_);
+    }
+
     /** `$$x`, extract(), compact(), get_defined_vars(), func_get_args() — переменные видны иначе. */
     private function dynamicScope(array $stmts): bool
     {
@@ -204,12 +296,25 @@ class LocalConstantVisitor extends BaseVisitor
      * Сколько раз переменная может быть записана (присваивание считается одной записью;
      * всё, что может записать неявно, — бесконечно).
      *
-     * @param array<Node\Stmt> $stmts
+     * @param array<Node> $stmts
      */
     private function writes(array $stmts, string $name): int
     {
-        $count = 0;
+        $count   = 0;
+        $byValue = new \SplObjectStorage();
         foreach ($this->own($stmts) as $node) {
+            // Аргумент встроенной функции, принимающей его по значению (sprintf…), не запись
+            if ($node instanceof Node\Expr\FuncCall) {
+                foreach (array_values($node->args) as $i => $arg) {
+                    if (
+                        $arg instanceof Node\Arg && !$arg->unpack && !$arg->name instanceof Node\Identifier
+                        && !BodyInliner::mayPassByRef($node, $i)
+                    ) {
+                        $byValue[$arg] = true;
+                    }
+                }
+            }
+
             $targets = match (true) {
                 $node instanceof Node\Expr\Assign, $node instanceof Node\Expr\AssignOp, $node instanceof Node\Expr\PreInc,
                 $node instanceof Node\Expr\PreDec, $node instanceof Node\Expr\PostInc, $node instanceof Node\Expr\PostDec => [$node->var],
@@ -220,7 +325,7 @@ class LocalConstantVisitor extends BaseVisitor
                 $node instanceof Node\Stmt\Catch_ => [$node->var],
                 $node instanceof Node\Expr\List_ => array_map(static fn(?Node\ArrayItem $i): ?Node => $i?->value, $node->items),
                 $node instanceof Node\Expr\ClosureUse => $node->byRef ? [$node->var] : [],
-                $node instanceof Node\Arg => [$node->value],
+                $node instanceof Node\Arg => isset($byValue[$node]) ? [] : [$node->value],
                 default => [],
             };
 
@@ -303,13 +408,14 @@ class LocalConstantVisitor extends BaseVisitor
     }
 
     /**
-     * @param  array<int, Node\Stmt> $stmts
-     * @return array<int, Node\Stmt>
+     * @template T of Node
+     * @param  array<int, T> $nodes инструкции или выражения
+     * @return array<int, T>
      */
-    private function replaceReads(array $stmts, string $name, Node\Expr $value): array
+    private function replaceReads(array $nodes, string $name, Node\Expr $value): array
     {
         $result = [];
-        foreach ($stmts as $position => $stmt) {
+        foreach ($nodes as $position => $stmt) {
             $result[$position] = new NodeTraverser(new class ($name, $value, $this) extends NodeVisitorAbstract {
                 public function __construct(private readonly string $name, private readonly Node\Expr $value, private readonly LocalConstantVisitor $owner)
                 {
@@ -369,13 +475,55 @@ class LocalConstantVisitor extends BaseVisitor
                     }
 
                     $value = $this->owner->element($this->value, $keys);
+                    if ($value instanceof Node\Expr) {
+                        return $this->owner->copy($value);
+                    }
 
-                    return $value instanceof \PhpParser\Node\Expr ? $this->owner->copy($value) : null;
+                    // Отсутствующий ключ: null только там, где чтение не выдаёт предупреждение
+                    return $parent instanceof Node\Expr\BinaryOp\Coalesce && $parent->left === $node && $this->owner->missing($this->value, $keys)
+                        ? new Node\Expr\ConstFetch(new Node\Name('null'))
+                        : null;
                 }
             })->traverse([$stmt])[0];
         }
 
-        return array_filter($result, static fn(Node $n): bool => $n instanceof Node\Stmt);
+        /** @var array<int, T> $result */
+        return $result;
+    }
+
+    /**
+     * Ключа нет в литеральном массиве: на каком-то уровне массив с явными ключами, и ни
+     * один не совпадает (сравнение строками: '1' и 1 — один ключ).
+     *
+     * @param list<int|string> $keys
+     */
+    public function missing(Node\Expr\Array_ $array, array $keys): bool
+    {
+        $current = $array;
+        foreach ($keys as $key) {
+            if (!$current instanceof Node\Expr\Array_) {
+                return false;
+            }
+
+            $found = null;
+            foreach ($current->items as $item) {
+                if (!$item->key instanceof Node\Scalar\String_ && !$item->key instanceof Node\Scalar\Int_) {
+                    return false; // ключ без имени (список) или вычисляемый
+                }
+
+                if ((string) $item->key->value === (string) $key) {
+                    $found = $item->value;
+                }
+            }
+
+            if (!$found instanceof Node\Expr) {
+                return true;
+            }
+
+            $current = $found;
+        }
+
+        return false;
     }
 
     public function copy(Node\Expr $expr): Node\Expr
