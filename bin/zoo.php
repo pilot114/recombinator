@@ -11,66 +11,9 @@ use Recombinator\Core\ExecutionCache;
 use Recombinator\Support\ColorDiffer;
 use Recombinator\Support\PipelineConsole;
 use Recombinator\Support\Sandbox;
-use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
-use Recombinator\Transformation\Visitor\DeadBranchVisitor;
-use Recombinator\Transformation\Visitor\CallFunctionVisitor;
-use Recombinator\Transformation\Visitor\ClassInlinerVisitor;
-use Recombinator\Transformation\Visitor\ClosureCallInlinerVisitor;
-use Recombinator\Transformation\Visitor\CoalesceNullRemoveVisitor;
-use Recombinator\Transformation\Visitor\ConcatAssertVisitor;
-use Recombinator\Transformation\Visitor\ConstClassVisitor;
-use Recombinator\Transformation\Visitor\ConstFoldVisitor;
-use Recombinator\Transformation\Visitor\PrintNormalizeVisitor;
-use Recombinator\Transformation\Visitor\ConstructorAndMethodsVisitor;
-use Recombinator\Transformation\Visitor\EvalStandardFunction;
-use Recombinator\Transformation\Visitor\FlattenInheritanceVisitor;
-use Recombinator\Transformation\Visitor\FunctionBodyCollectorVisitor;
-use Recombinator\Transformation\Visitor\FunctionScopeVisitor;
-use Recombinator\Transformation\Visitor\PreExecutionVisitor;
-use Recombinator\Transformation\Visitor\PropertyAccessVisitor;
-use Recombinator\Transformation\Visitor\RemoveCommentsVisitor;
-use Recombinator\Transformation\Visitor\EnumCaseInlinerVisitor;
-use Recombinator\Transformation\Visitor\StaticMethodInlinerVisitor;
-use Recombinator\Transformation\Visitor\RemoveSplAutoloadVisitor;
-use Recombinator\Transformation\Visitor\RemoveGlobalUseVisitor;
-use Recombinator\Transformation\Visitor\RemoveInterfacesVisitor;
-use Recombinator\Transformation\Visitor\InlineEmptySubclassVisitor;
-use Recombinator\Transformation\Visitor\RemoveUnusedClassVisitor;
-use Recombinator\Transformation\Visitor\ProgramEvaluatorVisitor;
-use Recombinator\Transformation\Visitor\ExternalParentGuardVisitor;
-use Recombinator\Transformation\Visitor\StaticPropConstVisitor;
-use Recombinator\Transformation\Visitor\ClassExistsFoldVisitor;
-use Recombinator\Transformation\Visitor\RemoveUnusedPureVisitor;
-use Recombinator\Transformation\Visitor\RemoveDeadLoopVisitor;
-use Recombinator\Transformation\Visitor\RemoveDeadCodeAfterJumpVisitor;
-use Recombinator\Transformation\Visitor\RemoveUnusedClosureCapturesVisitor;
-use Recombinator\Transformation\Visitor\DestructuringExpandVisitor;
-use Recombinator\Transformation\Visitor\InstanceofSimplifierVisitor;
-use Recombinator\Transformation\Visitor\ReadonlyPropertyAccessVisitor;
-use Recombinator\Transformation\Visitor\PropertyStateTrackerVisitor;
-use Recombinator\Transformation\Visitor\StaticArrayStateVisitor;
-use Recombinator\Transformation\Visitor\BoundedWhileUnrollerVisitor;
-use Recombinator\Transformation\Visitor\ForeachLiteralUnrollerVisitor;
-use Recombinator\Transformation\Visitor\MutablePropertyTrackerVisitor;
-use Recombinator\Transformation\Visitor\NewArgHoistVisitor;
-use Recombinator\Transformation\Visitor\ObjectMethodInlinerVisitor;
-use Recombinator\Transformation\Visitor\SimpleMethodCallInlinerVisitor;
-use Recombinator\Transformation\Visitor\IndexedPropGetterResolverVisitor;
-use Recombinator\Transformation\Visitor\TraitInlinerVisitor;
-use Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor;
-use Recombinator\Transformation\Visitor\RemoveUnusedPropWriteVisitor;
-use Recombinator\Transformation\Visitor\ObjectArrayTrackerVisitor;
-use Recombinator\Transformation\Visitor\ObjectStateSpecializerVisitor;
-use Recombinator\Transformation\Visitor\ScopeVisitor;
-use Recombinator\Transformation\Visitor\SideEffectMarkerVisitor;
-use Recombinator\Transformation\Visitor\SingleUseInlinerVisitor;
-use Recombinator\Transformation\Visitor\TernarReturnVisitor;
-use Recombinator\Transformation\Visitor\UseImportVisitor;
-use Recombinator\Transformation\Visitor\VarToScalarVisitor;
+use Recombinator\Domain\ScopeStore;
+use Recombinator\Transformation\VisitorPipeline;
 use Recombinator\Transformation\Visitor\VisitorMeta;
-use Recombinator\Transformation\Visitor\CodeBlockVisitor;
-use Recombinator\Transformation\Visitor\ConcatInterpolateVisitor;
-use Recombinator\Transformation\Visitor\ReadabilityVisitor;
 
 $console = new PipelineConsole(new ColorDiffer());
 
@@ -117,111 +60,22 @@ $meta = static function (object $visitor): VisitorMeta {
 // Transformation pipeline
 // ════════════════════════════════════════════════════════════════════════════
 
-// Один sandbox на весь прогон: кеш предвыполнения переживает пересоздание визиторов
-$sandbox = new Sandbox(new ExecutionCache());
-// Кэш enum-методов тоже живёт весь прогон: enum к поздним проходам уже встроен
-$enumCache = new ArrayObject();
-
-$steps = [
-    // ── Импорт классов из use SyntaxZoo\... ─────────────────────────────────
-    fn() => new UseImportVisitor($fileMap),
-    fn() => new RemoveUnusedClassVisitor(),
-    fn() => new ExternalParentGuardVisitor(),
-    fn() => new RemoveGlobalUseVisitor(),
-    fn() => new RemoveSplAutoloadVisitor(),
-
-    // ── Анализ ──────────────────────────────────────────────────────────────
-    fn() => new SideEffectMarkerVisitor(),
-
-    // ── Упрощение выражений ─────────────────────────────────────────────────
-    fn() => new RemoveCommentsVisitor(),
-    fn() => new BinaryAndIssetVisitor(),
-    fn() => new CoalesceNullRemoveVisitor(),
-    fn() => new ReadonlyPropertyAccessVisitor(),
-    fn() => new SimpleMethodCallInlinerVisitor(),
-    fn() => new PropertyStateTrackerVisitor(),
-    fn() => new StaticArrayStateVisitor(),
-    fn() => new BoundedWhileUnrollerVisitor(),
-    fn() => new ForeachLiteralUnrollerVisitor(),
-    fn() => new MutablePropertyTrackerVisitor(),
-    fn() => new ConcatAssertVisitor(),
-    fn() => new EvalStandardFunction(),
-    fn() => new StaticPropConstVisitor(),
-    fn() => new ClassExistsFoldVisitor(),
-    fn() => new PreExecutionVisitor(null, $sandbox),
-    fn() => new VarToScalarVisitor(),
-    fn() => new ConstFoldVisitor(),
-    fn() => new PrintNormalizeVisitor(),
-    fn() => new DeadBranchVisitor(),
-    fn() => new DestructuringExpandVisitor(),
-    fn() => new InstanceofSimplifierVisitor(),
-    fn() => new SingleUseInlinerVisitor(),
-
-    // ── Инлайнинг иерархии классов ──────────────────────────────────────────
-    fn() => new RemoveInterfacesVisitor(),
-    fn() => new TraitInlinerVisitor(),
-    fn() => new FlattenInheritanceVisitor(),
-
-    // ── Разворачивание getter-цепочек через отслеживание сеттеров ───────────
-    fn() => new IndexedPropGetterResolverVisitor($sandbox, $enumCache),
-
-    // ── Инлайнинг enum ──────────────────────────────────────────────────────
-    fn() => new EnumCaseInlinerVisitor(),
-
-    // ── Инлайнинг статических методов ───────────────────────────────────────
-    fn() => new StaticMethodInlinerVisitor(),
-
-    // ── Разбивка на скоупы (подготовка кеша) ───────────────────────────────
-    fn() => new ScopeVisitor(),
-
-    // ── Инлайнинг функций ───────────────────────────────────────────────────
-    fn() => new FunctionBodyCollectorVisitor(),
-    fn() => new FunctionScopeVisitor(),
-    fn() => new CallFunctionVisitor(),
-
-    // ── Удаление type-hints локальных классов и мёртвых prop-записей ────────
-    fn() => new StripLocalClassTypeHintsVisitor(),
-    fn() => new RemoveUnusedPropWriteVisitor(),
-
-    // ── Отслеживание коллекций объектов (admit/bySpecies/all) ────────────────
-    fn() => new ObjectArrayTrackerVisitor(),
-
-    // ── Развёртка живых объектов ────────────────────────────────────────────
-    fn() => new NewArgHoistVisitor(),
-    fn() => new ObjectMethodInlinerVisitor(),
-    fn() => new ObjectStateSpecializerVisitor(),
-    fn() => new ClosureCallInlinerVisitor(),
-
-    // ── Инлайнинг классов ───────────────────────────────────────────────────
-    fn() => new ConstructorAndMethodsVisitor(),
-    fn() => new PropertyAccessVisitor(),
-    fn() => new ConstClassVisitor(),
-    fn() => new TernarReturnVisitor(),
-    fn() => new ClassInlinerVisitor(),
-
-    // ── Удаление неиспользуемых классов ─────────────────────────────────────
-    fn() => new InlineEmptySubclassVisitor(),
-    fn() => new RemoveDeadCodeAfterJumpVisitor(),
-    fn() => new RemoveUnusedClosureCapturesVisitor(),
-    fn() => new RemoveUnusedClassVisitor(),
-    fn() => new RemoveUnusedPureVisitor(),
-    fn() => new RemoveDeadLoopVisitor(),
-    fn() => new ProgramEvaluatorVisitor(),
-];
+// Один sandbox и кэши на весь прогон: переживают пересоздание визиторов
+$execCache = new ExecutionCache();
+$pipeline  = new VisitorPipeline(new ScopeStore(), $execCache, new Sandbox($execCache), new ArrayObject(), $fileMap, 'index.php');
 
 $totalChanged = 0;
 $pass         = 0;
 
 echo "\n";
-echo $console->colorize('  ● Трансформации: ' . count($steps) . " visitors · фиксированная точка\n", 'light_cyan');
+echo $console->colorize('  ● Трансформации: ' . count($pipeline->main()) . " visitors · фиксированная точка\n", 'light_cyan');
 
 do {
     $pass++;
     $passChanged     = false;
     $passHeaderShown = false;
 
-    foreach ($steps as $factory) {
-        $visitor = $factory();
+    foreach ($pipeline->main() as $visitor) {
         $before  = $console->applyVisitor($ast, $visitor);
         $after   = $printer->prettyPrint($ast);
 
@@ -249,18 +103,11 @@ do {
 // Readability
 // ════════════════════════════════════════════════════════════════════════════
 
-$readabilitySteps = [
-    fn() => new ReadabilityVisitor(),
-    fn() => new ConcatInterpolateVisitor(),
-    fn() => new CodeBlockVisitor(),
-];
-
 echo "\n";
 echo $console->colorize('  ● Читаемость: изолированный шаг · свёртка сложных выражений' . "\n", 'light_cyan');
 
 $readabilityChanged = 0;
-foreach ($readabilitySteps as $factory) {
-    $visitor = $factory();
+foreach (VisitorPipeline::readability() as $visitor) {
     $before  = $console->applyVisitor($ast, $visitor);
     $after   = $printer->prettyPrint($ast);
 
