@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Support\Sandbox;
 
 /**
  * Отслеживает мутируемые массивы объектов — паттерн "коллекция с capacity".
@@ -186,7 +187,7 @@ class ObjectArrayTrackerVisitor extends BaseVisitor
 
             if (
                 $node instanceof Node\Expr\FuncCall
-                && (!$node->name instanceof Node\Name || !RemoveUnusedPureVisitor::isKnownPureFunction(strtolower($node->name->toString())))
+                && (!$node->name instanceof Node\Name || !Sandbox::isEffectFree(strtolower($node->name->toString())))
             ) {
                 return false;
             }

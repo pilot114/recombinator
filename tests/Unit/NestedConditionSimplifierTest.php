@@ -254,3 +254,26 @@ it(
         expect(strlen((string) $simplifiedCode))->toBeLessThanOrEqual(strlen((string) $originalCode) + 50);
     }
 );
+
+it(
+    'keeps nested ifs whose branches depend on their own condition',
+    function (string $code): void {
+        $result = $this->printer->prettyPrintFile($this->simplifier->simplify($this->parser->parse($code)));
+
+        expect($result)->not->toContain('&&');
+    }
+)->with([
+    'outer else'   => '<?php if ($a) { if ($b) { f(); } } else { g(); }',
+    'outer elseif' => '<?php if ($a) { if ($b) { f(); } } elseif ($c) { g(); }',
+    'inner else'   => '<?php if ($a) { if ($b) { f(); } else { g(); } }',
+    'inner elseif' => '<?php if ($a) { if ($b) { f(); } elseif ($c) { g(); } }',
+]);
+
+it(
+    'merges a chain of nested ifs into one condition',
+    function (): void {
+        $result = $this->printer->prettyPrint($this->simplifier->simplify($this->parser->parse('<?php if ($a) { if ($b) { if ($c) { f(); } } }')));
+
+        expect($result)->toBe("if (\$a && \$b && \$c) {\n    f();\n}");
+    }
+);

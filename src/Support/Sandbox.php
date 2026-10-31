@@ -81,7 +81,7 @@ class Sandbox
         'abs', 'acos', 'acosh', 'asin', 'asinh', 'atan', 'atan2', 'atanh',
         'ceil', 'cos', 'cosh', 'deg2rad', 'exp', 'floor', 'fmod', 'hypot',
         'log', 'log10', 'log1p', 'max', 'min', 'pow', 'rad2deg', 'round',
-        'sin', 'sinh', 'sqrt', 'tan', 'tanh',
+        'sin', 'sinh', 'sqrt', 'tan', 'tanh', 'intdiv', 'fdiv', 'pi', 'is_finite', 'is_infinite', 'is_nan',
 
         // Строковые
         'addslashes', 'bin2hex', 'chr', 'chunk_split', 'convert_uudecode',
@@ -96,7 +96,8 @@ class Sandbox
         'strpos', 'strrchr', 'strrev', 'strripos', 'strrpos', 'strstr',
         'strtolower', 'strtoupper', 'strtr', 'substr', 'substr_compare',
         'substr_count', 'substr_replace', 'trim', 'ucfirst', 'ucwords',
-        'vsprintf', 'wordwrap', 'version_compare',
+        'vsprintf', 'wordwrap', 'version_compare', 'str_ireplace', 'number_format', 'hash',
+        'mb_strlen', 'mb_strtolower', 'mb_strtoupper', 'mb_substr', 'mb_strpos',
 
         // Массивы
         'array_change_key_case', 'array_chunk', 'array_column', 'array_combine',
@@ -107,16 +108,16 @@ class Sandbox
         'array_merge', 'array_merge_recursive', 'array_pad', 'array_product',
         'array_reduce', 'array_reverse', 'array_search', 'array_slice', 'array_sum', 'array_unique',
         'array_values', 'arsort', 'asort', 'compact', 'count', 'current',
-        'each', 'end', 'extract', 'in_array', 'key', 'key_exists', 'krsort',
-        'ksort', 'list', 'natcasesort', 'natsort', 'next', 'pos', 'prev',
+        'end', 'in_array', 'key', 'key_exists', 'krsort',
+        'ksort', 'natcasesort', 'natsort', 'next', 'pos', 'prev',
         'range', 'reset', 'rsort', 'sizeof', 'sort', 'uasort',
         'uksort', 'usort',
 
         // Типы и проверки
         'is_array', 'is_bool', 'is_callable', 'is_countable', 'is_double',
         'is_float', 'is_int', 'is_integer', 'is_iterable', 'is_long',
-        'is_null', 'is_numeric', 'is_object', 'is_real', 'is_scalar',
-        'is_string', 'isset', 'empty',
+        'is_null', 'is_numeric', 'is_object', 'is_scalar',
+        'is_string', 'is_resource',
 
         // Переменные
         'gettype', 'intval', 'floatval', 'strval', 'boolval',
@@ -143,6 +144,19 @@ class Sandbox
     public static function isPureFunction(string $name): bool
     {
         return in_array(strtolower($name), self::ALLOWED_PURE_FUNCTIONS, true);
+    }
+
+    /**
+     * Чистая функция, которая не меняет аргументы: вызов без нужного результата можно
+     * удалить (`sort($a)`, `array_splice($a, 0, 1)` меняют `$a` — нельзя).
+     */
+    public static function isEffectFree(string $name): bool
+    {
+        /** @var array<string, bool> $cache */
+        static $cache = [];
+
+        return $cache[strtolower($name)] ??= self::isPureFunction($name) && function_exists($name)
+            && !array_any(new \ReflectionFunction($name)->getParameters(), static fn(\ReflectionParameter $p): bool => $p->isPassedByReference());
     }
 
     private readonly SandboxRunner $runner;

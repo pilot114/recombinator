@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace Recombinator\Interactive;
 
 use PhpParser\Node;
-use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 
 /**
  * Сессия интерактивного редактирования
@@ -36,7 +34,7 @@ class EditSession
     /**
      * @param Node[] $currentAst
      */
-    public function __construct(private array $currentAst, private readonly InteractiveEditResult $analysisResult)
+    public function __construct(private readonly array $currentAst, private readonly InteractiveEditResult $analysisResult)
     {
         $this->history = new ChangeHistory();
         $this->sessionStartTime = time();
@@ -122,41 +120,18 @@ class EditSession
     }
 
     /**
-     * Модифицирует AST на основе изменения
+     * Модифицирует AST на основе изменения: переименование — во всей области видимости
+     *
+     * @throws \InvalidArgumentException переименование изменило бы поведение (VariableRenamer)
      *
      * @param array<string, mixed> $state
      */
     private function modifyAst(Change $change, array $state): void
     {
-        $targetNode = $change->getNode();
-        $traverser = new NodeTraverser();
-        $traverser->addVisitor(new class ($targetNode, $state, $change->getType()) extends NodeVisitorAbstract {
-            /** @param array<string, mixed> $state */
-            public function __construct(
-                private readonly Node $target,
-                private readonly array $state,
-                private readonly string $type
-            ) {
-            }
-
-            public function enterNode(Node $node): ?Node
-            {
-                if ($node !== $this->target) {
-                    return null;
-                }
-
-                if ($this->type === Change::TYPE_RENAME && $node instanceof Node\Expr\Variable) {
-                    $newName = $this->state['new'] ?? $this->state['old'] ?? null;
-                    if (is_string($newName)) {
-                        $node->name = $newName;
-                    }
-                }
-
-                return $node;
-            }
-        });
-
-        $this->currentAst = $traverser->traverse($this->currentAst);
+        $name = $state['new'] ?? $state['old'] ?? null;
+        if ($change->getType() === Change::TYPE_RENAME && $change->getNode() instanceof Node\Expr\Variable && is_string($name)) {
+            VariableRenamer::rename($this->currentAst, $change->getNode(), $name);
+        }
     }
 
     /**

@@ -55,6 +55,16 @@ class ComplexityController
     }
 
     /**
+     * Регистрирует уже посчитанные метрики до и после и проверяет изменения
+     */
+    public function register(string $identifier, ComplexityMetrics $before, ComplexityMetrics $after): void
+    {
+        $this->beforeMetrics[$identifier] = $before;
+        $this->afterMetrics[$identifier]  = $after;
+        $this->checkComplexityChanges($identifier);
+    }
+
+    /**
      * Регистрирует метрики кода после оптимизации и проверяет изменения
      *
      * @param string      $identifier Идентификатор (имя функции/метода)

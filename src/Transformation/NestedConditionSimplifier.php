@@ -6,6 +6,7 @@ namespace Recombinator\Transformation;
 
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
+use Recombinator\Transformation\Visitor\ConditionSimplifierVisitor;
 
 /**
  * Упрощение вложенных условий

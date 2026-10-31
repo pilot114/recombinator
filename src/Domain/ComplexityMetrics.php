@@ -62,6 +62,23 @@ class ComplexityMetrics
         );
     }
 
+    /**
+     * Метрики нескольких файлов как одной программы: строки и сложность складываются
+     * (у цикломатической базовая единица — одна на программу), вложенность — максимум
+     *
+     * @param list<self> $parts
+     */
+    public static function combine(array $parts, ?string $name = null): self
+    {
+        return new self(
+            cognitiveComplexity: array_sum(array_map(static fn(self $m): int => $m->cognitiveComplexity, $parts)),
+            cyclomaticComplexity: 1 + array_sum(array_map(static fn(self $m): int => $m->cyclomaticComplexity - 1, $parts)),
+            linesOfCode: array_sum(array_map(static fn(self $m): int => $m->linesOfCode, $parts)),
+            nestingDepth: max([0, ...array_map(static fn(self $m): int => $m->nestingDepth, $parts)]),
+            name: $name
+        );
+    }
+
     public function getCognitiveComplexity(): int
     {
         return $this->cognitiveComplexity;

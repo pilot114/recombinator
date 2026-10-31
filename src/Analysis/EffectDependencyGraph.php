@@ -127,16 +127,8 @@ class EffectDependencyGraph
      */
     private function createNodeId(Node $node): string
     {
-        // Используем позицию в файле как уникальный идентификатор
-        $startPos = $node->getStartFilePos();
-        $endPos = $node->getEndFilePos();
-
-        return sprintf(
-            '%s_%d_%d',
-            $node->getType(),
-            $startPos !== -1 ? $startPos : 0,
-            $endPos !== -1 ? $endPos : 0
-        );
+        // Не позиция в файле: у узлов, созданных конвейером, её нет (-1), и разные узлы склеились бы
+        return $node->getType() . '_' . spl_object_id($node);
     }
 
     /**

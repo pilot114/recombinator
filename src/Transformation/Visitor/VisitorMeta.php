@@ -8,7 +8,7 @@ use PhpParser\Node;
 
 /**
  * Атрибут для описания visitor'а — имя и описание шага трансформации.
- * Используется в bin/inliner.php вместо явных 'name'/'desc' в массиве $steps.
+ * Используется в public/api.php и bin/zoo.php для подписи шагов.
  */
 #[\Attribute(\Attribute::TARGET_CLASS)]
 class VisitorMeta

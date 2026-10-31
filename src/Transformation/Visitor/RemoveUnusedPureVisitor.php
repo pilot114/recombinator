@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Analysis\PurityAnalyzer;
+use Recombinator\Support\Sandbox;
 
 /**
  * Удаляет чистые вычисления, результат которых нигде не используется:
@@ -18,77 +20,14 @@ use PhpParser\Node;
 class RemoveUnusedPureVisitor extends BaseVisitor
 {
     /**
-     * Стандартные PHP-функции без побочных эффектов.
-     * Вызов такой функции можно удалить, если результат нигде не используется.
-     *
-     * @var array<string, true>
-     */
-    public const PURE_FUNCTIONS = [
-        // Проверка типов
-        'is_array' => true, 'is_string' => true, 'is_int' => true,
-        'is_integer' => true, 'is_long' => true, 'is_float' => true,
-        'is_double' => true, 'is_real' => true, 'is_bool' => true,
-        'is_null' => true, 'is_numeric' => true, 'is_object' => true,
-        'is_resource' => true, 'is_callable' => true, 'is_finite' => true,
-        'is_infinite' => true, 'is_nan' => true,
-        // Строки
-        'strlen' => true, 'mb_strlen' => true,
-        'strtolower' => true, 'strtoupper' => true, 'mb_strtolower' => true, 'mb_strtoupper' => true,
-        'ucfirst' => true, 'lcfirst' => true, 'ucwords' => true,
-        'trim' => true, 'ltrim' => true, 'rtrim' => true,
-        'str_pad' => true, 'str_repeat' => true, 'str_replace' => true, 'str_ireplace' => true,
-        'str_contains' => true, 'str_starts_with' => true, 'str_ends_with' => true,
-        'substr' => true, 'mb_substr' => true,
-        'strpos' => true, 'strrpos' => true, 'mb_strpos' => true,
-        'sprintf' => true, 'number_format' => true, 'vsprintf' => true,
-        'ord' => true, 'chr' => true, 'bin2hex' => true, 'hex2bin' => true,
-        'implode' => true, 'join' => true, 'explode' => true,
-        'nl2br' => true, 'htmlspecialchars' => true, 'htmlentities' => true,
-        'strip_tags' => true, 'wordwrap' => true,
-        'urlencode' => true, 'urldecode' => true, 'rawurlencode' => true, 'rawurldecode' => true,
-        'base64_encode' => true, 'base64_decode' => true,
-        'json_encode' => true, 'json_decode' => true,
-        'md5' => true, 'sha1' => true, 'crc32' => true, 'hash' => true,
-        // Математика
-        'abs' => true, 'round' => true, 'ceil' => true, 'floor' => true,
-        'max' => true, 'min' => true, 'pow' => true, 'sqrt' => true,
-        'log' => true, 'log10' => true, 'log1p' => true, 'exp' => true,
-        'pi' => true, 'sin' => true, 'cos' => true, 'tan' => true,
-        'asin' => true, 'acos' => true, 'atan' => true, 'atan2' => true,
-        'fmod' => true, 'intdiv' => true, 'hypot' => true, 'fdiv' => true,
-        // Массивы
-        'count' => true, 'sizeof' => true,
-        'array_keys' => true, 'array_values' => true, 'array_merge' => true,
-        'array_slice' => true, 'array_splice' => true, 'array_chunk' => true,
-        'array_map' => true, 'array_filter' => true, 'array_reduce' => true,
-        'array_unique' => true, 'array_reverse' => true, 'array_flip' => true,
-        'array_combine' => true, 'array_diff' => true, 'array_intersect' => true,
-        'in_array' => true, 'array_key_exists' => true, 'array_search' => true,
-        // Преобразование типов
-        'intval' => true, 'floatval' => true, 'strval' => true, 'boolval' => true,
-        'settype' => true,
-    ];
-
-    /**
      * Переменные, которые хотя бы раз читаются в коде (не только присваиваются)
      *
      * @var array<string, true>
      */
-    public static function isKnownPureFunction(string $name): bool
-    {
-        return isset(self::PURE_FUNCTIONS[$name]);
-    }
-
     private array $readVars = [];
 
     /** @var array<string, Node\Stmt\Class_>|null lowercase имя → класс, собирается при первой нужде */
     private ?array $classes = null;
-
-    /** Встроенные классы, конструктор которых не трогает внешний мир. */
-    private const array PURE_BUILTIN_CLASSES = [
-        'stdclass' => true, 'arrayobject' => true, 'arrayiterator' => true, 'splobjectstorage' => true,
-        'splstack' => true, 'splqueue' => true, 'datetime' => true, 'datetimeimmutable' => true,
-    ];
 
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
@@ -212,7 +151,7 @@ class RemoveUnusedPureVisitor extends BaseVisitor
     private function isPureConstruction(string $className, int $depth): bool
     {
         $lower = strtolower(ltrim($className, '\\'));
-        if (isset(self::PURE_BUILTIN_CLASSES[$lower])) {
+        if (in_array($lower, PurityAnalyzer::PURE_BUILTIN_CLASSES, true)) {
             return true;
         }
 
@@ -314,15 +253,26 @@ class RemoveUnusedPureVisitor extends BaseVisitor
                 && $this->isPure($node->else);
         }
 
-        if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name) {
-            $name = strtolower($node->name->toString());
-            if (isset(self::PURE_FUNCTIONS[$name])) {
-                return array_all(
-                    $node->args,
-                    fn(Node\Arg|Node\VariadicPlaceholder|Node\ArgPlaceholder $arg): bool
-                        => !$arg instanceof Node\Arg || $this->isPure($arg->value)
-                );
+        if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name && Sandbox::isEffectFree($node->name->toString())) {
+            $params = new \ReflectionFunction($node->name->toString())->getParameters();
+            foreach ($node->args as $i => $arg) {
+                if (!$arg instanceof Node\Arg) {
+                    continue;
+                }
+
+                $param = $arg->name instanceof Node\Identifier
+                    ? array_find($params, static fn(\ReflectionParameter $p): bool => $p->getName() === $arg->name->toString())
+                    : $params[$i] ?? null;
+                // Callback (`array_map('printf', $a)`) выполняется вызовом: удалять можно, только если он сам чистый
+                $pure = $param !== null && str_contains((string) $param->getType(), 'callable')
+                    ? $arg->value instanceof Node\Scalar\String_ && Sandbox::isEffectFree($arg->value->value)
+                    : $this->isPure($arg->value);
+                if (!$pure) {
+                    return false;
+                }
             }
+
+            return true;
         }
 
         return false;

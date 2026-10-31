@@ -13,7 +13,7 @@
  * - ответ:      "<статус> <длина>\n<данные>"; статус 0 — данные это вывод кода,
  *               1 — текст ошибки, 2 — превышен таймаут
  *
- * Код выполняется через eval('?>' . $code) — так же, как если бы был запущен файлом.
+ * Код выполняется через eval — так же, как если бы был запущен файлом.
  */
 
 declare(strict_types=1);
@@ -79,7 +79,8 @@ while (($header = fgets(STDIN)) !== false) {
         });
 
         try {
-            eval('?>' . $code);
+            // Без закрывающего тега перед кодом: иначе declare(strict_types=1) не первая инструкция
+            eval(str_starts_with($code, '<?php') ? substr($code, 5) : '?>' . $code);
         } catch (Throwable $throwable) {
             $fail($throwable::class . ': ' . $throwable->getMessage());
             exit(255);

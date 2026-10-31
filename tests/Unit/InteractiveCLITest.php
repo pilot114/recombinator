@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use PhpParser\ParserFactory;
+use Recombinator\Interactive\EditCandidate;
 use Recombinator\Interactive\InteractiveCLI;
 use Recombinator\Interactive\InteractiveEditAnalyzer;
 use Recombinator\Interactive\EditSession;
@@ -311,38 +312,63 @@ describe(
 );
 
 describe(
-    'Save Command',
+    'Apply and Save Commands',
     function (): void {
         it(
-            'saves preferences to file',
+            'renames a variable everywhere in its scope and saves the code',
             function (): void {
-                $tempFile = tempnam(sys_get_temp_dir(), 'cli_test_');
+                $code = '<?php
+                    $x = strlen("abc");
+                    echo $x;
+                    $f = function () use ($x) { return $x + 1; };
+                    function g($x) { return $x; }';
+                $ast  = new ParserFactory()->createForHostVersion()->parse($code);
+                $cli  = new InteractiveCLI($ast, new InteractiveEditAnalyzer()->analyze($ast));
+                $file = tempnam(sys_get_temp_dir(), 'cli_test_');
+                $issue = 1 + array_search(
+                    true,
+                    array_map(static fn(EditCandidate $c): bool => str_contains($c->getDescription(), "'\$x'"), $cli->getSession()->getAnalysisResult()->getEditCandidatesByPriority()),
+                    true,
+                );
 
                 ob_start();
-                $this->cli->executeCommand('save ' . $tempFile);
+                $cli->executeCommand('apply ' . $issue . ' length');
+                $cli->executeCommand('save ' . $file);
+
                 $output = ob_get_clean();
+                $saved  = (string) file_get_contents($file);
+                unlink($file);
 
-                expect($output)->toContain('Preferences saved')
-                    ->and(file_exists($tempFile))->toBeTrue();
-
-                // Cleanup
-                unlink($tempFile);
+                expect($output)->toContain('Renamed $x to $length')->toContain('Code saved')
+                    ->and($saved)->toContain('$length = strlen("abc");')->toContain('echo $length;')
+                    ->toContain('use ($length)')->toContain('return $length + 1;')
+                    ->toContain('function g($x)')->toContain('return $x;');
             }
         );
 
         it(
-            'uses default path when not specified',
+            'refuses a rename that would collide with another variable',
+            function (): void {
+                $ast = new ParserFactory()->createForHostVersion()->parse('<?php $x = strlen("a"); $y = 1; echo $x + $y;');
+                $cli = new InteractiveCLI($ast, new InteractiveEditAnalyzer()->analyze($ast));
+
+                ob_start();
+                $cli->executeCommand('apply 1 y');
+                $output = ob_get_clean();
+
+                expect($output)->toContain('already used')
+                    ->and($cli->getSession()->getTotalAppliedChanges())->toBe(0);
+            }
+        );
+
+        it(
+            'requires a path to save',
             function (): void {
                 ob_start();
                 $this->cli->executeCommand('save');
                 $output = ob_get_clean();
 
-                expect($output)->toContain('Preferences saved');
-
-                // Cleanup default file if created
-                if (file_exists('./interactive_edits.json')) {
-                    unlink('./interactive_edits.json');
-                }
+                expect($output)->toContain('save <path>');
             }
         );
     }

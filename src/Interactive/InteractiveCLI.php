@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Interactive;
 
 use PhpParser\Node;
-use Recombinator\Support\ColorDiffer;
+use PhpParser\PrettyPrinter\Standard;
 
 /**
  * Интерактивный CLI для редактирования кода (Phase 5.2)
@@ -58,7 +58,7 @@ class InteractiveCLI
             $this->showPrompt();
             $input = $this->readInput();
             if ($input === false) {
-                continue;
+                break; // конец ввода (Ctrl+D, закрытый pipe)
             }
 
             if (trim($input) === '') {
@@ -88,8 +88,8 @@ class InteractiveCLI
         try {
             $this->commands[$cmd]($args);
             return true;
-        } catch (\InvalidArgumentException | \Recombinator\Support\ParseException | \Recombinator\Support\IncludeException $exception) {
-            $this->output("Error executing command: " . $exception->getMessage());
+        } catch (\InvalidArgumentException $invalidArgumentException) {
+            $this->output("Error executing command: " . $invalidArgumentException->getMessage());
             return false;
         }
     }
@@ -156,12 +156,12 @@ class InteractiveCLI
         $this->output("  status, s          - Show current session status");
         $this->output("  list [type], l     - List issues (critical/high/all)");
         $this->output("  show <number>      - Show details of specific issue");
-        $this->output("  apply <number>, a  - Apply suggested fix");
+        $this->output("  apply <n> [name]   - Rename variable of issue n (to name or first suggestion)");
         $this->output("  undo, u            - Undo last change");
         $this->output("  redo, r            - Redo undone change");
         $this->output("  history            - Show change history");
         $this->output("  pref [key] [value] - View or set preferences");
-        $this->output("  save [path]        - Save changes to file");
+        $this->output("  save <path>        - Save edited code to file");
         $this->output("  report             - Show full analysis report");
         $this->output("  exit, quit, q      - Exit interactive mode\n");
     }
@@ -231,28 +231,39 @@ class InteractiveCLI
 
     private function commandApply(string $args): void
     {
-        $index = (int)trim($args) - 1;
-        $result = $this->session->getAnalysisResult();
-        $candidates = $result->getEditCandidatesByPriority();
+        [$number, $name] = array_pad(preg_split('/\s+/', trim($args), 2) ?: [], 2, '');
+        $index      = (int) $number - 1;
+        $candidates = $this->session->getAnalysisResult()->getEditCandidatesByPriority();
 
         if (!isset($candidates[$index])) {
             $this->output("Invalid issue number: " . ($index + 1));
             return;
         }
 
+        // Автоматически применимо только переименование; остальное (магические числа,
+        // вложенность) правится вручную
         $candidate = $candidates[$index];
+        $node      = $candidate->getNode();
+        $variable  = $node instanceof Node\Expr\Assign ? $node->var : $node;
+        if (!$variable instanceof Node\Expr\Variable || !is_string($variable->name)) {
+            $this->output('Issue #' . $number . ' cannot be fixed automatically: ' . $candidate->getDescription());
+            return;
+        }
 
-        // Создаём change (в реальности здесь была бы логика применения изменения)
-        $change = new Change(
-            Change::TYPE_CUSTOM,
-            "Fixed: " . $candidate->getDescription(),
-            $candidate->getNode(),
-            [], // beforeState
-            []  // afterState
-        );
+        // Имя из подсказки «Consider: $name», если не указано явно
+        $suggested = array_filter(array_map(
+            static fn(string $s): ?string => preg_match('/^Consider: \$(\w+)$/', $s, $m) === 1 ? $m[1] : null,
+            $candidate->getSuggestions(),
+        ));
+        $to = ltrim($name, '$') ?: (reset($suggested) ?: '');
+        if ($to === '') {
+            $this->output('Specify the new name: apply ' . $number . ' <name>');
+            return;
+        }
 
-        $this->session->applyChange($change);
-        $this->output("Applied change: " . $candidate->getDescription());
+        $from = $variable->name;
+        $this->session->applyChange(new Change(Change::TYPE_RENAME, sprintf('Renamed $%s to $%s', $from, $to), $variable, ['old' => $from], ['new' => $to]));
+        $this->output(sprintf('Renamed $%s to $%s', $from, $to));
     }
 
     private function commandUndo(): void
@@ -362,15 +373,13 @@ class InteractiveCLI
     private function commandSave(string $args): void
     {
         $path = trim($args);
-        if ($path === '' || $path === '0') {
-            $path = './interactive_edits.json';
+        if ($path === '') {
+            $this->output('Specify the file: save <path>');
+            return;
         }
 
-        if ($this->session->savePreferences($path)) {
-            $this->output('Preferences saved to: ' . $path);
-        } else {
-            $this->output("Failed to save preferences");
-        }
+        $code = new Standard()->prettyPrintFile($this->session->getCurrentAst()) . "\n";
+        $this->output(file_put_contents($path, $code) !== false ? 'Code saved to: ' . $path : 'Failed to save code to: ' . $path);
     }
 
     private function commandReport(): void

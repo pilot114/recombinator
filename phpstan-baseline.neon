@@ -1,42 +1,6 @@
 parameters:
 	ignoreErrors:
 		-
-			message: '#^Parameter \#1 \$code of method PhpParser\\Parser\:\:parse\(\) expects string, string\|false given\.$#'
-			identifier: argument.type
-			count: 1
-			path: src/Support/Inliner.php
-
-		-
-			message: '#^Property PhpParser\\Node\\Expr\\ClassConstFetch\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: src/Support/Inliner.php
-
-		-
-			message: '#^Property PhpParser\\Node\\Expr\\Instanceof_\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: src/Support/Inliner.php
-
-		-
-			message: '#^Property PhpParser\\Node\\Expr\\New_\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\|PhpParser\\Node\\Stmt\\Class_\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: src/Support/Inliner.php
-
-		-
-			message: '#^Property PhpParser\\Node\\Expr\\StaticCall\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: src/Support/Inliner.php
-
-		-
-			message: '#^Property PhpParser\\Node\\Expr\\StaticPropertyFetch\:\:\$class \(PhpParser\\Node\\Expr\|PhpParser\\Node\\Name\) does not accept mixed\.$#'
-			identifier: assign.propertyType
-			count: 1
-			path: src/Support/Inliner.php
-
-		-
 			message: '#^Cannot use \+\+ on mixed\.$#'
 			identifier: postInc.type
 			count: 2
@@ -267,18 +231,6 @@ parameters:
 		-
 			message: '#^Class PhpParser\\Node\\Expr\\UnaryOp not found\.$#'
 			identifier: class.notFound
-			count: 1
-			path: src/Transformation/Visitor/RemoveUnusedPureVisitor.php
-
-		-
-			message: '#^PHPDoc tag @var above a method has no effect\.$#'
-			identifier: varTag.misplaced
-			count: 1
-			path: src/Transformation/Visitor/RemoveUnusedPureVisitor.php
-
-		-
-			message: '#^Property Recombinator\\Transformation\\Visitor\\RemoveUnusedPureVisitor\:\:\$readVars type has no value type specified in iterable type array\.$#'
-			identifier: missingType.iterableValue
 			count: 1
 			path: src/Transformation/Visitor/RemoveUnusedPureVisitor.php
 

@@ -6,6 +6,7 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
+use Recombinator\Support\Sandbox;
 use Recombinator\Support\SandboxError;
 use Recombinator\Support\SandboxRunner;
 
@@ -172,7 +173,7 @@ class PureFunctionEvaluatorVisitor extends BaseVisitor
             }
 
             $name = strtolower($call->name->toString());
-            if (!RemoveUnusedPureVisitor::isKnownPureFunction($name) && !isset($this->pureFunctions[$name])) {
+            if (!Sandbox::isEffectFree($name) && !isset($this->pureFunctions[$name])) {
                 return false;
             }
         }

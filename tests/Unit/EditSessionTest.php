@@ -65,7 +65,7 @@ describe(
         it(
             'applies a change',
             function (): void {
-                $node = new Variable('x');
+                $node = $this->session->getCurrentAst()[0]->expr->var;
                 $change = new Change(
                     Change::TYPE_RENAME,
                     'Renamed variable',

@@ -21,6 +21,7 @@ use Recombinator\Transformation\Visitor\ClosureClassVisitor;
 use Recombinator\Transformation\Visitor\CoalesceNullRemoveVisitor;
 use Recombinator\Transformation\Visitor\CodeBlockVisitor;
 use Recombinator\Transformation\Visitor\ConcatAssertVisitor;
+use Recombinator\Transformation\Visitor\ConditionSimplifierVisitor;
 use Recombinator\Transformation\Visitor\ConcatInterpolateVisitor;
 use Recombinator\Transformation\Visitor\ConstantArgumentVisitor;
 use Recombinator\Transformation\Visitor\ConstClassVisitor;
@@ -253,6 +254,7 @@ final readonly class VisitorPipeline
     public static function readability(): array
     {
         return [
+            new ConditionSimplifierVisitor(),
             new ReadabilityVisitor(),
             new ConcatInterpolateVisitor(),
             new CodeBlockVisitor(),

@@ -296,3 +296,36 @@ it('inlines a function with a default value for a missing argument', function ()
 
     expect(new Printer()->prettyPrint($ast))->toContain('echo "x" . ", ";');
 });
+
+it('does not pre-execute calls whose callbacks or methods touch files', function (): void {
+    $file = tempnam(sys_get_temp_dir(), 'rcb_victim');
+    $path = var_export($file, true);
+    $code = "<?php final readonly class A { public function go(): int { unlink({$path}); return 1; } }
+        \$a = array_map('unlink', [{$path}]);
+        \$b = array_filter([{$path}], 'unlink');
+        \$c = ('un' . 'link')({$path});
+        \$d = (new A())->go();";
+    $result = applySemantics($code, new PreExecutionVisitor(new ScopeStore()));
+    $exists = file_exists($file);
+    @unlink($file);
+
+    expect($exists)->toBeTrue()
+        ->and($result)->toContain("array_map('unlink'")->toContain("array_filter([")->toContain("('un' . 'link')(")->toContain('(new A())->go()');
+});
+
+it('does not pre-execute extract: it defines variables', function (): void {
+    $result = applySemantics("<?php extract(['v' => 5]); echo \$v;", new PreExecutionVisitor(new ScopeStore()));
+
+    expect($result)->toContain("extract(['v' => 5]);");
+});
+
+it('keeps unused calls that change their arguments or run impure callbacks', function (): void {
+    $result = applySemantics(
+        "<?php array_splice(\$a, 0, 1); settype(\$x, 'int'); sort(\$s); array_map('printf', \$a); strlen(\$a); array_map('strlen', \$a);",
+        new RemoveUnusedPureVisitor(),
+    );
+
+    expect($result)->toContain('array_splice($a, 0, 1);')->toContain("settype(\$x, 'int');")->toContain('sort($s);')
+        ->toContain("array_map('printf', \$a);")
+        ->not->toContain('strlen($a);')->not->toContain("array_map('strlen'");
+});

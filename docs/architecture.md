@@ -19,6 +19,25 @@ src/
 └── Support/           # Вспомогательные классы
 ```
 
+## Этапы в конвейере
+
+Точки входа — `public/api.php` (веб-интерфейс) и `bin/zoo.php`; набор правил — `VisitorPipeline`.
+
+| Этап | Где работает | Код |
+|------|--------------|-----|
+| 1. Развёртка | `VisitorPipeline::main()` до сходимости (`RuleScheduler`) | `Transformation/Visitor/*` |
+| 2. Свёртка: вложенность | `VisitorPipeline::readability()`, один проход после развёртки | `ConditionSimplifierVisitor` |
+| 2. Свёртка: оценка | отчёт прогона (вкладка «Отчёт», конец `bin/zoo.php`) | `Analysis\QualityReport` → `ComplexityController`, `ComplexityMetrics` |
+| 3. Интерактив: подсказки | тот же отчёт | `InteractiveEditAnalyzer` |
+| 3. Интерактив: правка | `php bin/interactive.php <файл>` — `apply <n> [имя]`, `undo`, `save <путь>` | `InteractiveCLI`, `EditSession`, `VariableRenamer` |
+
+Пока не подключены — место определено, мешают дефекты:
+
+- **Извлечение функций** (`SideEffectMarkerVisitor` → `AbstractionRecovery` → `FunctionExtractor`) — отдельная фаза после `readability()`, не в `main()`: там инлайнеры (`CallFunctionVisitor`, `SmallCallInlinerVisitor`) сразу встроят функцию обратно. Мешает: `FunctionExtractor::extract()` строит функцию и вызов, но не подставляет их в AST; группы эффектов собираются по всему дереву и не идут подряд; возвращается только последняя присвоенная переменная. Начинать с чистых подряд идущих инструкций верхнего уровня, с проверкой «вывод программы до и после совпадает».
+- **`ListSingleUseInlinerVisitor`** — в `main()` рядом с `SingleUseInlinerVisitor` (развёртка `list()`, которой больше нигде нет). Мешает: переменные считаются по имени без области видимости, нет проверки перезаписи и эффектов между присваиванием и чтением, ключевая деструктуризация даёт неверный индекс, нет `targets`.
+- **`PureFunctionCacheVisitor`** (общие подвыражения) — в `readability()`. Мешает: любую функцию файла считает чистой, не видит перезаписи аргументов, поднимает вызов из условных веток.
+- **`VariableDeclarationOptimizer`** — заглушка: `reorderStatements()` возвращает AST без изменений.
+
 ---
 
 ## 1. Contract - Интерфейсы

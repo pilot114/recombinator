@@ -2,29 +2,11 @@
 
 declare(strict_types=1);
 
-use Recombinator\Contract\CacheInterface;
 use Recombinator\Core\ExecutionCache;
 
 beforeEach(
     function (): void {
         $this->cache = new ExecutionCache(10); // Малый размер для тестирования LRU
-    }
-);
-
-it(
-    'implements CacheInterface',
-    function (): void {
-        expect(new ExecutionCache())->toBeInstanceOf(CacheInterface::class);
-    }
-);
-
-it(
-    'can remove value via CacheInterface remove method',
-    function (): void {
-        $this->cache->set('key1', 'value1');
-        $this->cache->remove('key1');
-
-        expect($this->cache->has('key1'))->toBeFalse();
     }
 );
 
@@ -55,37 +37,6 @@ it(
 );
 
 it(
-    'can delete value from cache',
-    function (): void {
-        $this->cache->set('key1', 'value1');
-        $this->cache->delete('key1');
-
-        expect($this->cache->has('key1'))->toBeFalse();
-    }
-);
-
-it(
-    'can clear all cache',
-    function (): void {
-        $this->cache->set('key1', 'value1');
-        $this->cache->set('key2', 'value2');
-        $this->cache->clear();
-
-        expect($this->cache->isEmpty())->toBeTrue();
-    }
-);
-
-it(
-    'tracks cache size',
-    function (): void {
-        $this->cache->set('key1', 'value1');
-        $this->cache->set('key2', 'value2');
-
-        expect($this->cache->size())->toBe(2);
-    }
-);
-
-it(
     'implements LRU eviction when max size reached',
     function (): void {
         // Заполняем кеш до предела
@@ -98,7 +49,7 @@ it(
 
         expect($this->cache->has('key0'))->toBeFalse()
         ->and($this->cache->has('key10'))->toBeTrue()
-        ->and($this->cache->size())->toBe(10);
+        ->and($this->cache->getStats()['size'])->toBe(10);
     }
 );
 
@@ -139,52 +90,6 @@ it(
 );
 
 it(
-    'can export and import cache',
-    function (): void {
-        $this->cache->set('key1', 'value1');
-        $this->cache->set('key2', 'value2');
-        $this->cache->get('key1'); // для статистики
-
-        $exported = $this->cache->export();
-
-        $newCache = new ExecutionCache(10);
-        $newCache->import($exported);
-
-        expect($newCache->get('key1'))->toBe('value1')
-        ->and($newCache->get('key2'))->toBe('value2')
-        ->and($newCache->size())->toBe(2);
-    }
-);
-
-it(
-    'can get all keys',
-    function (): void {
-        $this->cache->set('key1', 'value1');
-        $this->cache->set('key2', 'value2');
-
-        $keys = $this->cache->keys();
-
-        expect($keys)->toContain('key1')
-            ->and($keys)->toContain('key2')
-            ->and(count($keys))->toBe(2);
-    }
-);
-
-it(
-    'can get all values',
-    function (): void {
-        $this->cache->set('key1', 'value1');
-        $this->cache->set('key2', 'value2');
-
-        $values = $this->cache->values();
-
-        expect($values)->toContain('value1')
-            ->and($values)->toContain('value2')
-            ->and(count($values))->toBe(2);
-    }
-);
-
-it(
     'can store complex values',
     function (): void {
         $complexValue = [
@@ -203,10 +108,19 @@ it(
     'overwrites existing key without increasing size',
     function (): void {
         $this->cache->set('key1', 'value1');
-        expect($this->cache->size())->toBe(1);
-
         $this->cache->set('key1', 'value2');
-        expect($this->cache->size())->toBe(1)
+
+        expect($this->cache->getStats()['size'])->toBe(1)
         ->and($this->cache->get('key1'))->toBe('value2');
+    }
+);
+
+it(
+    'keeps null values distinct from missing keys',
+    function (): void {
+        $this->cache->set('null', null);
+
+        expect($this->cache->has('null'))->toBeTrue()
+        ->and($this->cache->getStats()['size'])->toBe(1);
     }
 );

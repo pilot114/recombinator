@@ -4,6 +4,14 @@ declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
 
+// Только локальный хост: при DNS rebinding чужой домен указывает на 127.0.0.1, и браузер
+// считает запросы своими — проверки CORS ниже тогда не помогают, а Host остаётся чужим
+if (preg_match('/^(localhost|127\.0\.0\.1|\[::1])(:\d+)?$/', (string) ($_SERVER['HTTP_HOST'] ?? '')) !== 1) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Forbidden host']);
+    exit;
+}
+
 // API выполняет код (пробы, прогрев, песочница): только с той же страницы. Без заголовков
 // CORS чужой сайт не пройдёт предварительный запрос, а без application/json — и простой POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && !str_starts_with(strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? '')), 'application/json')) {
@@ -92,6 +100,7 @@ use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Analysis\QualityReport;
 use Recombinator\Core\ExecutionCache;
 use Recombinator\Domain\ScopeStore;
 use Recombinator\Support\LineDiffer;
@@ -313,7 +322,6 @@ if (is_file($runFile)) {
     }
 }
 
-/** Ответ клиенту: шаги начиная с $stepsFrom (клиент дописывает их к уже полученным). */
 /**
  * Ответ клиенту: шаги начиная с $stepsFrom (клиент дописывает их к уже полученным).
  * Ответ больше RESPONSE_LIMIT — только шаги последнего прогона: унаследованные от
@@ -335,6 +343,7 @@ function respond(array $run, int $stepsFrom, bool $partial, bool $cached): never
         'partial'       => $partial,
         'cached'        => $cached,
         'total_time_ms' => $run['total_time_ms'],
+        'report'        => $run['report'] ?? null,
     ];
 
     $base = (int) ($run['steps_base'] ?? 0);
@@ -395,7 +404,6 @@ if ($run === null) {
 
 $run['input_key'] = $inputKey;
 
-/** Сохраняет состояние прогона (атомарно: через временный файл). */
 /**
  * Снимает служебные ссылки (`parent`, `next`, `previous`, `origNode`) везде, где есть
  * узлы: в атрибутах, в хранилище областей видимости. Иначе через `parent` в файл
@@ -443,6 +451,7 @@ function stripDeep(mixed $value, \SplObjectStorage $seen): void
     }
 }
 
+/** Сохраняет состояние прогона (атомарно: через временный файл). */
 function saveRun(string $runFile, array $run): void
 {
     $seen = new \SplObjectStorage();
@@ -461,7 +470,7 @@ function saveRun(string $runFile, array $run): void
 /** Лёгкая копия завершённого прогона — только то, что отдаёт respond(). */
 function saveDone(string $doneFile, array $run): void
 {
-    $light = array_intersect_key($run, array_flip(['original', 'final', 'steps', 'passes', 'total_time_ms', 'steps_base']));
+    $light = array_intersect_key($run, array_flip(['original', 'final', 'steps', 'passes', 'total_time_ms', 'steps_base', 'report']));
     $tmp   = $doneFile . '.' . getmypid() . '.tmp';
     file_put_contents($tmp, gzcompress(serialize($light), 1));
     rename($tmp, $doneFile);
@@ -622,6 +631,16 @@ foreach (VisitorPipeline::readability() as $visitor) {
 $run['total_time_ms'] += (microtime(true) - $readabilityStart) * 1000.0;
 $run['ast']            = $ast;
 $run['final']          = "<?php\n" . $printer->prettyPrint($ast);
+
+// Отчёт: сложность до/после и подсказки для ручной правки (строки — как в итоге).
+// «До» — все исходные файлы, у проекта вместе с vendor: весь код, из которого собрана программа
+set_time_limit($timeout);
+try {
+    $run['report'] = QualityReport::of($fileMap !== [] ? array_values($fileMap) : [$run['original']], $phpParser->parse($run['final']) ?? []);
+} catch (PhpParserError) {
+    $run['report'] = null;
+}
+
 $run['done']           = true;
 saveRun($runFile, $run);
 $runCache->markLatest($inputKey, $envHash, $runKey);

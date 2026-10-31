@@ -55,7 +55,7 @@ class HeapSnapshotVisitor extends BaseVisitor
     ];
 
     /** Встроенные классы, создание которых не эффект. */
-    private const array PURE_CLASSES = ['arrayiterator', 'arrayobject', 'splobjectstorage', 'weakmap', 'splqueue', 'splstack', 'spldoublylinkedlist', 'stdclass', 'closure'];
+    private const array PURE_CLASSES = [...PurityAnalyzer::PURE_BUILTIN_CLASSES, 'closure'];
 
     /** Вопросы о наличии: аргумент — имя, ответ зависит от сервера. */
     private const array QUERIES = [

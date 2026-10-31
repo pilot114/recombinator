@@ -56,7 +56,7 @@ final class PurityAnalyzer
     ];
 
     /** Встроенные классы, создание которых ничего не меняет снаружи. */
-    private const array PURE_BUILTIN_CLASSES = ['arrayiterator', 'arrayobject', 'splobjectstorage', 'weakmap', 'splqueue', 'splstack', 'spldoublylinkedlist', 'stdclass'];
+    public const array PURE_BUILTIN_CLASSES = ['arrayiterator', 'arrayobject', 'splobjectstorage', 'weakmap', 'splqueue', 'splstack', 'spldoublylinkedlist', 'stdclass'];
 
     /** @var array<string, Node\Stmt\Function_|Node\Stmt\ClassMethod> ключ ('fn:имя' или 'класс::метод') → объявление */
     private array $functions = [];

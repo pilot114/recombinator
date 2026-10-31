@@ -25,6 +25,16 @@ final class SandboxRunner
      */
     private const int WORKER_GRACE_SECONDS = 3;
 
+    /**
+     * Запуск процессов и сеть: проверка Sandbox::isSafe не видит вызовов через callback,
+     * методы и собранные имена, поэтому запрет — в самом процессе
+     */
+    private const array DISABLED_FUNCTIONS = [
+        'exec', 'system', 'passthru', 'shell_exec', 'popen', 'proc_open', 'pcntl_exec', 'posix_kill',
+        'mail', 'fsockopen', 'pfsockopen', 'stream_socket_client', 'stream_socket_server',
+        'socket_create', 'socket_connect', 'putenv', 'dl',
+    ];
+
     private static ?self $shared = null;
 
     /**
@@ -123,7 +133,7 @@ final class SandboxRunner
 
         try {
             $process = new Process(
-                [$this->phpBinary, '-n', '-d', 'display_errors=stderr', '-d', 'memory_limit=' . $memoryLimit, $tmpFile],
+                [$this->phpBinary, '-n', ...$this->isolation($tmpFile), '-d', 'display_errors=stderr', '-d', 'memory_limit=' . $memoryLimit, $tmpFile],
                 timeout: $timeout
             );
             $process->run();
@@ -164,7 +174,7 @@ final class SandboxRunner
 
         $process = @proc_open(
             // -n отключает и модули из ini: pcntl в Debian/Docker — отдельный модуль, без него форков нет
-            [$this->phpBinary, '-n', '-d', 'extension=pcntl', '-d', 'display_errors=stderr', __DIR__ . '/sandbox-worker.php'],
+            [$this->phpBinary, '-n', '-d', 'extension=pcntl', ...$this->isolation(__DIR__ . '/sandbox-worker.php'), '-d', 'display_errors=stderr', __DIR__ . '/sandbox-worker.php'],
             [
                 0 => ['pipe', 'r'],
                 1 => ['pipe', 'w'],
@@ -188,6 +198,25 @@ final class SandboxRunner
         }
 
         return true;
+    }
+
+    /**
+     * Флаги php: из файлов доступен только сам запускаемый скрипт (open_basedir — префикс
+     * пути), обращение к остальным — ошибка задачи (sandbox-prepend.php); без URL-обёрток,
+     * процессов и сети
+     *
+     * @return list<string>
+     */
+    private function isolation(string $script): array
+    {
+        $prepend = __DIR__ . '/sandbox-prepend.php';
+
+        return [
+            '-d', 'auto_prepend_file=' . $prepend,
+            '-d', 'open_basedir=' . $script . PATH_SEPARATOR . $prepend,
+            '-d', 'allow_url_fopen=0',
+            '-d', 'disable_functions=' . implode(',', self::DISABLED_FUNCTIONS),
+        ];
     }
 
     private function stopWorker(): void

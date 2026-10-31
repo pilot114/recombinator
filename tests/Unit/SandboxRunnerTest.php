@@ -103,3 +103,28 @@ it(
             ->and($this->runner->run('<?php echo "c";', 2, '32M'))->toBe('c');
     }
 )->skip(!function_exists('posix_kill') || !function_exists('pcntl_fork'), 'нужны posix и pcntl');
+
+it(
+    'blocks file writes, processes and network even through callbacks',
+    function (Closure $make): void {
+        $file = tempnam(sys_get_temp_dir(), 'rcb_victim');
+        $path = var_export($file, true);
+        $runner = $make();
+
+        expect($runner->run("<?php echo json_encode(array_map('unlink', [{$path}]));", 2, '32M'))->toBeInstanceOf(SandboxError::class)
+            ->and($runner->run("<?php echo (int) @('un' . 'link')({$path});", 2, '32M'))->toBeInstanceOf(SandboxError::class)
+            ->and($runner->run("<?php echo json_encode(array_map('shell_exec', ['echo hi']));", 2, '32M'))->toBeInstanceOf(SandboxError::class)
+            ->and($runner->run("<?php echo json_encode(array_map('file_exists', ['/etc/hostname']));", 2, '32M'))->toBeInstanceOf(SandboxError::class)
+            ->and($runner->run("<?php echo (string) @file_get_contents('http://127.0.0.1:1/');", 2, '32M'))->toBeInstanceOf(SandboxError::class)
+            ->and(file_exists($file))->toBeTrue();
+
+        unlink($file);
+    }
+)->with('runner modes');
+
+it(
+    'runs code that starts with declare(strict_types=1)',
+    function (Closure $make): void {
+        expect($make()->run("<?php\ndeclare(strict_types=1);\nfunction f(int \$x) { return \$x; }\ntry { f('1'); } catch (TypeError) { echo 'strict'; }", 2, '32M'))->toBe('strict');
+    }
+)->with('runner modes');

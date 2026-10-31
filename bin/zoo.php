@@ -7,6 +7,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Analysis\QualityReport;
 use Recombinator\Core\ExecutionCache;
 use Recombinator\Support\ColorDiffer;
 use Recombinator\Support\PipelineConsole;
@@ -150,3 +151,21 @@ echo "\n";
 $console->hr('─');
 echo $console->colorize("  Результат сохранён: $resultPath\n", 'light_green');
 $console->hr('─');
+
+// ════════════════════════════════════════════════════════════════════════════
+// Report: сложность до/после и подсказки для ручной правки
+// ════════════════════════════════════════════════════════════════════════════
+
+$report = QualityReport::of(
+    [(string) file_get_contents($entryPoint), ...array_values($fileMap)],
+    $parser->parse($final) ?? [],
+);
+$console->banner('ОТЧЁТ');
+foreach ($report['complexity']['after'] as $metric => $value) {
+    echo sprintf("  %-12s %5d → %d\n", $metric, $report['complexity']['before'][$metric], $value);
+}
+
+echo "\n  " . $report['summary'] . "\n";
+foreach ($report['suggestions'] as $suggestion) {
+    echo '  ' . str_replace("\n", "\n  ", $suggestion) . "\n";
+}

@@ -44,14 +44,13 @@ class ProgramEvaluatorVisitor extends BaseVisitor
 
     /** Детерминированные встроенные функции сверх списка Sandbox: вывод, интроспекция, массивы */
     private const array EXTRA_FUNCTIONS = [
-        'printf', 'vprintf', 'print_r', 'var_dump', 'var_export', 'number_format',
+        'printf', 'vprintf', 'print_r', 'var_dump', 'var_export',
         'get_class', 'get_called_class', 'get_object_vars', 'get_parent_class', 'property_exists',
         'method_exists', 'class_exists', 'interface_exists', 'enum_exists', 'trait_exists', 'is_a',
         'is_subclass_of', 'func_get_args', 'func_num_args', 'iterator_to_array', 'iterator_count',
         'array_key_first', 'array_key_last', 'array_is_list', 'array_walk', 'array_push', 'array_pop',
         'array_shift', 'array_unshift', 'array_splice', 'array_any', 'array_all', 'array_find',
-        'spl_object_id', 'spl_object_hash', 'define', 'defined', 'constant', 'settype', 'is_resource',
-        'mb_strlen', 'mb_substr', 'mb_strtoupper', 'mb_strtolower', 'mb_str_pad', 'str_word_count',
+        'spl_object_id', 'spl_object_hash', 'define', 'defined', 'constant', 'settype', 'mb_str_pad',
     ];
 
     private const array SAFE_CLASSES = [
