@@ -22,7 +22,7 @@ use PhpParser\Node;
  * __DIR__ и __FILE__ зависят от того, где лежит файл, — их подставляет
  * TargetEnvironmentVisitor по описанию сервера; __LINE__ не трогается.
  */
-#[VisitorMeta('Подстановка __CLASS__, __METHOD__, __FUNCTION__, __NAMESPACE__')]
+#[VisitorMeta('Подстановка __CLASS__, __METHOD__, __FUNCTION__, __NAMESPACE__', targets: [Node\Scalar\MagicConst\Class_::class, Node\Scalar\MagicConst\Method::class, Node\Scalar\MagicConst\Function_::class, Node\Scalar\MagicConst\Namespace_::class])]
 class MagicConstantVisitor extends BaseVisitor
 {
     private bool $namespaced = false;

@@ -35,7 +35,7 @@ use Recombinator\Support\StringValues;
  * не попали в AST. После встраивания классы переименованы (`Foo\Bar` → `Foo_Bar`),
  * поэтому внешний файл всё равно не может на них сослаться.
  */
-#[VisitorMeta('Удаление классов, недостижимых из исполняемого кода')]
+#[VisitorMeta('Удаление классов, недостижимых из исполняемого кода', targets: [Node\Stmt\ClassLike::class, Node\Stmt\Function_::class])]
 class RemoveUnusedClassVisitor extends BaseVisitor
 {
     /** @var \SplObjectStorage<Node\Stmt\ClassLike|Node\Stmt\Function_, true> */

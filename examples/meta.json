@@ -1,21 +1,27 @@
 {
   "01-basic": {
-    "name": "Базовый"
+    "name": "Базовый",
+    "schedule": "estimate"
   },
   "02-constants": {
-    "name": "Константное свёртывание"
+    "name": "Константное свёртывание",
+    "schedule": "sequential"
   },
   "03-functions": {
-    "name": "Инлайнинг функций"
+    "name": "Инлайнинг функций",
+    "schedule": "estimate"
   },
   "04-classes": {
-    "name": "Классы и методы"
+    "name": "Классы и методы",
+    "schedule": "estimate"
   },
   "05-auth": {
-    "name": "Auth flow"
+    "name": "Auth flow",
+    "schedule": "estimate"
   },
   "06-symfony-demo": {
     "name": "Symfony Demo",
+    "schedule": "sequential",
     "type": "project",
     "entry": "public/index.php",
     "description": "Полноценное Symfony-приложение — блог с аутентификацией, комментариями и админкой. Реальный production-код: контроллеры, сервисы, Doctrine, Twig",
@@ -31,6 +37,7 @@
   },
   "07-slim-demo": {
     "name": "Slim Demo",
+    "schedule": "sequential",
     "type": "project",
     "entry": "public/index.php",
     "description": "Приложение на Slim",
@@ -116,6 +123,7 @@
   },
   "08-syntax-zoo": {
     "name": "Syntax Zoo",
+    "schedule": "priority",
     "type": "project",
     "entry": "index.php",
     "description": "Синтетический пример: >5 классов под одним namespace, покрывает большую часть синтаксиса PHP 8.4 (abstract/final/readonly, trait, interface, enum, generators, match, named args, varargs, spread, magic methods, try/catch/finally, heredoc/nowdoc, first-class callable, nullsafe, late static binding). Удобен для тестирования правил оптимизатора."

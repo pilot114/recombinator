@@ -23,7 +23,7 @@ use PhpParser\Node;
  *
  * `use Foo\Bar;` (TYPE_NORMAL) не трогаем — это задача UseImportVisitor.
  */
-#[VisitorMeta('Удаление use function / use const для глобальных символов')]
+#[VisitorMeta('Удаление use function / use const для глобальных символов', targets: [Node\Stmt\Use_::class])]
 class RemoveGlobalUseVisitor extends BaseVisitor
 {
     #[\Override]

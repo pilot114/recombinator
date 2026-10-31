@@ -38,7 +38,7 @@ use Recombinator\Support\TypeInference;
  * Как и в RemoveUnusedClassVisitor, не видны имена, вычисленные иначе (из данных,
  * `ucfirst($x)`), и вызовы из невстраиваемых include — те же допущения, что и для классов.
  */
-#[VisitorMeta('Удаление методов, имя которых не используется в живом коде')]
+#[VisitorMeta('Удаление методов, имя которых не используется в живом коде', targets: [Node\Stmt\ClassMethod::class])]
 class RemoveUnusedMethodVisitor extends BaseVisitor
 {
     /** @var \SplObjectStorage<Node\Stmt\ClassMethod, true> */

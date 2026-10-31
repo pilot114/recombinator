@@ -14,7 +14,7 @@ use PhpParser\Node;
  * «Чистое» = без побочных эффектов: операции над скалярами/переменными,
  * а также вызовы заведомо чистых стандартных функций.
  */
-#[VisitorMeta('Удаление мёртвых чистых вычислений')]
+#[VisitorMeta('Удаление мёртвых чистых вычислений', targets: [Node\Stmt\Expression::class])]
 class RemoveUnusedPureVisitor extends BaseVisitor
 {
     /**

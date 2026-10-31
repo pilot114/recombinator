@@ -20,7 +20,7 @@ use Recombinator\Transformation\BodyInliner;
  *   if(cond) { return a; } return b;
  * уже были сведены к  return cond ? a : b  и стали однострочными.
  */
-#[VisitorMeta('Удаление классов: new X() → переменные полей; $obj->m() → тело метода; $obj->p → переменная')]
+#[VisitorMeta('Удаление классов: new X() → переменные полей; $obj->m() → тело метода; $obj->p → переменная', targets: [Node\Stmt\Class_::class])]
 class ClassInlinerVisitor extends BaseVisitor
 {
     /**

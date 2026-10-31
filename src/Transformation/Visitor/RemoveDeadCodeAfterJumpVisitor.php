@@ -16,7 +16,7 @@ use PhpParser\Node;
  *
  * Applies to: function/method bodies, closures, if/else/while/for bodies.
  */
-#[VisitorMeta('Удаление мёртвого кода после return/throw')]
+#[VisitorMeta('Удаление мёртвого кода после return/throw', targets: [Node\Stmt\ClassMethod::class, Node\Stmt\Function_::class, Node\Expr\Closure::class])]
 class RemoveDeadCodeAfterJumpVisitor extends BaseVisitor
 {
     #[\Override]

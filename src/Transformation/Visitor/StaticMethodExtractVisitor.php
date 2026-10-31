@@ -40,7 +40,7 @@ use PhpParser\NodeVisitorAbstract;
  *
  * __CLASS__, __METHOD__, __FUNCTION__, get_called_class() заменяются строками.
  */
-#[VisitorMeta('Статические методы → функции: Class::m() → Class_m()')]
+#[VisitorMeta('Статические методы → функции: Class::m() → Class_m()', targets: [Node\Stmt\Class_::class])]
 class StaticMethodExtractVisitor extends BaseVisitor
 {
     /** @var array<string, array<string, string>> lowercase класс → lowercase метод → имя функции */

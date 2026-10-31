@@ -21,7 +21,7 @@ use Recombinator\Support\TypeInference;
  * объекта (для метаданных Doctrine — они не меняются после загрузки, а инвариант —
  * значение по умолчанию, которое загрузка не трогала).
  */
-#[VisitorMeta('Подстановка инвариантов свойств (метаданные Doctrine и др.)')]
+#[VisitorMeta('Подстановка инвариантов свойств (метаданные Doctrine и др.)', targets: [Node\Stmt\ClassLike::class])]
 class InvariantPropertyVisitor extends BaseVisitor
 {
     private ?TypeInference $inference = null;

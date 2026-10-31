@@ -17,7 +17,7 @@ use Recombinator\Domain\ScopeStore;
  * `static::X` разрешается, только если у класса нет наследников (иначе static —
  * подкласс со своим X).
  */
-#[VisitorMeta('Инлайн констант классов: ClassName::CONST → значение')]
+#[VisitorMeta('Инлайн констант классов: ClassName::CONST → значение', targets: [Node\Expr\ClassConstFetch::class, Node\Stmt\ClassConst::class])]
 class ConstClassVisitor extends BaseVisitor
 {
     protected ScopeStore $scopeStore;

@@ -15,7 +15,7 @@ use Recombinator\Domain\ScopeStore;
  * и распаковка `...$args` не подставляются; пропущенный аргумент без значения
  * по умолчанию — ошибка вызова, такой вызов остаётся.
  */
-#[VisitorMeta('Подстановка тел функций на место вызовов (инлайн)')]
+#[VisitorMeta('Подстановка тел функций на место вызовов (инлайн)', targets: [Node\Expr\FuncCall::class])]
 class CallFunctionVisitor extends BaseVisitor
 {
     protected ScopeStore $scopeStore;

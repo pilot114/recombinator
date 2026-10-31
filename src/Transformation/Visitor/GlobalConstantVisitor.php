@@ -19,7 +19,7 @@ use PhpParser\Node;
  * на всё время выполнения. Объявление остаётся (константу может читать код вне
  * программы).
  */
-#[VisitorMeta('Подстановка глобальных констант верхнего уровня')]
+#[VisitorMeta('Подстановка глобальных констант верхнего уровня', targets: [Node\Expr\ConstFetch::class])]
 class GlobalConstantVisitor extends BaseVisitor
 {
     /** @var array<string, Node\Expr> имя → значение */

@@ -40,7 +40,7 @@ use Recombinator\Transformation\BodyInliner;
  *
  * VarToScalarVisitor работает с кодом верхнего уровня; это правило — его аналог для тел.
  */
-#[VisitorMeta('Подстановка литеральных локальных переменных в телах функций')]
+#[VisitorMeta('Подстановка литеральных локальных переменных в телах функций', targets: [Node\Expr\Assign::class])]
 class LocalConstantVisitor extends BaseVisitor
 {
     /** @var array<string, true> переменные верхнего уровня, видимые из функций (`global $x`) */

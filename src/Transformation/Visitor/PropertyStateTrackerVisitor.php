@@ -26,7 +26,7 @@ use Recombinator\Transformation\BodyInliner;
  * других записей. Подстановка — только в коде верхнего уровня: в функциях и методах
  * `$var` — другая переменная, а замыкание может выполниться позже записи.
  */
-#[VisitorMeta('Подстановка значений свойств объектов из топ-уровневых присваиваний')]
+#[VisitorMeta('Подстановка значений свойств объектов из топ-уровневых присваиваний', targets: [Node\Expr\PropertyFetch::class, Node\Expr\NullsafePropertyFetch::class])]
 class PropertyStateTrackerVisitor extends BaseVisitor
 {
     /** @var array<string, array<string, Node\Expr>> varName → propName → expr */

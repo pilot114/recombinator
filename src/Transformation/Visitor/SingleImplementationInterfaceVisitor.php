@@ -28,7 +28,7 @@ use Recombinator\Support\ExternalCode;
  * класс подгрузит автозагрузка во время выполнения). Пока есть невстроенный include,
  * ничего не меняется.
  */
-#[VisitorMeta('Интерфейс с единственной реализацией → класс в instanceof, catch и типах')]
+#[VisitorMeta('Интерфейс с единственной реализацией → класс в instanceof, catch и типах', targets: [Node\Stmt\Interface_::class])]
 class SingleImplementationInterfaceVisitor extends BaseVisitor
 {
     /** @var array<string, string|false> lowercase интерфейс → имя класса-реализации (false — реализаций нет) */

@@ -15,7 +15,7 @@ use PhpParser\Node;
  * 2. Do-while/while-цикл, тело которого только мутирует локальные переменные,
  *    не читаемые после цикла: `do { $j++; } while ($j < 2);`
  */
-#[VisitorMeta('Удаление мёртвых циклов')]
+#[VisitorMeta('Удаление мёртвых циклов', targets: [Node\Stmt\For_::class, Node\Stmt\Do_::class])]
 class RemoveDeadLoopVisitor extends BaseVisitor
 {
     #[\Override]

@@ -27,7 +27,7 @@ use PhpParser\Node;
  * - Цикл завершается менее чем за 500 итераций
  * - Счётчик не читается после цикла
  */
-#[VisitorMeta('Разворачивание while-цикла с известным счётчиком')]
+#[VisitorMeta('Разворачивание while-цикла с известным счётчиком', targets: [Node\Stmt\While_::class])]
 class BoundedWhileUnrollerVisitor extends BaseVisitor
 {
     #[\Override]

@@ -10,7 +10,7 @@ use PhpParser\Node;
  * Удаляет все комментарии из кода:
  * однострочные (//), многострочные (/* *\/), PHPDoc (/** *\/)
  */
-#[VisitorMeta('Удаление всех комментариев: //, /* */, /** */')]
+#[VisitorMeta('Удаление всех комментариев: //, /* */, /** */', targets: [Node\Stmt::class])]
 class RemoveCommentsVisitor extends BaseVisitor
 {
     public function enterNode(Node $node): int|Node|array|null

@@ -30,7 +30,7 @@ use PhpParser\Node;
  * Работает снизу вверх (leaveNode), поэтому вложенные выражения разворачиваются
  * изнутри наружу за один проход.
  */
-#[VisitorMeta('Вынос вложенных тернарных операторов и ?? в $tmp-переменные')]
+#[VisitorMeta('Вынос вложенных тернарных операторов и ?? в $tmp-переменные', targets: [Node\Expr\Ternary::class, Node\Expr\BinaryOp\Coalesce::class])]
 class ReadabilityVisitor extends BaseVisitor
 {
     private int $counter = 0;

@@ -17,7 +17,7 @@ use PhpParser\Node;
  * вся цепочка объявлена в AST и без implements: иначе (класс ещё не подключён, имена
  * в namespace не разрешены, интерфейсы) ответ неизвестен и instanceof остаётся.
  */
-#[VisitorMeta('Упрощение instanceof с известным типом переменной')]
+#[VisitorMeta('Упрощение instanceof с известным типом переменной', targets: [Node\Expr\Instanceof_::class])]
 class InstanceofSimplifierVisitor extends BaseVisitor
 {
     /** @var array<string, string> varName → className */

@@ -15,7 +15,7 @@ use PhpParser\Node;
  *   }
  *   → function (): string { throw new RuntimeException('x'); }
  */
-#[VisitorMeta('Удаление неиспользуемых переменных из use(...) замыканий')]
+#[VisitorMeta('Удаление неиспользуемых переменных из use(...) замыканий', targets: [Node\Expr\Closure::class])]
 class RemoveUnusedClosureCapturesVisitor extends BaseVisitor
 {
     #[\Override]

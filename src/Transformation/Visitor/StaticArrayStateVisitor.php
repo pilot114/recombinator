@@ -19,7 +19,7 @@ use PhpParser\NodeTraverser;
  *
  * Обрабатывает только переменные верхнего уровня с литеральными ключами.
  */
-#[VisitorMeta('Статическое отслеживание состояния массивов (isset/empty/unset)')]
+#[VisitorMeta('Статическое отслеживание состояния массивов (isset/empty/unset)', targets: [Node\Stmt\Unset_::class, Node\Expr\Isset_::class, Node\Expr\Empty_::class])]
 class StaticArrayStateVisitor extends BaseVisitor
 {
     /** @var array<string, array<int|string, mixed>> varName → [key → value] */

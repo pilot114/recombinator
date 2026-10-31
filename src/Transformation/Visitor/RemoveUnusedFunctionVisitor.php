@@ -19,7 +19,7 @@ use Recombinator\Support\ExternalCode;
  * учитываются — то же соглашение, что у RemoveUnusedMethodVisitor. Имя, собранное
  * из частей (`'f' . $x`), не видно.
  */
-#[VisitorMeta('Удаление неиспользуемых функций')]
+#[VisitorMeta('Удаление неиспользуемых функций', targets: [Node\Stmt\Function_::class])]
 class RemoveUnusedFunctionVisitor extends BaseVisitor
 {
     /** @var array<string, true> */

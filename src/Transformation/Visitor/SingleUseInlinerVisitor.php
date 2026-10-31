@@ -25,7 +25,7 @@ use Recombinator\Transformation\BodyInliner;
  * на родителей от NodeConnectingVisitor, поэтому работает корректно
  * в рамках стандартного конвейера applyVisitor().
  */
-#[VisitorMeta('Инлайнинг одноразовых переменных (writeCount=1, readCount=1)')]
+#[VisitorMeta('Инлайнинг одноразовых переменных (writeCount=1, readCount=1)', targets: [Node\Expr\Assign::class])]
 class SingleUseInlinerVisitor extends BaseVisitor
 {
     /** @var array<string, Node\Expr> scopeId:varName → expression to inline */

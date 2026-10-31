@@ -21,7 +21,7 @@ use PhpParser\Node;
  * Запускается один раз после схождения: строки с именами в карте иначе считались бы
  * ссылками на классы и мешали удалению недостижимых.
  */
-#[VisitorMeta('Алиасы исходных имён встроенных классов для кода из vendor')]
+#[VisitorMeta('Алиасы исходных имён встроенных классов для кода из vendor', targets: [Node\Stmt\ClassLike::class])]
 class OriginalClassAliasVisitor extends BaseVisitor
 {
     #[\Override]

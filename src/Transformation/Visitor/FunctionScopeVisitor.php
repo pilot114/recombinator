@@ -11,7 +11,7 @@ use Recombinator\Domain\ScopeStore;
  *
  * Если такая замена уже выполнена, отправляем выражение в хранилище контекстов (scopeStore) и удаляем файл
  */
-#[VisitorMeta('Замена тела функции на однострочник → ScopeStore (работает пофайлово)')]
+#[VisitorMeta('Замена тела функции на однострочник → ScopeStore (работает пофайлово)', targets: [Node\Stmt\Function_::class])]
 class FunctionScopeVisitor extends BaseVisitor
 {
     protected bool $isGlobalScope = false;

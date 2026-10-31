@@ -21,7 +21,7 @@ use PhpParser\Node;
  *
  * Объявление ставится сразу после инструкции верхнего уровня, в которой был класс.
  */
-#[VisitorMeta('Анонимные классы → именованные')]
+#[VisitorMeta('Анонимные классы → именованные', targets: [Node\Expr\New_::class])]
 class AnonymousClassHoistVisitor extends BaseVisitor
 {
     /** @var array<int, list<Node\Stmt\Class_>> spl_object_id инструкции верхнего уровня → вынесенные классы */

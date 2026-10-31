@@ -14,7 +14,7 @@ use PhpParser\NodeTraverser;
  * - `if (false) { ... } elseif ($x) { CODE }` → `if ($x) { CODE }`
  * - `if (true) { CODE }` → CODE (else/elseif отбрасываются)
  */
-#[VisitorMeta('Удаление мёртвых веток if(true/false)')]
+#[VisitorMeta('Удаление мёртвых веток if(true/false)', targets: [Node\Stmt\If_::class, Node\Stmt\Do_::class, Node\Stmt\Switch_::class, Node\Expr\Match_::class])]
 class DeadBranchVisitor extends BaseVisitor
 {
     #[\Override]

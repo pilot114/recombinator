@@ -10,6 +10,9 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 use Recombinator\Core\PrettyDumper;
+use Recombinator\Transformation\AstProfile;
+use Recombinator\Transformation\RuleCalibration;
+use Recombinator\Transformation\RuleEstimate;
 
 class BaseVisitor extends NodeVisitorAbstract
 {
@@ -19,6 +22,24 @@ class BaseVisitor extends NodeVisitorAbstract
 
     /** @var array<Node> */
     protected array $ast = [];
+
+    /**
+     * Быстрая оценка без изменения AST: сколько узлов правило уберёт и сколько займёт проход.
+     * По умолчанию — по узлам-целям из VisitorMeta::$targets и калибровке правила;
+     * null — оценить нельзя (цели не заданы).
+     */
+    public function estimate(AstProfile $profile): ?RuleEstimate
+    {
+        $targets = VisitorMeta::of($this)->targets;
+        if ($targets === []) {
+            return null;
+        }
+
+        [$candidates, $nodes] = $profile->match($targets);
+        $calibration = RuleCalibration::of(static::class);
+
+        return new RuleEstimate($candidates, $nodes * $calibration->yield, $profile->size * $calibration->msPerNode);
+    }
 
     public function beforeTraverse(array $nodes): ?array
     {

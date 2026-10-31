@@ -14,7 +14,7 @@ use PhpParser\Node\Name;
  * Выжный момент - некоторые функции дают детерминированный результат даже
  * на переменных (например, is_array)
  */
-#[VisitorMeta('Вычисление детерминированных функций (is_array([]) → true)')]
+#[VisitorMeta('Вычисление детерминированных функций (is_array([]) → true)', targets: [Node\Expr\FuncCall::class])]
 class EvalStandardFunction extends BaseVisitor
 {
     /**

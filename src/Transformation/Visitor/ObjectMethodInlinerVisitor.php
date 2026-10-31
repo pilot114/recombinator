@@ -28,7 +28,7 @@ use Recombinator\Transformation\BodyInliner;
  * - метод — процедура (нет return в собственной области), без yield, parent::,
  *   динамических переменных; не вызывает сам себя.
  */
-#[VisitorMeta('Встраивание процедур объекта: $obj->m(args); → тело метода с $this → $obj')]
+#[VisitorMeta('Встраивание процедур объекта: $obj->m(args); → тело метода с $this → $obj', targets: [Node\Expr\MethodCall::class])]
 class ObjectMethodInlinerVisitor extends BaseVisitor
 {
     private const int MAX_DEPTH = 8;

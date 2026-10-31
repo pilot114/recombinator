@@ -24,7 +24,7 @@ use PhpParser\Node;
  * Исходный тип сохраняется в атрибутах originalType / originalReturnType: по нему
  * другие правила доказывают, что значение не может быть объектом данного класса.
  */
-#[VisitorMeta('Удаление type-hints локальных классов')]
+#[VisitorMeta('Удаление type-hints локальных классов', targets: [Node\Stmt\ClassLike::class, Node\Expr\Closure::class, Node\Expr\ArrowFunction::class])]
 class StripLocalClassTypeHintsVisitor extends BaseVisitor
 {
     /** @var array<string, true> lowercase class names defined in this AST */

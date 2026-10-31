@@ -12,7 +12,7 @@ use PhpParser\Node\Stmt\Expression;
  * - Бинарные операции (математика, логика, конкатенация)
  * - if (isset(var)) var2 = var;    =>    var2 = var ?? var2;
  */
-#[VisitorMeta('Вычисление константных выражений; if(isset($x)){$y=$x} → $y = $x ?? $y ?? null')]
+#[VisitorMeta('Вычисление константных выражений; if(isset($x)){$y=$x} → $y = $x ?? $y ?? null', targets: [Node\Stmt\If_::class, Node\Expr\BinaryOp\Concat::class, Node\Expr\BinaryOp\Plus::class, Node\Expr\BinaryOp\Minus::class, Node\Expr\BinaryOp\Mul::class, Node\Expr\BinaryOp\Div::class, Node\Expr\BinaryOp\Mod::class, Node\Expr\BinaryOp\Pow::class])]
 class BinaryAndIssetVisitor extends BaseVisitor
 {
     public function enterNode(Node $node): int|Node|array|null

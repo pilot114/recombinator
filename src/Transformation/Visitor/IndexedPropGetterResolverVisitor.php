@@ -24,7 +24,7 @@ use Recombinator\Support\SandboxResult;
  * Использует статический кэш результатов enum-методов, чтобы пережить
  * удаление enum-класса в EnumCaseInlinerVisitor.
  */
-#[VisitorMeta('Разворачивание $obj->getter(key)?->method() через отслеживание сеттеров')]
+#[VisitorMeta('Разворачивание $obj->getter(key)?->method() через отслеживание сеттеров', targets: [Node\Stmt\Class_::class])]
 class IndexedPropGetterResolverVisitor extends BaseVisitor
 {
     /**

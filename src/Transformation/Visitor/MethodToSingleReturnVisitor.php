@@ -29,7 +29,7 @@ use Recombinator\Transformation\BodyInliner;
  *  - если RHS содержит побочные эффекты, переменная должна использоваться ровно один раз
  *    (иначе дублирование выражения изменит семантику).
  */
-#[VisitorMeta('Свёртка тела функции/метода к одному return (подстановка локальных переменных)')]
+#[VisitorMeta('Свёртка тела функции/метода к одному return (подстановка локальных переменных)', targets: [Node\Stmt\Return_::class])]
 class MethodToSingleReturnVisitor extends BaseVisitor
 {
     public function enterNode(Node $node): int|Node|array|null

@@ -29,7 +29,7 @@ use Recombinator\Support\TypeInference;
  * использованию параметра), свойства-носители; класс не назван в instanceof, `C::class`,
  * строках, catch; у класса нет предков и наследников, статических членов и атрибутов.
  */
-#[VisitorMeta('Класс с одним методом → замыкание')]
+#[VisitorMeta('Класс с одним методом → замыкание', targets: [Node\Stmt\Class_::class])]
 class ClosureClassVisitor extends BaseVisitor
 {
     /** @var array<string, array{Node\Stmt\Class_, Node\Stmt\ClassMethod, list<string>, array<string, Node\Expr>}> класс → [класс, метод, параметры конструктора, свойства по умолчанию] */

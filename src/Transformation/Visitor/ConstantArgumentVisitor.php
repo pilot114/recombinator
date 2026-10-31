@@ -31,7 +31,7 @@ use PhpParser\NodeVisitorAbstract;
  * `$$`, extract, compact, func_get_args) и не захвачен замыканием по ссылке; значение
  * подходит к объявленному типу без приведения.
  */
-#[VisitorMeta('Специализация функции под одинаковый константный аргумент')]
+#[VisitorMeta('Специализация функции под одинаковый константный аргумент', targets: [Node\Stmt\Function_::class])]
 class ConstantArgumentVisitor extends BaseVisitor
 {
     /** @var \SplObjectStorage<Node\Stmt\Function_, array<string, Node\Expr>> функция → параметр → значение */

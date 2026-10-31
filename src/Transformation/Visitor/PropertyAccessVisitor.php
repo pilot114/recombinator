@@ -8,7 +8,7 @@ use Recombinator\Domain\ScopeStore;
 /**
  * Замена обращений к свойствам объектов их значениями
  */
-#[VisitorMeta('Замена $obj->property на значения из ScopeStore')]
+#[VisitorMeta('Замена $obj->property на значения из ScopeStore', targets: [Node\Expr\PropertyFetch::class])]
 class PropertyAccessVisitor extends BaseVisitor
 {
     protected ScopeStore $scopeStore;

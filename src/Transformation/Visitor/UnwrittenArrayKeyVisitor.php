@@ -27,7 +27,7 @@ use Recombinator\Support\TypeInference;
  * Сворачиваются `->p['k'] ?? D` → D, `isset(->p['k'])` → false, `empty(->p['k'])` → true,
  * только для получателя — объекта класса программы с этим свойством.
  */
-#[VisitorMeta('Чтение ключа массива-свойства, который нигде не записывается')]
+#[VisitorMeta('Чтение ключа массива-свойства, который нигде не записывается', targets: [Node\Expr\BinaryOp\Coalesce::class, Node\Expr\Isset_::class, Node\Expr\Empty_::class])]
 class UnwrittenArrayKeyVisitor extends BaseVisitor
 {
     /**

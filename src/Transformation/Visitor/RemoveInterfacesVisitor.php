@@ -27,7 +27,7 @@ use Recombinator\Support\TypeInference;
  * Встроенные интерфейсы (Countable, IteratorAggregate, ArrayAccess, …) не трогаются:
  * от них зависит поведение count(), foreach, `$obj[...]`.
  */
-#[VisitorMeta('Удаление интерфейсов и implements')]
+#[VisitorMeta('Удаление интерфейсов и implements', targets: [Node\Stmt\Interface_::class])]
 class RemoveInterfacesVisitor extends BaseVisitor
 {
     /** @var array<string, true> lowercase имена удаляемых интерфейсов */

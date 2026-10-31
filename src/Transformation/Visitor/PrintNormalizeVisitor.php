@@ -11,7 +11,7 @@ use PhpParser\Node;
  * - print $x  →  echo $x  (как statement)
  * - PHP_EOL   →  "\n"
  */
-#[VisitorMeta('Нормализация вывода: print → echo, PHP_EOL → "\n"')]
+#[VisitorMeta('Нормализация вывода: print → echo, PHP_EOL → "\n"', targets: [Node\Expr\Print_::class, Node\Expr\ConstFetch::class])]
 class PrintNormalizeVisitor extends BaseVisitor
 {
     #[\Override]

@@ -14,7 +14,7 @@ use PhpParser\Node;
  * После этого VarToScalarVisitor подставляет скаляры в места использования,
  * а ConstFoldVisitor сворачивает интерполированные строки.
  */
-#[VisitorMeta('Раскрытие деструктуризации с константами в отдельные присваивания')]
+#[VisitorMeta('Раскрытие деструктуризации с константами в отдельные присваивания', targets: [Node\Expr\Array_::class])]
 class DestructuringExpandVisitor extends BaseVisitor
 {
     #[\Override]

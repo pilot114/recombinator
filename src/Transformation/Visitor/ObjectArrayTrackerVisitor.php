@@ -23,7 +23,7 @@ use PhpParser\Node;
  * После этих трансформаций ForeachLiteralUnrollerVisitor раскроет петли,
  * а RemoveUnusedPureVisitor / VarToScalarVisitor устранят мёртвый код.
  */
-#[VisitorMeta('Отслеживание коллекций объектов и разворачивание generator-методов')]
+#[VisitorMeta('Отслеживание коллекций объектов и разворачивание generator-методов', targets: [Node\Stmt\Class_::class])]
 class ObjectArrayTrackerVisitor extends BaseVisitor
 {
     /** @var array<string, string> varName → className */

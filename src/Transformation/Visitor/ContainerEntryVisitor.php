@@ -38,7 +38,7 @@ use Recombinator\Support\Sandbox;
  * для вызовов, которые анализ не может отсеять: с динамическим именем метода и с
  * вычисляемым ключом. Вызовы писателя с литеральным ключом учитываются как обычно.
  */
-#[VisitorMeta('Литеральные записи DI-контейнера: $c->get("settings") → значение')]
+#[VisitorMeta('Литеральные записи DI-контейнера: $c->get("settings") → значение', targets: [Node\Stmt\Class_::class])]
 class ContainerEntryVisitor extends BaseVisitor
 {
     /** @var array<string, Node\Expr> ключ → литеральное значение записи */

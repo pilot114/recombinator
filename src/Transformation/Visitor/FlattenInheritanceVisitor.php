@@ -45,7 +45,7 @@ use PhpParser\NodeVisitorAbstract;
  *     поведение меняется, если ребёнок переопределяет соответствующий символ;
  *   - конфликты имён трейтов (`insteadof`/`as`) не разруливаются.
  */
-#[VisitorMeta('Уплощение наследования: копирование членов родителя в дочерний + inline parent::')]
+#[VisitorMeta('Уплощение наследования: копирование членов родителя в дочерний + inline parent::', targets: [Node\Stmt\Class_::class])]
 class FlattenInheritanceVisitor extends BaseVisitor
 {
     /** @var array<string, Node\Stmt\Class_> */

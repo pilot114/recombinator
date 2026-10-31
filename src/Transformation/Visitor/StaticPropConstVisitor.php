@@ -26,7 +26,7 @@ use Recombinator\Transformation\BodyInliner;
  * `static::$p` сворачивается, только если у класса нет наследников: иначе `static`
  * может означать подкласс со своим значением.
  */
-#[VisitorMeta('Неизменяемое статическое свойство → его значение по умолчанию')]
+#[VisitorMeta('Неизменяемое статическое свойство → его значение по умолчанию', targets: [Node\Expr\StaticPropertyFetch::class])]
 class StaticPropConstVisitor extends BaseVisitor
 {
     /** @var array<string, array<string, Node\Expr>> lowercase класс → свойство → значение */

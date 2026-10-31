@@ -12,6 +12,7 @@ use Recombinator\Support\ColorDiffer;
 use Recombinator\Support\PipelineConsole;
 use Recombinator\Support\Sandbox;
 use Recombinator\Domain\ScopeStore;
+use Recombinator\Transformation\RuleScheduler;
 use Recombinator\Transformation\VisitorPipeline;
 use Recombinator\Transformation\Visitor\VisitorMeta;
 
@@ -44,17 +45,6 @@ $ast = $parser->parse(file_get_contents($entryPoint)) ?? [];
 // Helpers
 // ════════════════════════════════════════════════════════════════════════════
 
-/** Read name+desc from #[VisitorMeta] attribute; fall back to class short name. */
-$meta = static function (object $visitor): VisitorMeta {
-    $ref   = new ReflectionClass($visitor);
-    $attrs = $ref->getAttributes(VisitorMeta::class);
-    if (!empty($attrs)) {
-        /** @var VisitorMeta $m */
-        $m = $attrs[0]->newInstance();
-        return new VisitorMeta(desc: $m->desc, name: $m->name ?: $ref->getShortName());
-    }
-    return new VisitorMeta(desc: '', name: $ref->getShortName());
-};
 
 // ════════════════════════════════════════════════════════════════════════════
 // Transformation pipeline
@@ -66,38 +56,37 @@ $pipeline  = new VisitorPipeline(new ScopeStore(), $execCache, new Sandbox($exec
 
 $totalChanged = 0;
 $pass         = 0;
+// Порядок правил: первым аргументом (estimate, priority, sequential), иначе из meta.json
+$zooMeta      = json_decode((string) file_get_contents(__DIR__ . '/../examples/meta.json'), true)['08-syntax-zoo'] ?? [];
+$scheduler    = new RuleScheduler($argv[1] ?? $zooMeta['schedule'] ?? RuleScheduler::ESTIMATE, count($pipeline->main()));
 
 echo "\n";
-echo $console->colorize('  ● Трансформации: ' . count($pipeline->main()) . " visitors · фиксированная точка\n", 'light_cyan');
+echo $console->colorize('  ● Трансформации: ' . count($pipeline->main()) . " visitors · фиксированная точка · {$scheduler->mode}\n", 'light_cyan');
 
-do {
-    $pass++;
-    $passChanged     = false;
-    $passHeaderShown = false;
+while (($index = $scheduler->next($rules = $pipeline->main(), $ast)) !== null) {
+    $visitor   = $rules[$index];
+    $rulePass  = $scheduler->pass;
+    $before    = $console->applyVisitor($ast, $visitor);
+    $after     = $printer->prettyPrint($ast);
 
-    foreach ($pipeline->main() as $visitor) {
-        $before  = $console->applyVisitor($ast, $visitor);
-        $after   = $printer->prettyPrint($ast);
+    [$diffText, $diffCount] = $console->colorDiff($before, $after);
+    $scheduler->done($index, $diffCount > 0);
 
-        [$diffText, $diffCount] = $console->colorDiff($before, $after);
-
-        if ($diffCount === 0) {
-            continue;
-        }
-
-        if (!$passHeaderShown) {
-            echo "\n";
-            echo $console->colorize("  ● Pass $pass\n", 'light_cyan');
-            $passHeaderShown = true;
-        }
-
-        $m = $meta($visitor);
-        $console->stepHeader($m->name, $m->desc, $diffText, $diffCount);
-
-        $passChanged   = true;
-        $totalChanged += $diffCount;
+    if ($diffCount === 0) {
+        continue;
     }
-} while ($passChanged && $pass < 15);
+
+    if ($rulePass > $pass) {
+        $pass = $rulePass;
+        echo "\n";
+        echo $console->colorize("  ● Pass $pass\n", 'light_cyan');
+    }
+
+    $m = VisitorMeta::of($visitor);
+    $console->stepHeader($m->name, $m->desc, $diffText, $diffCount);
+
+    $totalChanged += $diffCount;
+}
 
 // ════════════════════════════════════════════════════════════════════════════
 // Readability
@@ -117,7 +106,7 @@ foreach (VisitorPipeline::readability() as $visitor) {
         continue;
     }
 
-    $m = $meta($visitor);
+    $m = VisitorMeta::of($visitor);
     $console->stepHeader($m->name, $m->desc, $diffText, $diffCount);
     $readabilityChanged += $diffCount;
 }
@@ -136,10 +125,12 @@ if ($totalChanged === 0) {
     echo $console->colorize("  Код уже оптимален — изменений нет.\n", 'light_green');
 } else {
     echo $console->colorize(sprintf(
-        "  Итого: %d строк преобразовано за %d %s\n",
+        "  Итого: %d строк преобразовано за %d %s · запусков правил %d, пропущено по оценке %d\n",
         $totalChanged,
-        $pass - 1,
-        ($pass - 1) === 1 ? 'проход' : 'прохода',
+        $pass,
+        $pass === 1 ? 'проход' : 'прохода',
+        $scheduler->runs(),
+        $scheduler->skipped,
     ), 'light_green');
 }
 $console->hr('═');

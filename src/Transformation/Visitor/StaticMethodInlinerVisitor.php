@@ -23,7 +23,7 @@ use PhpParser\NodeTraverser;
  * Запускать ПОСЛЕ ConstClassVisitor (константы уже раскрыты) и
  * ПОСЛЕ EnumCaseInlinerVisitor (enum-методы обработаны).
  */
-#[VisitorMeta('Инлайн статических методов: ClassName::method() → тело метода')]
+#[VisitorMeta('Инлайн статических методов: ClassName::method() → тело метода', targets: [Node\Expr\StaticCall::class])]
 class StaticMethodInlinerVisitor extends BaseVisitor
 {
     /**

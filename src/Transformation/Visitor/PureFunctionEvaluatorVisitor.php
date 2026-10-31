@@ -22,7 +22,7 @@ use Recombinator\Support\SandboxRunner;
  * Аргументы считаются известными если они — скаляры, константы, константные массивы
  * или переменные, чьё значение (тоже константное) известно из предшествующих присваиваний в коде.
  */
-#[VisitorMeta('Вычисление чистых функций с константными аргументами')]
+#[VisitorMeta('Вычисление чистых функций с константными аргументами', targets: [Node\Stmt\Function_::class])]
 class PureFunctionEvaluatorVisitor extends BaseVisitor
 {
     /** @var array<string, Node\Stmt\Function_> */

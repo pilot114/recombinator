@@ -35,7 +35,7 @@ use Recombinator\Support\SandboxRunner;
  *
  * Предупреждение или исключение при выполнении — отказ: вывод не равен поведению программы.
  */
-#[VisitorMeta('Выполнение детерминированной программы: весь код → её вывод')]
+#[VisitorMeta('Выполнение детерминированной программы: весь код → её вывод', targets: [Node\Stmt::class])]
 class ProgramEvaluatorVisitor extends BaseVisitor
 {
     private const int TIMEOUT = 5;

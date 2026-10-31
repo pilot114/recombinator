@@ -32,7 +32,7 @@ use Recombinator\Support\VisibilityConsistency;
  * параметрами по ссылке и вариативными, `func_get_args()`/`compact()`/`extract()`,
  * функции, упомянутые строкой (callable), объявленные не на верхнем уровне.
  */
-#[VisitorMeta('Встраивание функции с одним вызовом на уровне инструкций')]
+#[VisitorMeta('Встраивание функции с одним вызовом на уровне инструкций', targets: [Node\Stmt\Function_::class, Node\Stmt\ClassMethod::class])]
 class CallSiteInlinerVisitor extends BaseVisitor
 {
     /** @var array<string, Node\Stmt\Function_> lowercase имя → функция с единственным вызовом */

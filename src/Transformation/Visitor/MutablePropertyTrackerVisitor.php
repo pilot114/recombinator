@@ -19,7 +19,7 @@ use PhpParser\Node;
  * - Переменная объявлена на верхнем уровне через $var = new ClassName(...)
  * - Вызов метода — тоже на верхнем уровне (Stmt\Expression)
  */
-#[VisitorMeta('Отслеживание мутирующих вызовов $this->prop += $param')]
+#[VisitorMeta('Отслеживание мутирующих вызовов $this->prop += $param', targets: [Node\Stmt\Property::class, Node\Expr\AssignOp::class])]
 class MutablePropertyTrackerVisitor extends BaseVisitor
 {
     /** @var array<string, array<string, mixed>> varName → propName → currentValue (scalar PHP) */

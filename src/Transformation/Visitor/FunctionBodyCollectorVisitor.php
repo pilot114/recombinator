@@ -21,7 +21,7 @@ use Recombinator\Domain\ScopeStore;
  *   подстановка не закончилась бы.
  * Несобранная функция стирается из ScopeStore: тело из прошлого прохода устарело.
  */
-#[VisitorMeta('Сбор однострочных функций в ScopeStore для встраивания вызовов')]
+#[VisitorMeta('Сбор однострочных функций в ScopeStore для встраивания вызовов', targets: [Node\Stmt\Function_::class])]
 class FunctionBodyCollectorVisitor extends BaseVisitor
 {
     private const array SCALAR_TYPES = ['int', 'float', 'string', 'bool', 'false', 'true'];

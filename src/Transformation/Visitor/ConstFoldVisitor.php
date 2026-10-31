@@ -17,7 +17,7 @@ use PhpParser\Node;
  * Работает снизу вверх (leaveNode), поэтому вложенные выражения
  * сворачиваются раньше внешних.
  */
-#[VisitorMeta('Свёртка константных сравнений и тернарных операций')]
+#[VisitorMeta('Свёртка константных сравнений и тернарных операций', targets: [Node\Expr\BinaryOp::class, Node\Expr\BooleanNot::class, Node\Expr\Cast::class, Node\Expr\Ternary::class, Node\Expr\ArrayDimFetch::class, Node\Scalar\InterpolatedString::class])]
 class ConstFoldVisitor extends BaseVisitor
 {
     #[\Override]

@@ -11,7 +11,7 @@ use PhpParser\PrettyPrinter\Standard as StandardPrinter;
 /**
  * Подготавливает кеш скопов
  */
-#[VisitorMeta('Подготовка кеша скоупов: сохраняет функции/классы в файлы (cacheDir=null → пропуск)')]
+#[VisitorMeta('Подготовка кеша скоупов: сохраняет функции/классы в файлы (cacheDir=null → пропуск)', targets: [Node\Stmt\Function_::class, Node\Stmt\Class_::class])]
 class ScopeVisitor extends BaseVisitor
 {
     public function __construct(

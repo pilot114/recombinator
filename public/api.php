@@ -53,6 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
                 'srcCount'    => $countPhp($exampleDir . 'src'),
                 'vendorCount' => $countPhp($exampleDir . 'vendor'),
                 'environment' => $meta['environment'] ?? null,
+                'schedule'    => $meta['schedule'] ?? null,
             ];
             continue;
         }
@@ -66,8 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
         }
 
         $examples[] = [
-            'id'    => $id,
-            'name'  => (string) ($meta['name'] ?? $id),
+            'id'       => $id,
+            'name'     => (string) ($meta['name'] ?? $id),
+            'schedule' => $meta['schedule'] ?? null,
             'files' => $files,
         ];
     }
@@ -93,10 +95,12 @@ use PhpParser\PrettyPrinter\Standard as Printer;
 use Recombinator\Core\ExecutionCache;
 use Recombinator\Domain\ScopeStore;
 use Recombinator\Support\LineDiffer;
+use Recombinator\Support\ProjectFiles;
 use Recombinator\Support\RunCache;
 use Recombinator\Support\Sandbox;
 use Recombinator\Core\TargetEnvironment;
 use Recombinator\Support\DoctrineMetadataProbe;
+use Recombinator\Transformation\RuleScheduler;
 use Recombinator\Transformation\VisitorPipeline;
 use Recombinator\Transformation\Visitor\VisitorMeta;
 use SebastianBergmann\Diff\Output\StrictUnifiedDiffOutputBuilder;
@@ -135,6 +139,8 @@ $fileMap = [];
 /** @var array<string, mixed> $environmentData допущения о целевом сервере (TargetEnvironment) */
 $environmentData = [];
 $projectDir      = null;
+/** Порядок правил примера-проекта из meta.json — если запрос его не задал */
+$metaSchedule    = null;
 
 if (!empty($input['project'])) {
     $projectId  = preg_replace('/[^a-z0-9-]/', '', (string) $input['project']);
@@ -149,6 +155,7 @@ if (!empty($input['project'])) {
                 $projectDir      = rtrim($d, '/');
                 $entryRel        = (string) ($input['entry'] ?? $meta['entry'] ?? '');
                 $environmentData = is_array($meta['environment'] ?? null) ? $meta['environment'] : [];
+                $metaSchedule    = $meta['schedule'] ?? null;
             }
 
             break;
@@ -160,25 +167,7 @@ if (!empty($input['project'])) {
         exit;
     }
 
-    foreach (['src', 'vendor'] as $subdir) {
-        $scanDir = $projectDir . '/' . $subdir;
-        if (!is_dir($scanDir)) {
-            continue;
-        }
-
-        $iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($scanDir, RecursiveDirectoryIterator::SKIP_DOTS));
-        foreach ($iterator as $file) {
-            if ($file->isFile() && $file->getExtension() === 'php') {
-                $rel = ltrim(str_replace($projectDir, '', $file->getPathname()), '/');
-                $fileMap[$rel] = (string) file_get_contents($file->getPathname());
-            }
-        }
-    }
-
-    // Файлы корня проекта (bootstrap.php, settings.php и т.п.) подключаются через require
-    foreach (glob($projectDir . '/*.php') ?: [] as $rootFile) {
-        $fileMap[basename($rootFile)] = (string) file_get_contents($rootFile);
-    }
+    $fileMap = ProjectFiles::collect($projectDir);
 
     if (!empty($entryRel) && file_exists($projectDir . '/' . $entryRel)) {
         $fileMap[$entryRel] = (string) file_get_contents($projectDir . '/' . $entryRel);
@@ -271,7 +260,14 @@ if ($projectDir !== null) {
 $envArray    = $environment->toArray();
 $envHash     = $environment->isEmpty() ? '' : sha1((string) json_encode($envArray));
 $inputKey    = sha1(serialize([$code, $fileMap, $entryRel ?? '']));
-$runKey      = sha1($inputKey . $envHash . pipelineVersion());
+// Порядок правил: estimate (по оценке), priority (по приоритету без оценки), sequential (по списку)
+$schedule    = (string) ($input['schedule'] ?? $metaSchedule ?? RuleScheduler::ESTIMATE);
+if (!in_array($schedule, RuleScheduler::MODES, true)) {
+    echo json_encode(['error' => 'Unknown schedule: ' . $schedule]);
+    exit;
+}
+
+$runKey      = sha1($inputKey . $envHash . $schedule . pipelineVersion());
 
 // Пробы: частичное выполнение кода проекта (метаданные Doctrine) → инварианты
 if ($projectDir !== null && isset($environment->probes['doctrine'])) {
@@ -365,8 +361,7 @@ if ($run === null && empty($input['fresh']) && ($old = $runCache->previous($inpu
         ...$old,
         'ast'           => $old['main_ast'],
         'main_ast'      => null,
-        'idle_runs'     => 0,
-        'visitor_index' => 0,
+        'scheduler'     => null,
         // Шаги прошлых прогонов: при большом ответе клиенту отдаются только новые
         'steps_base'    => count($old['steps']),
         'done'          => false,
@@ -386,8 +381,7 @@ if ($run === null) {
         'original'      => $code,
         'ast'           => $ast,
         'steps'         => [],
-        'pass'          => 1,
-        'idle_runs'     => 0,
+        'scheduler'     => null,
         'passes'        => 0,
         'done'          => false,
         'final'         => null,
@@ -473,14 +467,14 @@ function saveDone(string $doneFile, array $run): void
     rename($tmp, $doneFile);
 }
 
-// Проход, не уложившийся в лимит, — фатальная ошибка PHP; сообщаем о ней клиенту JSON-ом.
-// Состояние после предыдущего прохода уже сохранено.
-$currentPass = $run['pass'];
-register_shutdown_function(static function () use (&$currentPass, $timeout): void {
+// Правило, не уложившееся в лимит, — фатальная ошибка PHP; сообщаем о ней клиенту JSON-ом.
+// Состояние на последнем чекпоинте уже сохранено.
+$currentRule = '';
+register_shutdown_function(static function () use (&$currentRule, $timeout): void {
     $error = error_get_last();
     if ($error !== null && in_array($error['type'], [E_ERROR, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
         $message = str_contains($error['message'], 'Maximum execution time')
-            ? sprintf('Проход %d не уложился в лимит %d с', $currentPass, $timeout)
+            ? sprintf('Правило %s не уложилось в лимит %d с', $currentRule, $timeout)
             : $error['message'];
         echo json_encode(['error' => $message]);
     }
@@ -517,19 +511,6 @@ function applyOneVisitor(array &$ast, NodeVisitorAbstract $visitor, string $befo
     ];
 }
 
-function getVisitorMeta(NodeVisitorAbstract $visitor): array
-{
-    $ref   = new ReflectionClass($visitor);
-    $attrs = $ref->getAttributes(VisitorMeta::class);
-    if ($attrs !== []) {
-        /** @var VisitorMeta $m */
-        $m = $attrs[0]->newInstance();
-        return ['name' => $m->name ?: $ref->getShortName(), 'desc' => $m->desc];
-    }
-
-    return ['name' => $ref->getShortName(), 'desc' => ''];
-}
-
 // Состояние, которое переживает проходы (и запросы — через сохранённый прогон).
 // Визиторы пересоздаются на каждом проходе, а кеш предвыполнения и enum-методов — нет
 $pipeline = new VisitorPipeline(
@@ -546,13 +527,13 @@ $pipeline = new VisitorPipeline(
 /** Шаг для журнала: полный код «до/после» — только если он не слишком велик. */
 function makeStep(int $pass, NodeVisitorAbstract $visitor, string $before, string $after, string $diff, float $timeMs): array
 {
-    $meta  = getVisitorMeta($visitor);
+    $meta  = VisitorMeta::of($visitor);
     $small = strlen($before) + strlen($after) <= 2 * STEP_CODE_LIMIT;
 
     return [
         'pass'    => $pass,
-        'visitor' => $meta['name'],
-        'desc'    => $meta['desc'],
+        'visitor' => $meta->name,
+        'desc'    => $meta->desc,
         'before'  => $small ? "<?php\n" . $before : null,
         'after'   => $small ? "<?php\n" . $after : null,
         'diff'    => $diff,
@@ -561,78 +542,63 @@ function makeStep(int $pass, NodeVisitorAbstract $visitor, string $before, strin
 }
 
 // ── Phase 1: optimisation loop ────────────────────────────────────────────────
-// Цикл продолжается до полной сходимости. Сходимость — полный круг visitor'ов подряд
-// без изменений, даже если он начался в середине прохода: visitor'ы после последнего
-// изменения уже видели текущий код, и повторный прогон для них ничего не даст.
-// Если бюджет запроса исчерпан (проверяется перед каждым visitor'ом), состояние
-// сохраняется вместе с позицией в проходе, а клиент получает промежуточный результат
-// и запрашивает продолжение. Лимит времени PHP выставляется заново на каждый проход.
-$visitorCount = count($pipeline->main());
-$converged    = false;
-$didWork      = false;
+// Цикл продолжается до полной сходимости: каждое правило видело текущий код и ничего
+// не изменило. Следующее правило выбирает RuleScheduler (по оценке, по приоритету или
+// по списку). Если бюджет запроса исчерпан (проверяется перед каждым правилом), состояние
+// сохраняется вместе с очередью правил, а клиент получает промежуточный результат и
+// запрашивает продолжение. Лимит времени PHP выставляется заново на каждое правило.
+if ($run['scheduler'] === null) {
+    $run['scheduler']   = new RuleScheduler($schedule, count($pipeline->main()));
+    $run['pass_offset'] = $run['passes']; // проходы продолженного прогона нумеруются дальше
+}
 
-while (true) {
-    $pass        = $run['pass'];
-    $currentPass = $pass;
-    $startIndex  = $run['visitor_index'] ?? 0;
-    if ($startIndex === 0) {
-        $run['pass_changed'] = false;
+$scheduler      = $run['scheduler'];
+$didWork        = false;
+$checkpointedAt = microtime(true);
+
+// «after» предыдущего правила — «before» следующего: экономим вызов prettyPrint
+$currentCode = $printer->prettyPrint($ast);
+$reconnect   = true; // первое правило (в том числе после продолжения) требует NodeConnectingVisitor
+
+while (($index = $scheduler->next($rules = $pipeline->main(), $ast)) !== null) {
+    if ($didWork && microtime(true) - $requestStart >= REQUEST_BUDGET) {
+        $run['ast'] = $ast;
+        saveRun($runFile, $run);
+        respond($run, $stepsFrom, true, false);
     }
 
+    $didWork     = true;
+    $visitor     = $rules[$index];
+    $pass        = $run['pass_offset'] + $scheduler->pass;
+    $currentRule = $visitor::class;
     set_time_limit($timeout);
 
-    // Вычисляем «before» один раз перед проходом; далее переиспользуем «after»
-    // предыдущего visitor как «before» следующего — экономим вызов prettyPrint.
-    $currentCode = $printer->prettyPrint($ast);
-    $reconnect   = true; // первый visitor (в том числе после продолжения) требует NodeConnectingVisitor
+    $prevCode    = $currentCode;
+    $r           = applyOneVisitor($ast, $visitor, $prevCode, $reconnect);
+    $currentCode = $r['after'];
+    $run['total_time_ms'] += $r['time_ms'];
 
-    foreach (array_slice($pipeline->main(), $startIndex, null, true) as $index => $visitor) {
-        if ($didWork && microtime(true) - $requestStart >= REQUEST_BUDGET) {
-            $run['visitor_index'] = $index;
-            $run['ast']           = $ast;
-            saveRun($runFile, $run);
-            respond($run, $stepsFrom, true, false);
-        }
+    $changed   = ($prevCode !== $currentCode);
+    $reconnect = $changed; // следующему правилу reconnect нужен только при изменении AST
+    $scheduler->done($index, $changed);
 
-        $didWork     = true;
-        $prevCode    = $currentCode;
-        $r           = applyOneVisitor($ast, $visitor, $prevCode, $reconnect);
-        $currentCode = $r['after'];
-        $run['total_time_ms'] += $r['time_ms'];
-
-        $changed   = ($prevCode !== $currentCode);
-        $reconnect = $changed; // следующий visitor нуждается в reconnect только при изменении AST
-
-        if (!$changed) {
-            if (++$run['idle_runs'] >= $visitorCount) {
-                $converged = true;
-                break;
-            }
-
-            continue;
-        }
-
-        $run['idle_runs']    = 0;
-        $run['steps'][]      = makeStep($pass, $visitor, $prevCode, $currentCode, $differ->diff($prevCode, $currentCode), $r['time_ms']);
-        $run['pass_changed'] = true;
+    if ($changed) {
+        $run['steps'][] = makeStep($pass, $visitor, $prevCode, $currentCode, $differ->diff($prevCode, $currentCode), $r['time_ms']);
+        $run['passes']  = max($run['passes'], $pass);
     }
 
-    $run['passes']        = $run['pass_changed'] ? $pass : $pass - 1;
-    $run['pass']          = $pass + 1;
-    $run['visitor_index'] = 0;
-
-    if ($converged || !$run['pass_changed']) {
-        break;
+    // Чекпоинт: если следующее правило упадёт по лимиту, продолжим отсюда
+    if (microtime(true) - $checkpointedAt >= 30) {
+        $run['ast'] = $ast;
+        saveRun($runFile, $run);
+        $checkpointedAt = microtime(true);
     }
-
-    // Чекпоинт после прохода: если следующий упадёт по лимиту, продолжим отсюда
-    $run['ast'] = $ast;
-    saveRun($runFile, $run);
 }
 
 // ── Phase 2: readability (single isolated pass) ───────────────────────────────
 // Копия AST основного цикла: следующая версия конвейера продолжит с неё (см. RunCache)
 $run['main_ast']  = unserialize(serialize(stripConnections($ast)));
+$pass             = $run['passes'] + 1;
 $readabilityStart = microtime(true);
 $currentCode      = $printer->prettyPrint($ast);
 $reconnect        = true;

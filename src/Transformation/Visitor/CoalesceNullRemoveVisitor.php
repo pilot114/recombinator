@@ -22,7 +22,7 @@ use PhpParser\Node;
  * Работает снизу вверх, поэтому цепочки сворачиваются за один проход:
  *   $a ?? ($b ?? null)  →  $a ?? $b
  */
-#[VisitorMeta('Удаление избыточного ?? null (X ?? null → X)')]
+#[VisitorMeta('Удаление избыточного ?? null (X ?? null → X)', targets: [Node\Expr\BinaryOp\Coalesce::class])]
 class CoalesceNullRemoveVisitor extends BaseVisitor
 {
     #[\Override]

@@ -17,7 +17,7 @@ use Recombinator\Transformation\BodyInliner;
  * присваивается в своей области один раз: у `$c = $c->inc()` в цикле каждая запись —
  * новый объект, а свойства всех копий должны остаться одной переменной.
  */
-#[VisitorMeta('Инлайн конструкторов и методов: New_/MethodCall → тело из ScopeStore')]
+#[VisitorMeta('Инлайн конструкторов и методов: New_/MethodCall → тело из ScopeStore', targets: [Node\Expr\New_::class, Node\Expr\MethodCall::class])]
 class ConstructorAndMethodsVisitor extends BaseVisitor
 {
     protected ScopeStore $scopeStore;

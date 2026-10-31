@@ -8,7 +8,7 @@ use Recombinator\Domain\ScopeStore;
 /**
  * Подмена переменных их значениями (скаляры)
  */
-#[VisitorMeta('Подстановка скалярных переменных вместо промежуточных присваиваний')]
+#[VisitorMeta('Подстановка скалярных переменных вместо промежуточных присваиваний', targets: [Node\Expr\Variable::class])]
 class VarToScalarVisitor extends BaseVisitor
 {
     public ScopeStore $scopeStore;

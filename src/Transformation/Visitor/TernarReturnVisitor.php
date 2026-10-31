@@ -18,7 +18,7 @@ use PhpParser\Node;
  * Работает для ClassMethod и Function_.
  * Приставочные стейтменты перед паттерном сохраняются.
  */
-#[VisitorMeta('if(x){return a;} else {return b;} → return x ? a : b')]
+#[VisitorMeta('if(x){return a;} else {return b;} → return x ? a : b', targets: [Node\Stmt\If_::class])]
 class TernarReturnVisitor extends BaseVisitor
 {
     public function enterNode(Node $node): int|Node|array|null

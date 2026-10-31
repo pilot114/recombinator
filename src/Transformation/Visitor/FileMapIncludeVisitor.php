@@ -21,7 +21,7 @@ use PhpParser\ParserFactory;
  *   vendor/autoload_runtime.php: require_once __DIR__ . '/autoload.php'
  * корректно разрешается в vendor/autoload.php, а не в public/autoload.php.
  */
-#[VisitorMeta('Встраивание include/require из карты файлов')]
+#[VisitorMeta('Встраивание include/require из карты файлов', targets: [Node\Expr\Include_::class])]
 class FileMapIncludeVisitor extends BaseVisitor
 {
     /** В этом обходе встроен файл без declare(strict_types=1) */

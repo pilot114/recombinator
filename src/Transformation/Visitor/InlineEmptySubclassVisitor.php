@@ -24,7 +24,7 @@ use Recombinator\Support\TypeInference;
  * (или ничего — если в catch стоял родитель, а бросали подкласс другой ветки).
  * Подкласс с интерфейсами или атрибутами тоже не пустой: он добавляет тип.
  */
-#[VisitorMeta('Замена пустых подклассов на родительский класс')]
+#[VisitorMeta('Замена пустых подклассов на родительский класс', targets: [Node\Stmt\Class_::class])]
 class InlineEmptySubclassVisitor extends BaseVisitor
 {
     /** @var array<string, string> childName → parentName */

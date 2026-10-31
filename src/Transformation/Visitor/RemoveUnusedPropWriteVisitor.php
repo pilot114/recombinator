@@ -20,7 +20,7 @@ use PhpParser\Node;
  *   объект могут прочитать целиком (var_dump, json_encode, foreach);
  * - правая часть без побочных эффектов.
  */
-#[VisitorMeta('Удаление мёртвых записей в свойства объектов')]
+#[VisitorMeta('Удаление мёртвых записей в свойства объектов', targets: [Node\Expr\PropertyFetch::class])]
 class RemoveUnusedPropWriteVisitor extends BaseVisitor
 {
     /** @var array<string, true> имена свойств, которые где-то читаются ('*' — динамическое чтение) */

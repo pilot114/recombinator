@@ -27,7 +27,7 @@ use Recombinator\Transformation\BodyInliner;
  * Выносятся только объекты классов, объявленных в коде. Порядок вычисления
  * сохраняется: предыдущие аргументы должны быть без побочных эффектов.
  */
-#[VisitorMeta('Вынос new X() из аргументов вызова в переменную')]
+#[VisitorMeta('Вынос new X() из аргументов вызова в переменную', targets: [Node\Expr\New_::class])]
 class NewArgHoistVisitor extends BaseVisitor
 {
     /** @var array<string, Node\Stmt\Class_> lowercase имя → класс, объявленный в AST */

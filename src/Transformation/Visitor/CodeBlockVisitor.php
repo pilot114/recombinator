@@ -26,7 +26,7 @@ use PhpParser\Node;
  *   # Вывод
  *   echo "result: {$ok}\n";
  */
-#[VisitorMeta('Разбивка верхнеуровневого кода на смысловые блоки')]
+#[VisitorMeta('Разбивка верхнеуровневого кода на смысловые блоки', targets: [Node\Stmt::class])]
 class CodeBlockVisitor extends BaseVisitor
 {
     private const array SUPERGLOBALS = [

@@ -23,7 +23,7 @@ use PhpParser\Node;
  * считаются существующими, только если они из ядра PHP — расширения на сервере
  * могут отличаться.
  */
-#[VisitorMeta('Свёртка class_exists() по известному набору классов')]
+#[VisitorMeta('Свёртка class_exists() по известному набору классов', targets: [Node\Expr\FuncCall::class, Node\Expr\StaticCall::class, Node\Expr\New_::class])]
 class ClassExistsFoldVisitor extends BaseVisitor
 {
     private const array CHECKS = [

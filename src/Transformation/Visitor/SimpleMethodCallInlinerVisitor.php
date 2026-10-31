@@ -26,7 +26,7 @@ use PhpParser\NodeVisitorAbstract;
  * Затем PropertyStateTrackerVisitor + ReadonlyPropertyAccessVisitor
  * разворачивают цепочку property-доступов до скаляра.
  */
-#[VisitorMeta('Инлайн простых методов объектов с известным типом')]
+#[VisitorMeta('Инлайн простых методов объектов с известным типом', targets: [Node\Expr\New_::class, Node\VariadicPlaceholder::class])]
 class SimpleMethodCallInlinerVisitor extends BaseVisitor
 {
     /** @var array<string, string> varName → className */

@@ -26,7 +26,7 @@ use Recombinator\Support\SandboxRunner;
  * подставляется, если это значение без объектов (скаляры, массивы) разумного размера;
  * исключение, таймаут, объект в результате — вызов остаётся.
  */
-#[VisitorMeta('Выполнение чистых функций и методов с константными аргументами в песочнице')]
+#[VisitorMeta('Выполнение чистых функций и методов с константными аргументами в песочнице', targets: [Node\Stmt\Function_::class, Node\Expr\StaticCall::class, Node\Expr\New_::class])]
 class PureCallEvaluatorVisitor extends BaseVisitor
 {
     private const int TIMEOUT = 3;

@@ -21,7 +21,7 @@ use Recombinator\Transformation\BodyInliner;
  * Захваченные по значению переменные читаются напрямую, а если тело их меняет —
  * через копию.
  */
-#[VisitorMeta('Встраивание вызова замыкания: call_user_func(function..., $x) → тело')]
+#[VisitorMeta('Встраивание вызова замыкания: call_user_func(function..., $x) → тело', targets: [Node\Expr\Closure::class])]
 class ClosureCallInlinerVisitor extends BaseVisitor
 {
     /** @var array<string, true> */

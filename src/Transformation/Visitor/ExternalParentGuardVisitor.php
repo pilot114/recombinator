@@ -21,7 +21,7 @@ use PhpParser\Node;
  * класс расширения relay) ронял бы весь файл при загрузке. Наследники такого
  * класса оборачиваются той же проверкой.
  */
-#[VisitorMeta('Условное объявление классов с внешним родителем')]
+#[VisitorMeta('Условное объявление классов с внешним родителем', targets: [Node\Stmt\ClassLike::class])]
 class ExternalParentGuardVisitor extends BaseVisitor
 {
     #[\Override]

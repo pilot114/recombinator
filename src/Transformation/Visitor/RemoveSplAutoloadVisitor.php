@@ -14,7 +14,7 @@ use PhpParser\Node;
  * автозагрузчик, который FileMapIncludeVisitor ставит для имён, собранных во время
  * выполнения (атрибут runtimeAutoload).
  */
-#[VisitorMeta('Удаление spl_autoload_register (мёртвый код после инлайнинга)')]
+#[VisitorMeta('Удаление spl_autoload_register (мёртвый код после инлайнинга)', targets: [Node\Expr\FuncCall::class])]
 class RemoveSplAutoloadVisitor extends BaseVisitor
 {
     public function enterNode(Node $node): ?Node

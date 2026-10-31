@@ -18,7 +18,7 @@ use Recombinator\Support\ExternalCode;
  * связывает `'Faker\Provider\en_US\Address'` с `Faker_Provider_en_US_Address`, а также
  * имена в подключаемых во время выполнения файлах (сгенерированные прокси Doctrine).
  */
-#[VisitorMeta('Удаление автозагрузчика Composer, когда загружать нечего')]
+#[VisitorMeta('Удаление автозагрузчика Composer, когда загружать нечего', targets: [Node\Expr\Include_::class])]
 class RuntimeAutoloadVisitor extends BaseVisitor
 {
     private bool $unneeded = false;

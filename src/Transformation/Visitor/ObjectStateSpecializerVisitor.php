@@ -37,7 +37,7 @@ use Recombinator\Transformation\State\RunResult;
  * Стабильное свойство пишется только в конструкторе и в методах, которые нигде
  * не вызываются — его значение известно всегда.
  */
-#[VisitorMeta('Специализация вызовов объекта по отслеживаемому состоянию его свойств')]
+#[VisitorMeta('Специализация вызовов объекта по отслеживаемому состоянию его свойств', targets: [Node\Expr\MethodCall::class])]
 class ObjectStateSpecializerVisitor extends BaseVisitor
 {
     private const int MAX_DEPTH = 8;

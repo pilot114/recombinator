@@ -15,7 +15,7 @@ use PhpParser\Node;
  *
  * Применимо только к свойствам, продвинутым через конструктор (constructor promotion).
  */
-#[VisitorMeta('Замена (new ReadonlyClass(args))->prop на значение аргумента')]
+#[VisitorMeta('Замена (new ReadonlyClass(args))->prop на значение аргумента', targets: [Node\Stmt\Class_::class])]
 class ReadonlyPropertyAccessVisitor extends BaseVisitor
 {
     /** @var array<string, array<string, int>> className → propName → constructorParamIndex */

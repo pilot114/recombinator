@@ -22,7 +22,7 @@ use PhpParser\Node;
  * в instanceof/::class/new, если вызывается метод, который здесь не разворачивается
  * (from, cases, …), или если в коде есть ->value, ->name и вызовы методов экземпляра enum.
  */
-#[VisitorMeta('Разворачивание enum: EnumName::Case → backing-значение, удаление enum')]
+#[VisitorMeta('Разворачивание enum: EnumName::Case → backing-значение, удаление enum', targets: [Node\Stmt\Enum_::class])]
 class EnumCaseInlinerVisitor extends BaseVisitor
 {
     /**

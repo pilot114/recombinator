@@ -26,7 +26,7 @@ use Recombinator\Support\TypeInference;
  * тип-пересечение; проверяемое instanceof выражение — не переменная/свойство
  * (повторять его нельзя); в типе он без реализаций; есть невстроенный include.
  */
-#[VisitorMeta('Проверки типа по интерфейсу → по его реализациям')]
+#[VisitorMeta('Проверки типа по интерфейсу → по его реализациям', targets: [Node\Stmt\Interface_::class])]
 class InterfaceTypeCheckVisitor extends BaseVisitor
 {
     private const int MAX_IMPLEMENTORS = 64;

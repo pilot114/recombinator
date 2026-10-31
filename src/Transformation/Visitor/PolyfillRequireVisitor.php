@@ -24,7 +24,7 @@ use Recombinator\Core\TargetEnvironment;
  *
  * Любое неизвестное условие или инструкция — файл считается полезным и остаётся.
  */
-#[VisitorMeta('Удаление require полифилов, лишних на целевом сервере')]
+#[VisitorMeta('Удаление require полифилов, лишних на целевом сервере', targets: [Node\Expr\Include_::class])]
 class PolyfillRequireVisitor extends BaseVisitor
 {
     private const int MAX_DEPTH = 8;

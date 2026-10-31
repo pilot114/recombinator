@@ -671,6 +671,8 @@ function plural(n, one, two, five) {
 let EXAMPLES = [];
 // Выбранный пример-проект: кнопка Transform в шапке запускает его вместо редактора
 let currentProject = null;
+// Порядок правил выбранного примера (meta.json → schedule); для своего кода — по умолчанию API
+let currentSchedule = undefined;
 
 function showEditorMode() {
   currentProject = null;
@@ -751,6 +753,7 @@ function loadExample(id) {
   const ex = EXAMPLES.find(e => e.id === id);
   if (!ex) return;
 
+  currentSchedule = ex.schedule ?? undefined;
   if (ex.type === 'project') {
     showProjectMode(ex);
     return;
@@ -1322,11 +1325,11 @@ async function run() {
   if (tabs.length === 1) {
     const code = tabs[0].code?.trim();
     if (!code) return;
-    bodyObj = { code };
+    bodyObj = { code, schedule: currentSchedule };
   } else {
     // Несколько файлов: отправляем все, entry = index.php или первый
     const entryName = (tabs.find(t => t.name === 'index.php') ?? tabs[0]).name;
-    bodyObj = { files: tabs.map(t => ({ name: t.name, code: t.code })), entry: entryName };
+    bodyObj = { files: tabs.map(t => ({ name: t.name, code: t.code })), entry: entryName, schedule: currentSchedule };
   }
 
   const btn = $('run-btn');

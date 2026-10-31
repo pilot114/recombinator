@@ -19,7 +19,7 @@ use PhpParser\Node;
  * Класс, который использует хотя бы один неизвестный (внешний) трейт, не
  * трогается, и используемые им трейты остаются.
  */
-#[VisitorMeta('Разворачивание трейтов: use Trait → методы/свойства в тело класса')]
+#[VisitorMeta('Разворачивание трейтов: use Trait → методы/свойства в тело класса', targets: [Node\Stmt\Trait_::class])]
 class TraitInlinerVisitor extends BaseVisitor
 {
     /** @var array<string, Node\Stmt\Trait_> lowercase имя → трейт */

@@ -25,7 +25,7 @@ use PhpParser\NodeVisitorAbstract;
  *   `do { … } while (false)`, который занимает уровень цикла, и уровни break не меняются
  * - Переменная цикла — простое $variable
  */
-#[VisitorMeta('Разворачивание foreach по литеральному массиву')]
+#[VisitorMeta('Разворачивание foreach по литеральному массиву', targets: [Node\Stmt\Foreach_::class])]
 class ForeachLiteralUnrollerVisitor extends BaseVisitor
 {
     private const int MAX_ELEMENTS = 20;

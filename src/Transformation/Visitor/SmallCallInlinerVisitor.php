@@ -41,7 +41,7 @@ use Recombinator\Support\TypeInference;
  *   по умолчанию;
  * - порядок и число вычислений аргументов не меняются (см. orderPreserved).
  */
-#[VisitorMeta('Встраивание однострочных функций и методов')]
+#[VisitorMeta('Встраивание однострочных функций и методов', targets: [Node\Stmt\Function_::class, Node\Stmt\ClassMethod::class])]
 class SmallCallInlinerVisitor extends BaseVisitor
 {
     private const array SCALAR_TYPES = ['int', 'float', 'string', 'bool', 'true', 'false', 'null', 'void', 'never'];

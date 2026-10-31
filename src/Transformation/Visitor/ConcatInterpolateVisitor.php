@@ -26,7 +26,7 @@ use PhpParser\Node\Scalar\String_;
  * Работает снизу вверх (leaveNode): внутренние конкатенации разворачиваются
  * до того, как обрабатываются внешние.
  */
-#[VisitorMeta('Свёртка конкатенации строк и переменных в интерполированную строку')]
+#[VisitorMeta('Свёртка конкатенации строк и переменных в интерполированную строку', targets: [Node\Expr\BinaryOp\Concat::class])]
 class ConcatInterpolateVisitor extends BaseVisitor
 {
     #[\Override]

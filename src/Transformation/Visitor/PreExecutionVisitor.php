@@ -28,7 +28,7 @@ use Recombinator\Domain\ScopeStore;
  * Visitor работает только с чистыми функциями (без побочных эффектов)
  * и константными аргументами для обеспечения безопасности и детерминизма.
  */
-#[VisitorMeta('Предвыполнение чистых функций/операций в compile-time через Sandbox')]
+#[VisitorMeta('Предвыполнение чистых функций/операций в compile-time через Sandbox', targets: [Node\Expr\FuncCall::class, Node\Expr\StaticCall::class, Node\Expr\New_::class])]
 class PreExecutionVisitor extends BaseVisitor
 {
     private readonly Sandbox $sandbox;

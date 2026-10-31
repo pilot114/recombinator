@@ -26,7 +26,7 @@ use Recombinator\Support\StringValues;
  * `new $s` и ключи контейнера указывают на класс, которого после встраивания нет.
  * Класс, названный только строкой, тоже встраивается — если его файл есть в карте.
  */
-#[VisitorMeta('Импорт классов по use-декларациям')]
+#[VisitorMeta('Импорт классов по use-декларациям', targets: [Node\Stmt\Use_::class, Node\Stmt\GroupUse::class, Node\Name\FullyQualified::class, Node\Scalar\String_::class, Node\Scalar\InterpolatedString::class, Node\Stmt\ClassLike::class])]
 class UseImportVisitor extends BaseVisitor
 {
     /**

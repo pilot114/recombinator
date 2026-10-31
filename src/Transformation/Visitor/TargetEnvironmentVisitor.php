@@ -26,7 +26,7 @@ use Recombinator\Core\TargetEnvironment;
  * Проверки, которые ExternalParentGuardVisitor оставляет до выполнения (runtimeCheck),
  * тоже сворачиваются: отсутствие родителя здесь — допущение о сервере.
  */
-#[VisitorMeta('Свёртка проверок окружения по допущениям о целевом сервере')]
+#[VisitorMeta('Свёртка проверок окружения по допущениям о целевом сервере', targets: [Node\Expr\FuncCall::class, Node\Expr\ConstFetch::class, Node\Scalar\MagicConst\Dir::class])]
 class TargetEnvironmentVisitor extends BaseVisitor
 {
     private const array KINDS = [
