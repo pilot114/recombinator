@@ -43,6 +43,14 @@
     <!-- Мелкие классы-значения живут рядом с единственным, кто ими пользуется. -->
     <rule ref="PSR1.Classes.ClassDeclaration.MultipleClasses">
         <exclude-pattern>src/Support/Inliner.php</exclude-pattern>
-        <exclude-pattern>src/Support/WindowComposer.php</exclude-pattern>
+    </rule>
+
+    <!-- Среда снимка кучи вставляется в начало плоской программы (глобальное пространство
+         имён): префикс __rcb_ не даёт её именам совпасть с именами программы. -->
+    <rule ref="PSR1.Classes.ClassDeclaration.MissingNamespace">
+        <exclude-pattern>src/Support/snapshot-runtime.php</exclude-pattern>
+    </rule>
+    <rule ref="Squiz.Classes.ValidClassName.NotPascalCase">
+        <exclude-pattern>src/Support/snapshot-runtime.php</exclude-pattern>
     </rule>
 </ruleset>
