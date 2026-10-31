@@ -79,24 +79,9 @@ interface SymbolTableInterface
 
 ## 2. Core - Ядро системы
 
-Директория `Core/` содержит основные компоненты системы: парсер, кеш, утилиты.
+Директория `Core/` содержит основные компоненты системы: кеш, конфигурацию, утилиты.
 
 ### Компоненты:
-
-#### Parser
-```php
-use Recombinator\Core\Parser;
-
-$parser = new Parser();
-$parser->run($updateCache = false);
-```
-
-**Назначение:** Главный компонент для парсинга и обработки PHP файлов.
-
-**Ключевые методы:**
-- `run(bool $updateCache)` - запуск обработки
-- `buildAST(string $code)` - построение AST
-- `prettyPrint(array $ast)` - вывод кода
 
 #### ExecutionCache
 ```php
@@ -108,16 +93,6 @@ $value = $cache->get('key');
 ```
 
 **Назначение:** Управление кешем выполнения для оптимизации производительности.
-
-#### Fluent
-```php
-use Recombinator\Core\Fluent;
-
-$fluent = new Fluent(['key' => 'value']);
-$value = $fluent->key;
-```
-
-**Назначение:** Fluent интерфейс для работы с данными.
 
 #### PrettyDumper
 ```php

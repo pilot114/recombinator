@@ -8,9 +8,10 @@
         "php": "^8.4",
         "nikic/php-parser": "^5.7",
         "sebastian/diff": "^9.0",
-        "pestphp/pest": "^5.3"
+        "symfony/process": "^8.1"
     },
     "require-dev": {
+        "pestphp/pest": "^5.3",
         "phpstan/phpstan": "^2.1",
         "rector/rector": "^2.1",
         "squizlabs/php_codesniffer": "^4.0"

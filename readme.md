@@ -14,8 +14,6 @@ recombinator похож на [rector](https://github.com/rectorphp/rector), но
 
 # Документация
 
-- [Roadmap](/ROADMAP.md)
-
 - [Пример](/docs/example.md)
 - [Термины](/docs/terms.md)
 - [разбор AST](/docs/AST.md)

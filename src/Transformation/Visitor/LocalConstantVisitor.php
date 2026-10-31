@@ -48,14 +48,27 @@ class LocalConstantVisitor extends BaseVisitor
 
     private bool $globalsArray = false;
 
+    /** @var array<string, Node\Stmt\Function_|null> функции программы по lowercase имени; null — объявлена не один раз */
+    private array $functions = [];
+
+    /** @var array<string, list<Node\Stmt\ClassMethod>> методы программы по lowercase имени */
+    private array $methods = [];
+
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
         $this->globals      = [];
         $this->globalsArray = false;
+        $this->functions    = [];
+        $this->methods      = [];
         foreach ($this->findNode(Node::class) as $node) {
-            if ($node instanceof Node\Stmt\Global_) {
+            if ($node instanceof Node\Stmt\Function_) {
+                $key                   = $node->name->toLowerString();
+                $this->functions[$key] = array_key_exists($key, $this->functions) ? null : $node;
+            } elseif ($node instanceof Node\Stmt\ClassMethod) {
+                $this->methods[$node->name->toLowerString()][] = $node;
+            } elseif ($node instanceof Node\Stmt\Global_) {
                 foreach ($node->vars as $var) {
                     if ($var instanceof Node\Expr\Variable && is_string($var->name)) {
                         $this->globals[$var->name] = true;
@@ -267,6 +280,45 @@ class LocalConstantVisitor extends BaseVisitor
         );
     }
 
+    /**
+     * Аргумент с этой позицией вызов принимает по значению: встроенная функция — по сигнатуре,
+     * своя — по объявлению, метод и конструктор — по всем одноимённым методам программы.
+     */
+    private function passedByValue(Node\Expr\CallLike $call, int $position): bool
+    {
+        if ($call instanceof Node\Expr\FuncCall) {
+            $name = $call->name instanceof Node\Name ? strtolower(ltrim($call->name->toString(), '\\')) : null;
+            if ($name === null || !array_key_exists($name, $this->functions)) {
+                return !BodyInliner::mayPassByRef($call, $position);
+            }
+
+            $function = $this->functions[$name];
+
+            // Объявлена в нескольких местах — какая вызовется, неизвестно
+            return $function instanceof Node\Stmt\Function_ && self::byValue($function->params, $position);
+        }
+
+        $name = match (true) {
+            $call instanceof Node\Expr\New_ => '__construct',
+            $call instanceof Node\Expr\MethodCall, $call instanceof Node\Expr\NullsafeMethodCall, $call instanceof Node\Expr\StaticCall
+                => $call->name instanceof Node\Identifier ? $call->name->toLowerString() : null,
+            default => null,
+        };
+        $methods = $name === null ? [] : $this->methods[$name] ?? [];
+
+        // Нет такого метода в программе — метод встроенного класса, сигнатура неизвестна
+        return $methods !== [] && array_all($methods, static fn(Node\Stmt\ClassMethod $m): bool => self::byValue($m->params, $position));
+    }
+
+    /** @param array<Node\Param> $params */
+    private static function byValue(array $params, int $position): bool
+    {
+        $last  = end($params);
+        $param = $params[$position] ?? ($last !== false && $last->variadic ? $last : null);
+
+        return !$param?->byRef; // лишний аргумент без вариативного параметра — по значению
+    }
+
     /** @param array<int, Node\Stmt> $stmts */
     private function hasGoto(array $stmts): bool
     {
@@ -303,12 +355,12 @@ class LocalConstantVisitor extends BaseVisitor
         $count   = 0;
         $byValue = new \SplObjectStorage();
         foreach ($this->own($stmts) as $node) {
-            // Аргумент встроенной функции, принимающей его по значению (sprintf…), не запись
-            if ($node instanceof Node\Expr\FuncCall) {
+            // Аргумент, который вызов принимает по значению (sprintf, своя функция или метод без &), не запись
+            if ($node instanceof Node\Expr\CallLike && !$node->isPartialFunctionApplication()) {
                 foreach (array_values($node->args) as $i => $arg) {
                     if (
                         $arg instanceof Node\Arg && !$arg->unpack && !$arg->name instanceof Node\Identifier
-                        && !BodyInliner::mayPassByRef($node, $i)
+                        && $this->passedByValue($node, $i)
                     ) {
                         $byValue[$arg] = true;
                     }
@@ -340,17 +392,9 @@ class LocalConstantVisitor extends BaseVisitor
                     continue;
                 }
 
-                if ($base !== $target && !$node instanceof Node\Arg) {
+                // Запись в элемент, передача (целиком или элементом) в вызов, возможно по ссылке, неявная запись
+                if ($base !== $target || $node instanceof Node\Arg || !$node instanceof Node\Expr\Assign) {
                     return PHP_INT_MAX;
-                }
-
-                // Передача целиком в вызов — возможно, по ссылке
-                if ($base === $target && ($node instanceof Node\Arg || !$node instanceof Node\Expr\Assign)) {
-                    return PHP_INT_MAX;
-                }
-
-                if ($base !== $target) {
-                    continue; // элемент в аргументе — значение, не ссылка на переменную
                 }
 
                 $count++;

@@ -25,7 +25,7 @@ run84:
 
 run:
 	@docker build -t recombinator-dev .
-	@docker run -it --rm -v "$$PWD":/app -p 85:80 -w /app recombinator-dev sh -c "composer i && frankenphp run --config /etc/frankenphp/Caddyfile"
+	@docker run -it --rm -v "$$PWD":/app -p 127.0.0.1:85:80 -w /app recombinator-dev sh -c "composer i && frankenphp run --config /etc/frankenphp/Caddyfile"
 
 update-examples:
 	@php bin/update-examples.php

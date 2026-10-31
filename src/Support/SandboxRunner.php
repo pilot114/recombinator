@@ -163,7 +163,8 @@ final class SandboxRunner
         }
 
         $process = @proc_open(
-            [$this->phpBinary, '-n', '-d', 'display_errors=stderr', __DIR__ . '/sandbox-worker.php'],
+            // -n отключает и модули из ini: pcntl в Debian/Docker — отдельный модуль, без него форков нет
+            [$this->phpBinary, '-n', '-d', 'extension=pcntl', '-d', 'display_errors=stderr', __DIR__ . '/sandbox-worker.php'],
             [
                 0 => ['pipe', 'r'],
                 1 => ['pipe', 'w'],

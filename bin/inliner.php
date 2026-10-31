@@ -8,30 +8,11 @@ use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
 use Recombinator\Support\ColorDiffer;
 use Recombinator\Support\Inliner;
+use Recombinator\Core\ExecutionCache;
+use Recombinator\Domain\ScopeStore;
 use Recombinator\Support\PipelineConsole;
-use Recombinator\Transformation\Visitor\BinaryAndIssetVisitor;
-use Recombinator\Transformation\Visitor\CallFunctionVisitor;
-use Recombinator\Transformation\Visitor\ClassInlinerVisitor;
-use Recombinator\Transformation\Visitor\CoalesceNullRemoveVisitor;
-use Recombinator\Transformation\Visitor\ConcatAssertVisitor;
-use Recombinator\Transformation\Visitor\ConstClassVisitor;
-use Recombinator\Transformation\Visitor\ConstFoldVisitor;
-use Recombinator\Transformation\Visitor\PrintNormalizeVisitor;
-use Recombinator\Transformation\Visitor\SingleUseInlinerVisitor;
-use Recombinator\Transformation\Visitor\ConstructorAndMethodsVisitor;
-use Recombinator\Transformation\Visitor\EvalStandardFunction;
-use Recombinator\Transformation\Visitor\FunctionBodyCollectorVisitor;
-use Recombinator\Transformation\Visitor\FunctionScopeVisitor;
-use Recombinator\Transformation\Visitor\PreExecutionVisitor;
-use Recombinator\Transformation\Visitor\PropertyAccessVisitor;
-use Recombinator\Transformation\Visitor\RemoveCommentsVisitor;
-use Recombinator\Transformation\Visitor\ScopeVisitor;
-use Recombinator\Transformation\Visitor\SideEffectMarkerVisitor;
-use Recombinator\Transformation\Visitor\CodeBlockVisitor;
-use Recombinator\Transformation\Visitor\ConcatInterpolateVisitor;
-use Recombinator\Transformation\Visitor\ReadabilityVisitor;
-use Recombinator\Transformation\Visitor\TernarReturnVisitor;
-use Recombinator\Transformation\Visitor\VarToScalarVisitor;
+use Recombinator\Support\Sandbox;
+use Recombinator\Transformation\VisitorPipeline;
 use Recombinator\Transformation\Visitor\VisitorMeta;
 
 $console = new PipelineConsole(new ColorDiffer());
@@ -61,41 +42,9 @@ echo $console->colorize('  (' . count($ast) . " top-level узлов)\n", 'dark_
 // Transformations – visitors applied in rounds until the AST stabilises
 // ════════════════════════════════════════════════════════════════════════════
 
-$steps = [
-    // ── Анализ ──────────────────────────────────────────────────────────────
-    SideEffectMarkerVisitor::class,
-
-    // ── Упрощение выражений ─────────────────────────────────────────────────
-    RemoveCommentsVisitor::class,
-    BinaryAndIssetVisitor::class,
-    CoalesceNullRemoveVisitor::class,
-    ConcatAssertVisitor::class,
-    EvalStandardFunction::class,
-    PreExecutionVisitor::class,
-    VarToScalarVisitor::class,
-    ConstFoldVisitor::class,
-    PrintNormalizeVisitor::class,
-    SingleUseInlinerVisitor::class,
-
-    // ── Разбивка на скоупы (подготовка кеша) ───────────────────────────────
-    ScopeVisitor::class,
-
-    // ── Инлайнинг функций ───────────────────────────────────────────────────
-    FunctionBodyCollectorVisitor::class,
-    FunctionScopeVisitor::class,
-    CallFunctionVisitor::class,
-
-    // ── Инлайнинг классов ───────────────────────────────────────────────────
-    ConstructorAndMethodsVisitor::class,
-    PropertyAccessVisitor::class,
-    ConstClassVisitor::class,
-
-    // ── Структурные упрощения ───────────────────────────────────────────────
-    TernarReturnVisitor::class,
-
-    // ── Инлайнинг классов (финальный) ───────────────────────────────────────
-    ClassInlinerVisitor::class,
-];
+// Один sandbox и кэши на весь прогон: переживают пересоздание визиторов
+$execCache = new ExecutionCache();
+$pipeline  = new VisitorPipeline(new ScopeStore(), $execCache, new Sandbox($execCache), new ArrayObject());
 
 /** Read name+desc from #[VisitorMeta] attribute; fall back to class short name. */
 $meta = static function (object $visitor): VisitorMeta {
@@ -113,15 +62,14 @@ $totalChanged = 0;
 $pass         = 0;
 
 echo "\n";
-echo $console->colorize('  ● Трансформации: ' . count($steps) . " visitors · фиксированная точка\n", 'light_cyan');
+echo $console->colorize('  ● Трансформации: ' . count($pipeline->main()) . " visitors · фиксированная точка\n", 'light_cyan');
 
 do {
     $pass++;
     $passChanged    = false;
     $passHeaderShown = false;
 
-    foreach ($steps as $class) {
-        $visitor = new $class();
+    foreach ($pipeline->main() as $visitor) {
         $before  = $console->applyVisitor($ast, $visitor);
         $after   = $printer->prettyPrint($ast);
 
@@ -149,18 +97,11 @@ do {
 // Readability – isolated final step (runs once after optimisation converges)
 // ════════════════════════════════════════════════════════════════════════════
 
-$readabilitySteps = [
-    ReadabilityVisitor::class,
-    ConcatInterpolateVisitor::class,
-    CodeBlockVisitor::class,
-];
-
 echo "\n";
 echo $console->colorize('  ● Читаемость: изолированный шаг · свёртка сложных выражений' . "\n", 'light_cyan');
 
 $readabilityChanged = 0;
-foreach ($readabilitySteps as $class) {
-    $visitor = new $class();
+foreach (VisitorPipeline::readability() as $visitor) {
     $before  = $console->applyVisitor($ast, $visitor);
     $after   = $printer->prettyPrint($ast);
 

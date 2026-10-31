@@ -88,7 +88,7 @@ it(
         expect($this->runner->run('<?php fwrite(STDOUT, "1 999\n"); echo "after";', 2, '32M'))->toBeInstanceOf(SandboxError::class)
             ->and($this->runner->run('<?php echo "still alive";', 2, '32M'))->toBe('still alive');
     }
-);
+)->skip(!function_exists('pcntl_fork'), 'нужен pcntl: без него воркера нет');
 
 it(
     'restarts killed worker',
@@ -102,4 +102,4 @@ it(
         expect($this->runner->run('<?php echo "b";', 2, '32M'))->toBe('b')
             ->and($this->runner->run('<?php echo "c";', 2, '32M'))->toBe('c');
     }
-)->skip(!function_exists('posix_kill'), 'нужен posix');
+)->skip(!function_exists('posix_kill') || !function_exists('pcntl_fork'), 'нужны posix и pcntl');

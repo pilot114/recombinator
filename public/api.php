@@ -3,12 +3,12 @@
 declare(strict_types=1);
 
 header('Content-Type: application/json; charset=utf-8');
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-header('Access-Control-Allow-Headers: Content-Type');
 
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    http_response_code(204);
+// API выполняет код (пробы, прогрев, песочница): только с той же страницы. Без заголовков
+// CORS чужой сайт не пройдёт предварительный запрос, а без application/json — и простой POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !str_starts_with(strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? '')), 'application/json')) {
+    http_response_code(415);
+    echo json_encode(['error' => 'Content-Type must be application/json']);
     exit;
 }
 
@@ -93,6 +93,7 @@ use PhpParser\PrettyPrinter\Standard as Printer;
 use Recombinator\Core\ExecutionCache;
 use Recombinator\Domain\ScopeStore;
 use Recombinator\Support\LineDiffer;
+use Recombinator\Support\RunCache;
 use Recombinator\Support\Sandbox;
 use Recombinator\Core\TargetEnvironment;
 use Recombinator\Support\DoctrineMetadataProbe;
@@ -357,82 +358,12 @@ if ($run !== null && $run['done']) {
 
 $stepsFrom = max(0, min((int) ($input['steps_from'] ?? 0), count($run['steps'] ?? [])));
 
-/**
- * Последний завершённый прогон того же входа (при другой версии конвейера): новые и
- * изменённые правила продолжают с его результата, а не с исходного кода.
- *
- * @return array<string, mixed>|null
- */
-function previousRun(string $runCacheDir, string $inputKey, string $code, string $envHash, array $environment = []): ?array
-{
-    // Свой указатель (то же окружение), затем прогон без допущений: допущения только добавляются
-    $files   = [];
-    $trusted = null; // прогон по указателю своего окружения: его окружение не проверяется
-    foreach (array_unique([$inputKey . ($envHash !== '' ? '.' . $envHash : ''), $inputKey]) as $index => $name) {
-        $pointer   = $runCacheDir . '/' . $name . '.latest';
-        $candidate = is_file($pointer) ? $runCacheDir . '/' . trim((string) file_get_contents($pointer)) . '.run' : null;
-        if ($candidate !== null && is_file($candidate)) {
-            $files[] = $candidate;
-            $trusted ??= $index === 0 && $envHash !== '' ? $candidate : null;
-        }
-    }
-
-    if ($files === []) {
-        // Прогоны до появления указателя: ищем по исходному коду, свежие первыми
-        // (не дольше 15 с: кэш бывает большим, а без продолжения прогон просто пойдёт с нуля)
-        $files = glob($runCacheDir . '/*.run') ?: [];
-        usort($files, static fn(string $a, string $b): int => filemtime($b) <=> filemtime($a));
-        $files = array_slice($files, 0, 30);
-    }
-
-    $started = microtime(true);
-    $needle  = serialize($code);
-    foreach ($files as $file) {
-        if (microtime(true) - $started > 15) {
-            break;
-        }
-
-        $raw = @gzuncompress((string) file_get_contents($file));
-        $old = $raw !== false && str_contains($raw, $needle) ? @unserialize($raw) : null;
-        // Окружение прошлого прогона — то же или его часть: допущения только добавляются
-        $oldEnv  = is_array($old) ? $old['environment'] ?? null : null;
-        $sameEnv = is_array($old) && ($file === $trusted || in_array($old['environment_hash'] ?? '', ['', $envHash], true)
-            || is_array($oldEnv) && array_all($oldEnv, static fn(mixed $v, string $k): bool => ($environment[$k] ?? null) === $v));
-        if ($sameEnv && ($old['done'] ?? false) && ($old['input_key'] ?? $inputKey) === $inputKey && $old['original'] === $code && $sameEnv) {
-            $old['resumed_from'] = basename($file, '.run');
-
-            return $old;
-        }
-    }
-
-    return null;
-}
-
-/**
- * AST основного цикла из завершённого прогона. В старых прогонах сохранён только итог
- * после фазы читаемости — из него убирается карта class_alias (её строки удерживали бы
- * все классы) и пустые разделители блоков; комментарии снимет RemoveCommentsVisitor.
- *
- * @param  array<string, mixed> $old
- * @return array<PhpParser\Node>
- */
-function resumableAst(array $old): array
-{
-    // Nop верхнего уровня — разделители блоков CodeBlockVisitor: без комментариев они лишние
-    return array_values(array_filter($old['main_ast'] ?? $old['ast'], static fn(PhpParser\Node $node): bool => !(
-        $node instanceof PhpParser\Node\Stmt\Nop
-    ) && !(
-        $node instanceof PhpParser\Node\Stmt\Foreach_
-        && $node->keyVar instanceof PhpParser\Node\Expr\Variable && $node->keyVar->name === 'flat'
-        && $node->valueVar instanceof PhpParser\Node\Expr\Variable && $node->valueVar->name === 'original'
-    )));
-}
-
 // fresh: true — прогон с исходного кода, без продолжения с прошлого результата
-if ($run === null && empty($input['fresh']) && ($old = previousRun($runCacheDir, $inputKey, $code, $envHash, $envArray)) !== null) {
+$runCache = new RunCache($runCacheDir);
+if ($run === null && empty($input['fresh']) && ($old = $runCache->previous($inputKey, $envHash, $code)) !== null) {
     $run = [
         ...$old,
-        'ast'           => resumableAst($old),
+        'ast'           => $old['main_ast'],
         'main_ast'      => null,
         'idle_runs'     => 0,
         'visitor_index' => 0,
@@ -468,9 +399,7 @@ if ($run === null) {
     $stepsFrom = 0;
 }
 
-$run['input_key']        = $inputKey;
-$run['environment_hash'] = $envHash;
-$run['environment']      = $envArray;
+$run['input_key'] = $inputKey;
 
 /** Сохраняет состояние прогона (атомарно: через временный файл). */
 /**
@@ -702,7 +631,7 @@ while (true) {
 }
 
 // ── Phase 2: readability (single isolated pass) ───────────────────────────────
-// Копия AST основного цикла: следующая версия конвейера продолжит с неё (см. previousRun)
+// Копия AST основного цикла: следующая версия конвейера продолжит с неё (см. RunCache)
 $run['main_ast']  = unserialize(serialize(stripConnections($ast)));
 $readabilityStart = microtime(true);
 $currentCode      = $printer->prettyPrint($ast);
@@ -729,6 +658,6 @@ $run['ast']            = $ast;
 $run['final']          = "<?php\n" . $printer->prettyPrint($ast);
 $run['done']           = true;
 saveRun($runFile, $run);
-file_put_contents($runCacheDir . '/' . $inputKey . ($envHash !== '' ? '.' . $envHash : '') . '.latest', $runKey);
+$runCache->markLatest($inputKey, $envHash, $runKey);
 
 respond($run, $stepsFrom, false, false);

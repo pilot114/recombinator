@@ -51,7 +51,8 @@ it('substitutes elements of a literal array read by literal keys, also at top le
     $result = applyLocalConstant(
         '$s = ["slim" => ["debug" => true, "log" => false], "dir" => ROOT . "/var"];
         $app->addErrorMiddleware($s["slim"]["debug"], $s["slim"]["log"]); $d = $s["dir"];
-        function f() { $o = ["a" => 1]; $o["b"] = 2; return $o["a"]; }',
+        function f() { $o = ["a" => 1]; $o["b"] = 2; return $o["a"]; }
+        class App { public function addErrorMiddleware(bool $display, bool $log) {} }',
     );
 
     expect($result)->toContain('$app->addErrorMiddleware(true, false);')
@@ -109,4 +110,28 @@ it('folds an inlined call with a literal array argument and cast parameters', fu
     expect(new Printer()->prettyPrint($ast))->toContain('$driver1 = new ("Lite")();')
         ->toContain('return new ("Connection")($params1, $driver1, $config);')
         ->not->toContain('"My"');
+});
+
+it('does not pass a literal where a function takes the element by reference', function (): void {
+    $result = applyLocalConstant('function f() { $v = ["a" => [3, 1], "b" => 1]; sort($v["a"]); g($v["b"]); h($v["b"]); return $v["a"]; }
+        function g(&$x) { $x = 2; } function h($x) { return $x; }');
+
+    expect($result)->toContain('sort($v["a"]);')
+        ->toContain('g($v["b"]);')
+        ->toContain('return $v["a"];');
+});
+
+it('substitutes an element passed to a function that takes it by value', function (): void {
+    expect(applyLocalConstant('function f() { $v = ["b" => 1]; h($v["b"]); return strlen($v["b"]); } function h($x) { return $x; }'))
+        ->toContain('h(1);')
+        ->toContain('return strlen(1);');
+});
+
+it('checks methods of the program for by-reference parameters', function (): void {
+    $result = applyLocalConstant('class A { function put($x) {} function take(&$x) {} }
+        function f($a) { $v = ["b" => 1]; $a->put($v["b"]); $a->take($v["b"]); return $v["b"]; }');
+
+    expect($result)->toContain('$a->put(1);')
+        ->toContain('$a->take($v["b"]);')
+        ->toContain('return $v["b"];');
 });
