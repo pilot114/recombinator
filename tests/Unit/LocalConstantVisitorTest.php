@@ -135,3 +135,10 @@ it('checks methods of the program for by-reference parameters', function (): voi
         ->toContain('$a->take($v["b"]);')
         ->toContain('return $v["b"];');
 });
+
+it('substitutes into an interpolated string as its text, not as {expr}', function (): void {
+    $result = applyLocalConstant('function f() { $p = ">>"; $n = 2; $o = [1]; return "$p $n {$o[0]}" . (fn($s) => "$p $s")("x"); }');
+
+    expect($result)->toContain('return ">> 2 {$o[0]}" . (fn($s) => ">> {$s}")("x");')
+        ->not->toContain("{'>>'}");
+});

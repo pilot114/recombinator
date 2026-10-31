@@ -488,6 +488,13 @@ class LocalConstantVisitor extends BaseVisitor
                         return null; // isset/empty требуют переменную; $x[...] на строке оставим как есть
                     }
 
+                    // В "...$x..." скаляр — часть строки, иначе принтер выведет "{'>>'}" как текст
+                    if ($parent instanceof Node\Scalar\InterpolatedString) {
+                        return $this->value instanceof Node\Scalar\String_ || $this->value instanceof Node\Scalar\Int_
+                            ? new Node\InterpolatedStringPart((string) $this->value->value)
+                            : null;
+                    }
+
                     return $this->owner->copy($this->value);
                 }
 

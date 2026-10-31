@@ -158,6 +158,16 @@ class ClassInlinerVisitor extends BaseVisitor
             }
         }
 
+        // Класс удаляется после встраивания: обращение к нему по имени (Auth::HASH, Auth::f(),
+        // instanceof Auth) осталось бы без объявления
+        foreach ([Node\Expr\ClassConstFetch::class, Node\Expr\StaticCall::class, Node\Expr\StaticPropertyFetch::class, Node\Expr\Instanceof_::class] as $type) {
+            foreach ($this->findNode($type, $nodes) as $ref) {
+                if ($ref->class instanceof Node\Name && isset($assignedNewCount[$ref->class->toString()])) {
+                    $unsafeClasses[$ref->class->toString()] = true;
+                }
+            }
+        }
+
         foreach ($varToClass as $className) {
             if (!isset($unsafeClasses[$className])) {
                 $this->safeClasses[$className] = true;

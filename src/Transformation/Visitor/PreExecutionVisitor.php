@@ -196,7 +196,8 @@ class PreExecutionVisitor extends BaseVisitor
      */
     private function hasConstantArgs(Node\Expr\FuncCall $node): bool
     {
-        return $this->allArgsConstant($node->args);
+        // (fn() => …)(…): вызываемое выражение тоже должно быть самодостаточным
+        return ($node->name instanceof Node\Name || $this->isConstant($node->name)) && $this->allArgsConstant($node->args);
     }
 
     /**
@@ -263,8 +264,19 @@ class PreExecutionVisitor extends BaseVisitor
         }
 
         // Стрелочная функция без захвата внешних переменных — передаём в sandbox
+        // (захватывает неявно: любая переменная тела, кроме параметров, — внешняя)
         if ($node instanceof Node\Expr\ArrowFunction) {
-            return true;
+            $params = [];
+            foreach ($node->params as $param) {
+                if ($param->var instanceof Node\Expr\Variable && is_string($param->var->name)) {
+                    $params[$param->var->name] = true;
+                }
+            }
+
+            return array_all(
+                $this->findNode(Node\Expr\Variable::class, $node->expr),
+                static fn(Node\Expr\Variable $variable): bool => is_string($variable->name) && isset($params[$variable->name]),
+            );
         }
 
         // Замыкание без use-захватов — самодостаточно, можно передать в sandbox

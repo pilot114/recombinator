@@ -274,3 +274,16 @@ $c->set("x");';
         ->not->toContain('class C')
         ->toContain('$c__f["x"] = static function () {');
 });
+
+it('keeps the class while it is referenced by name', function (): void {
+    $code = '<?php
+class Auth {
+    const HASH = "h";
+    public $user = "u";
+}
+$a = new Auth();
+echo $a->user . Auth::HASH;
+';
+    expect(parseAndInline($code))->toContain('class Auth')
+        ->toContain('Auth::HASH');
+});

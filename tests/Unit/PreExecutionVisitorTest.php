@@ -245,3 +245,14 @@ it(
         expect($result)->toContain('$x = false');
     }
 );
+
+it(
+    'does not execute an arrow function that captures an outer variable',
+    function (): void {
+        $ast    = $this->parser->parse('<?php $p = ">>"; echo (static fn(string $s): string => "$p $s")("x"); echo (static fn(string $s): string => "<$s>")("y");');
+        $result = $this->printer->prettyPrintFile($this->traverser->traverse($ast));
+
+        expect($result)->toContain('"{$p} {$s}"')
+            ->toContain("echo '<y>';");
+    }
+);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Recombinator\Transformation\Visitor;
 
+use PhpParser\Modifiers;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
@@ -20,6 +21,7 @@ use PhpParser\NodeVisitorAbstract;
  * - $var = new ClassName(...) известен на верхнем уровне
  * - Метод имеет ровно одну инструкцию: return expr;
  * - Класс должен присутствовать в AST
+ * - Тело обращается только к public-членам класса: вне класса другие недоступны
  *
  * Затем PropertyStateTrackerVisitor + ReadonlyPropertyAccessVisitor
  * разворачивают цепочку property-доступов до скаляра.
@@ -146,8 +148,9 @@ class SimpleMethodCallInlinerVisitor extends BaseVisitor
             return parent::leaveNode($node);
         }
 
-        $method = $this->findMethod($this->varTypes[$varName], $methodName);
-        if (!$method instanceof Node\Stmt\ClassMethod) {
+        $class  = $this->findClass($this->varTypes[$varName]);
+        $method = $class?->getMethod($methodName);
+        if (!$class instanceof Node\Stmt\Class_ || !$method instanceof Node\Stmt\ClassMethod) {
             return parent::leaveNode($node);
         }
 
@@ -164,6 +167,10 @@ class SimpleMethodCallInlinerVisitor extends BaseVisitor
         // Don't inline methods that read $this->array[$key] — array property accesses
         // can't be resolved by scalar-tracking visitors and produce invalid PHP outside the class
         if ($this->bodyHasThisPropArrayAccess($method->stmts[0]->expr)) {
+            return parent::leaveNode($node);
+        }
+
+        if (!$this->bodyUsesOnlyPublicMembers($class, $method->stmts[0]->expr)) {
             return parent::leaveNode($node);
         }
 
@@ -197,22 +204,68 @@ class SimpleMethodCallInlinerVisitor extends BaseVisitor
         );
     }
 
-    private function findMethod(string $className, string $methodName): ?Node\Stmt\ClassMethod
+    private function findClass(string $className): ?Node\Stmt\Class_
     {
         foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
-            if (
-                $class->name instanceof Node\Identifier
-                && $class->name->toString() === $className
-            ) {
-                foreach ($class->getMethods() as $method) {
-                    if ($method->name->toString() === $methodName) {
-                        return $method;
-                    }
-                }
+            if ($class->name instanceof Node\Identifier && $class->name->toString() === $className) {
+                return $class;
             }
         }
 
         return null;
+    }
+
+    /**
+     * Члены $this, self:: и static:: в теле — public и объявлены в самом классе: тело
+     * встраивается вне класса, а protected/private там — ошибка доступа, если их потом
+     * не свернут другие правила.
+     */
+    private function bodyUsesOnlyPublicMembers(Node\Stmt\Class_ $class, Node\Expr $body): bool
+    {
+        $isPublic = static fn(int $flags): bool => ($flags & (Modifiers::PRIVATE | Modifiers::PROTECTED)) === 0;
+        $public   = [];
+        foreach ($class->stmts as $stmt) {
+            if ($stmt instanceof Node\Stmt\Property || $stmt instanceof Node\Stmt\ClassConst) {
+                foreach ($stmt instanceof Node\Stmt\Property ? $stmt->props : $stmt->consts as $item) {
+                    $public[$item->name->toString()] = $isPublic($stmt->flags);
+                }
+            } elseif ($stmt instanceof Node\Stmt\ClassMethod) {
+                $public[$stmt->name->toLowerString() . '()'] = $isPublic($stmt->flags);
+            }
+        }
+
+        foreach ($class->getMethod('__construct')->params ?? [] as $param) {
+            if ($param->flags !== 0 && $param->var instanceof Node\Expr\Variable && is_string($param->var->name)) {
+                $public[$param->var->name] = $isPublic($param->flags);
+            }
+        }
+
+        foreach ($this->findNode(Node::class, [$body]) as $node) {
+            $member = match (true) {
+                $node instanceof Node\Expr\PropertyFetch, $node instanceof Node\Expr\NullsafePropertyFetch
+                    => $node->var instanceof Node\Expr\Variable && $node->var->name === 'this' ? $node->name : null,
+                $node instanceof Node\Expr\MethodCall, $node instanceof Node\Expr\NullsafeMethodCall
+                    => $node->var instanceof Node\Expr\Variable && $node->var->name === 'this' ? $node->name : null,
+                $node instanceof Node\Expr\StaticPropertyFetch, $node instanceof Node\Expr\ClassConstFetch, $node instanceof Node\Expr\StaticCall
+                    => $node->class instanceof Node\Name && in_array($node->class->toLowerString(), ['self', 'static'], true) ? $node->name : null,
+                default => null,
+            };
+            if (!$member instanceof Node) {
+                continue;
+            }
+
+            if (!$member instanceof Node\Identifier) {
+                return false; // $this->$name — член неизвестен
+            }
+
+            $isCall = $node instanceof Node\Expr\MethodCall || $node instanceof Node\Expr\NullsafeMethodCall || $node instanceof Node\Expr\StaticCall;
+            $key    = $isCall ? $member->toLowerString() . '()' : $member->toString();
+            if (!($public[$key] ?? false) && ($member->toString() !== 'class' || !$node instanceof Node\Expr\ClassConstFetch)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

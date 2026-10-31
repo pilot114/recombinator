@@ -12,8 +12,10 @@ use PhpParser\Node;
  *   $whiskers = new SyntaxZoo_Cat(...)
  *   $whiskers instanceof SyntaxZoo_Animal  →  false
  *
- * Тип переменной берётся из ближайшего прямого присваивания `$var = new ClassName(...)`.
- * Проверяется иерархия классов через цепочку extends в текущем AST.
+ * Тип переменной берётся из единственного присваивания `$var = new ClassName(...)`.
+ * Проверяется иерархия классов через цепочку extends в текущем AST. false — только если
+ * вся цепочка объявлена в AST и без implements: иначе (класс ещё не подключён, имена
+ * в namespace не разрешены, интерфейсы) ответ неизвестен и instanceof остаётся.
  */
 #[VisitorMeta('Упрощение instanceof с известным типом переменной')]
 class InstanceofSimplifierVisitor extends BaseVisitor
@@ -26,6 +28,19 @@ class InstanceofSimplifierVisitor extends BaseVisitor
     {
         parent::beforeTraverse($nodes);
         $this->varTypes = [];
+
+        // Имена внутри namespace относительные: сравнивать их нельзя
+        if ($this->findNode(Node\Stmt\Namespace_::class) !== []) {
+            return null;
+        }
+
+        // Переменная, которой присваивают больше раза, может держать другой класс
+        $assigned = [];
+        foreach ($this->findNode(Node\Expr\Assign::class) as $assign) {
+            if ($assign->var instanceof Node\Expr\Variable && is_string($assign->var->name)) {
+                $assigned[$assign->var->name] = ($assigned[$assign->var->name] ?? 0) + 1;
+            }
+        }
 
         // Only scan top-level statements to stay within the same scope
         foreach ($nodes as $stmt) {
@@ -40,6 +55,7 @@ class InstanceofSimplifierVisitor extends BaseVisitor
                 && is_string($expr->var->name)
                 && $expr->expr instanceof Node\Expr\New_
                 && $expr->expr->class instanceof Node\Name
+                && $assigned[$expr->var->name] === 1
             ) {
                 $this->varTypes[$expr->var->name] = $expr->expr->class->toString();
             }
@@ -64,8 +80,10 @@ class InstanceofSimplifierVisitor extends BaseVisitor
                 return parent::leaveNode($node);
             }
 
-            $instanceClass = $this->varTypes[$varName];
-            $isInstance    = $this->isSubclassOf($instanceClass, $targetClass);
+            $isInstance = $this->isSubclassOf($this->varTypes[$varName], $targetClass);
+            if ($isInstance === null) {
+                return parent::leaveNode($node);
+            }
 
             return new Node\Expr\ConstFetch(new Node\Name($isInstance ? 'true' : 'false'));
         }
@@ -73,22 +91,33 @@ class InstanceofSimplifierVisitor extends BaseVisitor
         return parent::leaveNode($node);
     }
 
-    private function isSubclassOf(string $childClass, string $parentClass): bool
+    /** null — иерархия известна не полностью. */
+    private function isSubclassOf(string $childClass, string $parentClass): ?bool
     {
-        if ($childClass === $parentClass) {
-            return true;
-        }
-
+        $classes = [];
         foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
-            if (
-                $class->name instanceof Node\Identifier
-                && $class->name->toString() === $childClass
-                && $class->extends instanceof Node\Name
-            ) {
-                return $this->isSubclassOf($class->extends->toString(), $parentClass);
+            if ($class->name instanceof Node\Identifier) {
+                $classes[strtolower($class->name->toString())] = $class;
             }
         }
 
-        return false;
+        $parent = strtolower(ltrim($parentClass, '\\'));
+        $name   = strtolower(ltrim($childClass, '\\'));
+        $seen   = [];
+        while ($name !== $parent) {
+            $class = $classes[$name] ?? null;
+            if ($class === null || $class->implements !== [] || isset($seen[$name])) {
+                return null;
+            }
+
+            if (!$class->extends instanceof Node\Name) {
+                return false;
+            }
+
+            $seen[$name] = true;
+            $name        = strtolower(ltrim($class->extends->toString(), '\\'));
+        }
+
+        return true;
     }
 }
