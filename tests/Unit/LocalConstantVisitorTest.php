@@ -39,6 +39,7 @@ it('keeps locals written more than once or possibly by reference', function (str
     'loop'      => ['$v = 1; foreach ([2] as $v) {}'],
     'reference' => ['$v = 1; $r = &$v; $r = 2;'],
     'compact'   => ['$v = 1; compact("v");'],
+    'array ref' => ['$v = null; $a = ["v" => &$v]; $a["v"] = 2;'],
 ]);
 
 it('keeps the assignment while a closure captures the variable', function (): void {

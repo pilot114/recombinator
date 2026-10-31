@@ -419,3 +419,22 @@ it('resolves a use that names both a class and a namespace', function (): void {
 
     expect($result)->toContain('new Orm_Query(), new Orm_Query_Rsm()')->toContain('class Orm_Query_Rsm');
 });
+
+it('does not pull a class referenced only where PHP does not load it', function (): void {
+    // Иначе RemoveUnusedClassVisitor удалял бы его, а это правило встраивало снова — до лимита запусков
+    $fileMap = ['vendor/acme/src/Formatter.php' => '<?php namespace Acme; class Formatter { public static function create(): self { return new self(); } }'];
+
+    expect(applyUseImport('<?php function cast(\Acme\Formatter $c, $x) { return $x instanceof \Acme\Formatter; }', $fileMap))
+        ->not->toContain('class Acme_Formatter')
+        ->and(applyUseImport('<?php $f = \Acme\Formatter::create();', $fileMap))
+        ->toContain('class Acme_Formatter');
+});
+
+it('treats qualified names in code without namespace as fully qualified', function (): void {
+    // Заглушка полифила: extends без начального `\`; иначе родитель остаётся старым именем
+    $fileMap = ['vendor/acme/src/Base.php' => '<?php namespace Acme; class Base { public const X = 1; }'];
+    $result  = applyUseImport('<?php use Acme\Other; if (class_exists(Acme\Base::class)) { class Child extends Acme\Base {} } echo Child::X;', $fileMap);
+
+    expect($result)->toContain('class Acme_Base')->toContain('class Child extends Acme_Base')->toContain('Acme_Base::class')
+        ->not->toContain('Acme\Base');
+});

@@ -267,6 +267,8 @@ class LocalConstantVisitor extends BaseVisitor
                 $node instanceof Node\Stmt\Static_ => array_any($node->vars, static fn(Node\StaticVar $v): bool => $is($v->var)),
                 $node instanceof Node\Expr\ClosureUse => $node->byRef && $is($node->var),
                 $node instanceof Node\Stmt\Foreach_ => $node->byRef && $is($node->valueVar),
+                // `['k' => &$v]`, `[&$v] = …`: элемент массива — ссылка на переменную
+                $node instanceof Node\ArrayItem => $node->byRef && $is($node->value),
                 default => false,
             };
             if ($aliased) {

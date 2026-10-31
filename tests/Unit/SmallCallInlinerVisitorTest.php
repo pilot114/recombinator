@@ -174,3 +174,15 @@ it('infers receiver types of locals and call chains from declarations', function
     expect($result)->toContain('return [$i->v, $j->v, $k->v, (new Item())->v];')
         ->and($result)->toContain('return $i->value();');
 });
+
+it('does not inline a temporary expression where it is written through', function (): void {
+    $result = applyPrivateInline(
+        'class S { public $level; }
+        class P { private ?S $state = null;
+            private function state(): S { return $this->state ??= new S(); }
+            public function set($v) { $this->state()->level = $v; return $this->state()->level; } }',
+    );
+
+    // Запись `($this->state ??= new S())->level = $v` — Fatal в PHP; чтение — можно
+    expect($result)->toContain('$this->state()->level = $v;')->toContain('return ($this->state ??= new S())->level;');
+});

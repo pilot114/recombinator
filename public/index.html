@@ -1274,6 +1274,9 @@ function renderReport(report) {
   if (!report) {
     return `<div class="no-change">Отчёта нет: прогон не завершён или выполнен прежней версией</div>`;
   }
+  if (report.error) {
+    return `<div class="no-change" style="color: var(--red)">${esc(report.error)}</div>`;
+  }
 
   const { before, after, warnings } = report.complexity;
   const names = { cognitive: 'Когнитивная сложность', cyclomatic: 'Цикломатическая сложность', lines: 'Строк', nesting: 'Глубина вложенности' };

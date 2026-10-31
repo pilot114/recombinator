@@ -381,7 +381,7 @@ if ($run === null && empty($input['fresh']) && ($old = $runCache->previous($inpu
 if ($run === null) {
     try {
         $ast = $phpParser->parse($code) ?? [];
-    } catch (PhpParserError $e) {
+    } catch (PhpParserError $phpParserError) {
         echo json_encode(['error' => 'Parse error: ' . $e->getMessage()]);
         exit;
     }
@@ -637,8 +637,9 @@ $run['final']          = "<?php\n" . $printer->prettyPrint($ast);
 set_time_limit($timeout);
 try {
     $run['report'] = QualityReport::of($fileMap !== [] ? array_values($fileMap) : [$run['original']], $phpParser->parse($run['final']) ?? []);
-} catch (PhpParserError) {
-    $run['report'] = null;
+} catch (PhpParserError $phpParserError) {
+    // Итог — не PHP: ошибка правила, её нужно видеть
+    $run['report'] = ['error' => 'Итог не разбирается: ' . $phpParserError->getMessage()];
 }
 
 $run['done']           = true;

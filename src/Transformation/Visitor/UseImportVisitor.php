@@ -256,10 +256,17 @@ class UseImportVisitor extends BaseVisitor
         $refs     = [];
         $candidates = $finder->find(
             $nodes,
-            static fn(Node $n): bool => $n instanceof Node\Scalar\String_ || $n instanceof Node\Name\FullyQualified
-                || $n instanceof Node\Expr\FuncCall || $n instanceof Node\Expr\ConstFetch,
+            static fn(Node $n): bool => $n instanceof Node\Scalar\String_ || $n instanceof Node\Name
+                || $n instanceof Node\Expr\FuncCall || $n instanceof Node\Expr\ConstFetch
+                || $n instanceof Node\UseItem || $n instanceof Node\Stmt\GroupUse,
         );
         foreach ($candidates as $n) {
+            // Имена в use — пути импорта, а не ссылки на класс в коде
+            if ($n instanceof Node\UseItem || $n instanceof Node\Stmt\GroupUse) {
+                $notClass[$n instanceof Node\UseItem ? $n->name : $n->prefix] = true;
+                continue;
+            }
+
             if ($n instanceof Node\Expr\FuncCall && $n->name instanceof Node\Name\FullyQualified) {
                 $flat = strtr($n->name->toString(), ['\\' => '_']);
                 if (count($n->name->getParts()) > 1 && isset($functions[strtolower($flat)])) {
@@ -279,6 +286,13 @@ class UseImportVisitor extends BaseVisitor
                 // Глобальное имя — только не встроенное: заглушка полифила (`\SortDirection` из PHP 8.6)
                 $refs[] = $n;
             } elseif (
+                $canPull && $n instanceof Node\Name && !$n instanceof Node\Name\Relative
+                && !isset($notClass[$n]) && count($n->getParts()) > 1
+            ) {
+                // В коде без namespace `A\B` — то же, что `\A\B`: заглушка полифила
+                // `class Normalizer extends Symfony\Polyfill\Intl\Normalizer\Normalizer`
+                $refs[] = $n;
+            } elseif (
                 $n instanceof Node\Scalar\String_
                 && str_contains($n->value, '\\')
                 && preg_match(self::FQCN_PATTERN, explode('::', $n->value, 2)[0]) === 1
@@ -288,6 +302,7 @@ class UseImportVisitor extends BaseVisitor
             }
         }
 
+        $loading = RemoveUnusedClassVisitor::loadingNames($nodes);
         foreach ($refs as $ref) {
             if ($ref instanceof Node\Name && isset($notClass[$ref])) {
                 continue;
@@ -297,7 +312,11 @@ class UseImportVisitor extends BaseVisitor
             $fqcn = ltrim((string) $classPart, '\\');
             $flat = strtr($fqcn, ['\\' => '_']);
             if (!isset($this->declared[strtolower($flat)]) && !isset($this->inlined[$fqcn])) {
-                if (!$canPull) {
+                // Ссылка, которая класс не загружает (тип параметра, instanceof, ключ массива),
+                // его не встраивает: RemoveUnusedClassVisitor удалил бы его на том же проходе,
+                // и правила сменяли бы друг друга до лимита запусков
+                $loads = $ref instanceof Node\Name ? isset($loading[$ref]) : !RemoveUnusedClassVisitor::onlyLabel($ref);
+                if (!$canPull || !$loads) {
                     continue;
                 }
 

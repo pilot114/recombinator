@@ -168,7 +168,7 @@ class RemoveUnusedClassVisitor extends BaseVisitor
      * значениям карт, как DRIVER_MAP) и имя во втором аргументе is_a()/is_subclass_of()
      * (проверка объекта; без класса она ложна).
      */
-    private function onlyLabel(Node\Scalar\String_ $string): bool
+    public static function onlyLabel(Node\Scalar\String_ $string): bool
     {
         $parent = $string->getAttribute('parent');
         if ($parent instanceof Node\ArrayItem && $parent->key === $string || $parent instanceof Node\Expr\ArrayDimFetch && $parent->dim === $string) {
@@ -184,6 +184,39 @@ class RemoveUnusedClassVisitor extends BaseVisitor
     }
 
     /**
+     * Имена в позициях, где PHP загружает класс: `new`, `::`, extends, implements, use
+     * трейта, атрибут. Тип параметра, `instanceof` и `catch` класс не загружают.
+     * Общее правило с UseImportVisitor: встроенный им класс, который здесь не загружается,
+     * удалялся бы снова, и правила сменяли бы друг друга без конца.
+     *
+     * @param  array<Node> $nodes
+     * @return \SplObjectStorage<Node\Name, true>
+     */
+    public static function loadingNames(array $nodes): \SplObjectStorage
+    {
+        $names = new \SplObjectStorage();
+        foreach (new NodeFinder()->find($nodes, static fn(Node $n): bool => true) as $node) {
+            $found = match (true) {
+                $node instanceof Node\Expr\New_, $node instanceof Node\Expr\StaticCall,
+                $node instanceof Node\Expr\ClassConstFetch, $node instanceof Node\Expr\StaticPropertyFetch => [$node->class],
+                $node instanceof Node\Stmt\Class_ => [$node->extends, ...$node->implements],
+                $node instanceof Node\Stmt\Interface_ => $node->extends,
+                $node instanceof Node\Stmt\Enum_ => $node->implements,
+                $node instanceof Node\Stmt\TraitUse => $node->traits,
+                $node instanceof Node\Attribute => [$node->name],
+                default => [],
+            };
+            foreach ($found as $name) {
+                if ($name instanceof Node\Name) {
+                    $names[$name] = true;
+                }
+            }
+        }
+
+        return $names;
+    }
+
+    /**
      * Имена классов (lowercase), которые загружает код $nodes.
      *
      * @param  array<Node> $nodes
@@ -192,11 +225,9 @@ class RemoveUnusedClassVisitor extends BaseVisitor
     private function referencedNames(array $nodes): array
     {
         $names = [];
-        $add   = static function (?Node $name) use (&$names): void {
-            if ($name instanceof Node\Name) {
-                $names[strtolower(ltrim($name->toString(), '\\'))] = true;
-            }
-        };
+        foreach (self::loadingNames($nodes) as $name) {
+            $names[strtolower(ltrim($name->toString(), '\\'))] = true;
+        }
 
         foreach (new NodeFinder()->find($nodes, static fn(Node $n): bool => true) as $node) {
             if ($node instanceof Node\Expr && isset($this->computed[$node])) {
@@ -206,15 +237,8 @@ class RemoveUnusedClassVisitor extends BaseVisitor
             }
 
             match (true) {
-                $node instanceof Node\Expr\New_, $node instanceof Node\Expr\StaticCall,
-                $node instanceof Node\Expr\ClassConstFetch, $node instanceof Node\Expr\StaticPropertyFetch => $add($node->class),
-                $node instanceof Node\Stmt\Class_ => array_map($add, [$node->extends, ...$node->implements]),
-                $node instanceof Node\Stmt\Interface_ => array_map($add, $node->extends),
-                $node instanceof Node\Stmt\Enum_ => array_map($add, $node->implements),
-                $node instanceof Node\Stmt\TraitUse => array_map($add, $node->traits),
-                $node instanceof Node\Attribute => $add($node->name),
                 $node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name => $names['fn:' . strtolower(ltrim($node->name->toString(), '\\'))] = true,
-                $node instanceof Node\Scalar\String_ && !$this->onlyLabel($node) => $names += [
+                $node instanceof Node\Scalar\String_ && !self::onlyLabel($node) => $names += [
                     strtolower(ltrim(explode('::', $node->value, 2)[0], '\\')) => true,
                     'fn:' . strtolower(ltrim($node->value, '\\'))           => true,
                 ],

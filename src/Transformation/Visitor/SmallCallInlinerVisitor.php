@@ -58,6 +58,9 @@ class SmallCallInlinerVisitor extends BaseVisitor
     /** @var array<string, list<Node\Stmt\Class_>> lowercase имя родителя → прямые наследники (и анонимные) */
     private array $subclasses = [];
 
+    /** @var list<Node\Stmt\Class_> все классы программы, включая анонимные: собираются один раз за обход */
+    private array $allClasses = [];
+
     /** @var array<string, list<Node\Stmt\Function_>> lowercase имя → все объявления функции */
     private array $allFunctions = [];
 
@@ -96,6 +99,7 @@ class SmallCallInlinerVisitor extends BaseVisitor
         $this->methodsByName = [];
         $this->classes       = [];
         $this->subclasses    = [];
+        $this->allClasses    = [];
         $this->functions     = [];
         $this->inlinable     = [];
         $this->subtypeCache  = [];
@@ -108,6 +112,10 @@ class SmallCallInlinerVisitor extends BaseVisitor
             } elseif ($node instanceof Node\Stmt\ClassLike) {
                 if ($node->name instanceof Node\Identifier) {
                     $this->classes[$node->name->toLowerString()] = $node;
+                }
+
+                if ($node instanceof Node\Stmt\Class_) {
+                    $this->allClasses[] = $node;
                 }
 
                 if ($node instanceof Node\Stmt\Class_ && $node->extends instanceof Node\Name) {
@@ -178,6 +186,10 @@ class SmallCallInlinerVisitor extends BaseVisitor
         }
 
         $inlined = $this->inline($callee, $node->args, $caller, $declaring, $receiver);
+        if ($inlined instanceof Node\Expr && !$this->writableBase($inlined) && $this->writtenThrough($node)) {
+            return parent::leaveNode($node);
+        }
+
         if ($inlined instanceof Node\Expr) {
             // Клон тела несёт parent исходного метода — связываем заново с местом вставки
             new NodeTraverser(new \PhpParser\NodeVisitor\ParentConnectingVisitor())->traverse([$inlined]);
@@ -185,6 +197,41 @@ class SmallCallInlinerVisitor extends BaseVisitor
         }
 
         return $inlined ?? parent::leaveNode($node);
+    }
+
+    /**
+     * Через выражение можно писать: `$x->p = 1`, `f()->p = 1`. Через временное — нет:
+     * `($this->state ??= new S())->p = 1` — Fatal «Cannot use temporary expression in write context».
+     */
+    private function writableBase(Node\Expr $expr): bool
+    {
+        return $expr instanceof Node\Expr\Variable || $expr instanceof Node\Expr\PropertyFetch
+            || $expr instanceof Node\Expr\StaticPropertyFetch || $expr instanceof Node\Expr\ArrayDimFetch
+            || $expr instanceof Node\Expr\CallLike && !$expr instanceof Node\Expr\New_;
+    }
+
+    /** Вызов — основа цепочки `->p` / `[k]`, в которую пишут (присваивание, ++, unset, ссылка, аргумент). */
+    private function writtenThrough(Node\Expr $call): bool
+    {
+        $child  = $call;
+        $parent = $call->getAttribute('parent');
+        while (($parent instanceof Node\Expr\PropertyFetch || $parent instanceof Node\Expr\ArrayDimFetch) && $parent->var === $child) {
+            $child  = $parent;
+            $parent = $parent->getAttribute('parent');
+        }
+
+        if ($child === $call) {
+            return false;
+        }
+
+        return match (true) {
+            $parent instanceof Node\Expr\Assign, $parent instanceof Node\Expr\AssignOp, $parent instanceof Node\Expr\AssignRef => $parent->var === $child || $parent instanceof Node\Expr\AssignRef,
+            $parent instanceof Node\Expr\PreInc, $parent instanceof Node\Expr\PreDec, $parent instanceof Node\Expr\PostInc, $parent instanceof Node\Expr\PostDec,
+            $parent instanceof Node\Stmt\Unset_, $parent instanceof Node\Expr\List_, $parent instanceof Node\Arg => true,
+            $parent instanceof Node\ArrayItem => $parent->byRef || $parent->getAttribute('parent') instanceof Node\Expr\List_,
+            $parent instanceof Node\Stmt\Foreach_ => $parent->keyVar === $child || $parent->valueVar === $child,
+            default => false,
+        };
     }
 
     /**
@@ -530,7 +577,8 @@ class SmallCallInlinerVisitor extends BaseVisitor
         }
 
         $result = [];
-        foreach ($this->findNode(Node\Stmt\Class_::class) as $class) {
+        // Не findNode: поиск по всему AST на каждый тип — минуты на Symfony demo
+        foreach ($this->allClasses as $class) {
             if (!$this->isSubtype($class, $type)) {
                 continue;
             }
