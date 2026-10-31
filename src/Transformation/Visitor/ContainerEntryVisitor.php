@@ -1543,7 +1543,7 @@ class ContainerEntryVisitor extends BaseVisitor
         if (function_exists($name)) {
             $type = new \ReflectionFunction($name)->getReturnType();
             $type ??= new \ReflectionFunction($name)->getTentativeReturnType();
-            if ($type !== null && !preg_match('/mixed|object|array|iterable|callable|[A-Z]/', (string) $type)) {
+            if ($type instanceof \ReflectionType && !preg_match('/mixed|object|array|iterable|callable|[A-Z]/', (string) $type)) {
                 return false;
             }
         }
