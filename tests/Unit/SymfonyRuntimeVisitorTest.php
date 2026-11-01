@@ -7,10 +7,11 @@ use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
 use Recombinator\Transformation\Visitor\FileMapIncludeVisitor;
+use Recombinator\Transformation\Visitor\RemoveCommentsVisitor;
 use Recombinator\Transformation\Visitor\SymfonyRuntimeVisitor;
 
 /** Вход Symfony: public/index.php подключает vendor/autoload_runtime.php и возвращает замыкание. */
-function applySymfonyRuntime(string $runtime): string
+function applySymfonyRuntime(string $runtime, int $laterRules = 0): string
 {
     $fileMap = [
         'public/index.php'            => "<?php\nrequire_once dirname(__DIR__).'/vendor/autoload_runtime.php';\nreturn function (array \$context) { return new Kernel(\$context['APP_ENV']); };\n",
@@ -18,7 +19,9 @@ function applySymfonyRuntime(string $runtime): string
         'vendor/autoload.php'         => "<?php\nrequire_once __DIR__ . '/composer/autoload_real.php';\nreturn ComposerAutoloaderInit::getLoader();\n",
     ];
     $ast = new ParserFactory()->createForNewestSupportedVersion()->parse($fileMap['public/index.php']) ?? [];
-    foreach ([new FileMapIncludeVisitor($fileMap, 'public/index.php'), new SymfonyRuntimeVisitor()] as $visitor) {
+    // Следующие правила (BaseVisitor) не должны повторять замену
+    $later = array_map(static fn(): RemoveCommentsVisitor => new RemoveCommentsVisitor(), $laterRules > 0 ? range(1, $laterRules) : []);
+    foreach ([new FileMapIncludeVisitor($fileMap, 'public/index.php'), new SymfonyRuntimeVisitor(), ...$later] as $visitor) {
         $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
         $ast = new NodeTraverser($visitor)->traverse($ast);
     }
@@ -50,4 +53,16 @@ it('leaves other uses of SCRIPT_FILENAME and the autoloader alone', function ():
         PHP);
 
     expect($result)->toContain("\$loaded = require_once __DIR__ . '/autoload.php';")->toContain("\$file = \$_SERVER['SCRIPT_FILENAME'];");
+});
+
+it('hoists the autoloader once even when later rules run', function (): void {
+    $result = applySymfonyRuntime(<<<'PHP'
+        <?php
+        if (true === (require_once __DIR__.'/autoload.php') || empty($_SERVER['SCRIPT_FILENAME'])) {
+            return;
+        }
+        $app = require $_SERVER['SCRIPT_FILENAME'];
+        PHP, 3);
+
+    expect(substr_count($result, "require_once __DIR__ . '/autoload.php';"))->toBe(1);
 });

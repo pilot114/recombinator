@@ -41,10 +41,24 @@ class SymfonyRuntimeVisitor extends BaseVisitor
     /** Завершающий return входного файла: замыкание приложения */
     private Node\Expr\Closure|Node\Expr\ArrowFunction|null $app = null;
 
+    /**
+     * Замены на этот обход. Не атрибут `replace`: if остаётся в дереве, и BaseVisitor::leaveNode
+     * каждого следующего правила вставлял бы подключение перед ним снова
+     *
+     * @var \SplObjectStorage<Node, Node|list<Node>>
+     */
+    private \SplObjectStorage $replacements;
+
+    public function __construct()
+    {
+        $this->replacements = new \SplObjectStorage();
+    }
+
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
         parent::beforeTraverse($nodes);
+        $this->replacements = new \SplObjectStorage();
         $last      = end($nodes);
         $this->app = $last instanceof Node\Stmt\Return_ && ($last->expr instanceof Node\Expr\Closure || $last->expr instanceof Node\Expr\ArrowFunction)
             ? $last->expr
@@ -66,11 +80,17 @@ class SymfonyRuntimeVisitor extends BaseVisitor
         $check = $node->getAttribute('parent');
         $stmt  = $check instanceof Node\Expr\BinaryOp\Identical ? $this->topLevelIfEvaluatingFirst($check) : null;
         if ($node->type === Include_::TYPE_REQUIRE_ONCE && $check instanceof Node\Expr\BinaryOp\Identical && $stmt instanceof Node\Stmt\If_ && $this->isTrue($check->left === $node ? $check->right : $check->left)) {
-            $check->setAttribute('replace', new Node\Expr\ConstFetch(new Node\Name('false')));
-            $stmt->setAttribute('replace', [new Node\Stmt\Expression($node), $stmt]);
+            $this->replacements[$check] = new Node\Expr\ConstFetch(new Node\Name('false'));
+            $this->replacements[$stmt]  = [new Node\Stmt\Expression($node), $stmt];
         }
 
         return null;
+    }
+
+    #[\Override]
+    public function leaveNode(Node $node): int|Node|array|null
+    {
+        return $this->replacements[$node] ?? parent::leaveNode($node);
     }
 
     private function isScriptFilename(Node\Expr $expr): bool
