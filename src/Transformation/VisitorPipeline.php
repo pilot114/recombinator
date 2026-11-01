@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation;
 
 use PhpParser\NodeVisitorAbstract;
+use Recombinator\Core\Config;
 use Recombinator\Core\ExecutionCache;
 use Recombinator\Core\TargetEnvironment;
 use Recombinator\Domain\ScopeStore;
@@ -88,6 +89,7 @@ use Recombinator\Transformation\Visitor\StaticMethodExtractVisitor;
 use Recombinator\Transformation\Visitor\StaticMethodInlinerVisitor;
 use Recombinator\Transformation\Visitor\StaticPropConstVisitor;
 use Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor;
+use Recombinator\Transformation\Visitor\SymfonyRuntimeVisitor;
 use Recombinator\Transformation\Visitor\TargetEnvironmentVisitor;
 use Recombinator\Transformation\Visitor\TernarReturnVisitor;
 use Recombinator\Transformation\Visitor\TraitInlinerVisitor;
@@ -107,6 +109,8 @@ final readonly class VisitorPipeline
      * @param \ArrayObject<string, mixed> $enumCache  кэш enum-методов: enum к поздним проходам уже встроен
      * @param array<string, string>       $fileMap    исходники программы: путь → код
      * @param string|null                 $projectDir реальный путь проекта для проб целевого сервера
+     * @param list<string>                $runtimeClasses классы, которые программа загружает по именам из данных
+     *                                                (срез по профилю, CoverageProbe): встраиваются и не удаляются
      */
     public function __construct(
         private ScopeStore $scopeStore,
@@ -117,7 +121,14 @@ final readonly class VisitorPipeline
         private string $entry = '',
         private TargetEnvironment $environment = new TargetEnvironment(),
         private ?string $projectDir = null,
+        private array $runtimeClasses = [],
     ) {
+    }
+
+    /** Классы из данных выполнения не удаляются как недостижимые: их имена — в данных, а не в коде */
+    private function config(): Config
+    {
+        return new Config()->setPublicContract(array_map(static fn(string $class): string => strtr($class, ['\\' => '_']), $this->runtimeClasses));
     }
 
     /**
@@ -135,9 +146,10 @@ final readonly class VisitorPipeline
         $visitors = [];
         if ($fileMap !== []) {
             $visitors[] = new FileMapIncludeVisitor($fileMap, $this->entry);
-            $visitors[] = new UseImportVisitor($fileMap);
+            $visitors[] = new SymfonyRuntimeVisitor();
+            $visitors[] = new UseImportVisitor($fileMap, $this->runtimeClasses);
             // Сразу убираем недостижимые классы: все следующие визиторы обходят меньше кода
-            $visitors[] = new RemoveUnusedClassVisitor();
+            $visitors[] = new RemoveUnusedClassVisitor($this->config());
             $visitors[] = new ExternalParentGuardVisitor();
         }
 
@@ -219,11 +231,11 @@ final readonly class VisitorPipeline
 
             // Инлайнинг классов
             new MethodToSingleReturnVisitor(),
-            new ConstructorAndMethodsVisitor($ss),
+            new ConstructorAndMethodsVisitor($ss, $this->config()),
             new PropertyAccessVisitor($ss),
             new ConstClassVisitor($ss),
             new TernarReturnVisitor(),
-            new ClassInlinerVisitor(),
+            new ClassInlinerVisitor($this->config()),
 
             // Удаление type-hints локальных классов и мёртвых prop-записей
             new StripLocalClassTypeHintsVisitor(),
@@ -236,8 +248,8 @@ final readonly class VisitorPipeline
             new InlineEmptySubclassVisitor(),
             new RemoveDeadCodeAfterJumpVisitor(),
             new RemoveUnusedClosureCapturesVisitor(),
-            new RemoveUnusedMethodVisitor(null, $fileMap),
-            new RemoveUnusedClassVisitor(),
+            new RemoveUnusedMethodVisitor($this->config(), $fileMap),
+            new RemoveUnusedClassVisitor($this->config()),
             new RemoveUnusedPureVisitor(),
             new RemoveDeadLoopVisitor(),
 

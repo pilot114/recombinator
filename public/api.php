@@ -108,6 +108,7 @@ use Recombinator\Support\ProjectFiles;
 use Recombinator\Support\RunCache;
 use Recombinator\Support\Sandbox;
 use Recombinator\Core\TargetEnvironment;
+use Recombinator\Support\CoverageProbe;
 use Recombinator\Support\DoctrineMetadataProbe;
 use Recombinator\Transformation\RuleScheduler;
 use Recombinator\Transformation\VisitorPipeline;
@@ -286,6 +287,15 @@ if ($projectDir !== null && isset($environment->probes['doctrine'])) {
         $inputKey,
         __DIR__ . '/../var/cache/probes',
     ));
+}
+
+// Исходные файлы — для отчёта «до»: срез по профилю ниже меняет только то, что развёртывается
+$sourceFiles = $fileMap;
+
+// Большой проект: в развёртку идёт только код, выполненный на запросах профиля
+$runtimeClasses = [];
+if ($projectDir !== null && $environment->assumes('onlyProfiledCode') && $environment->profile !== []) {
+    [$fileMap, $runtimeClasses] = CoverageProbe::prune((string) realpath($projectDir), $entryRel, $fileMap, $environment->profile, $inputKey, __DIR__ . '/../var/cache/probes');
 }
 
 $runFile  = $runCacheDir . '/' . $runKey . '.run';
@@ -531,6 +541,7 @@ $pipeline = new VisitorPipeline(
     $entryRel,
     $environment,
     $projectDir === null ? null : (string) realpath($projectDir),
+    $runtimeClasses,
 );
 
 /** Шаг для журнала: полный код «до/после» — только если он не слишком велик. */
@@ -636,7 +647,7 @@ $run['final']          = "<?php\n" . $printer->prettyPrint($ast);
 // «До» — все исходные файлы, у проекта вместе с vendor: весь код, из которого собрана программа
 set_time_limit($timeout);
 try {
-    $run['report'] = QualityReport::of($fileMap !== [] ? array_values($fileMap) : [$run['original']], $phpParser->parse($run['final']) ?? []);
+    $run['report'] = QualityReport::of($sourceFiles !== [] ? array_values($sourceFiles) : [$run['original']], $phpParser->parse($run['final']) ?? []);
 } catch (PhpParserError $phpParserError) {
     // Итог — не PHP: ошибка правила, её нужно видеть
     $run['report'] = ['error' => 'Итог не разбирается: ' . $phpParserError->getMessage()];

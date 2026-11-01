@@ -29,6 +29,7 @@ use PhpParser\PrettyPrinter\Standard as Printer;
 use Recombinator\Core\ExecutionCache;
 use Recombinator\Core\TargetEnvironment;
 use Recombinator\Domain\ScopeStore;
+use Recombinator\Support\CoverageProbe;
 use Recombinator\Support\DoctrineMetadataProbe;
 use Recombinator\Support\ProjectFiles;
 use Recombinator\Support\Sandbox;
@@ -58,7 +59,7 @@ $examples    = $examples !== [] ? $examples : array_map('basename', glob($exampl
 /**
  * Вход как в public/api.php: проект (src, vendor, корень), несколько файлов или один.
  *
- * @return array{code: string, fileMap: array<string, string>, entry: string, environment: TargetEnvironment, projectDir: ?string}
+ * @return array{code: string, fileMap: array<string, string>, entry: string, environment: TargetEnvironment, projectDir: ?string, runtimeClasses?: list<string>}
  */
 function loadExample(string $dir, array $meta): array
 {
@@ -74,7 +75,12 @@ function loadExample(string $dir, array $meta): array
             $environment = $environment->withInvariants(DoctrineMetadataProbe::invariants($projectDir, $environment->probes['doctrine'], $inputKey, dirname(__DIR__) . '/var/cache/probes'));
         }
 
-        return ['code' => $fileMap[$entry], 'fileMap' => $fileMap, 'entry' => $entry, 'environment' => $environment, 'projectDir' => $projectDir];
+        $runtimeClasses = [];
+        if ($environment->assumes('onlyProfiledCode') && $environment->profile !== []) {
+            [$fileMap, $runtimeClasses] = CoverageProbe::prune($projectDir, $entry, $fileMap, $environment->profile, sha1(serialize([$fileMap[$entry], $fileMap, $entry])), dirname(__DIR__) . '/var/cache/probes');
+        }
+
+        return ['code' => $fileMap[$entry], 'fileMap' => $fileMap, 'entry' => $entry, 'environment' => $environment, 'projectDir' => $projectDir, 'runtimeClasses' => $runtimeClasses];
     }
 
     $files = [];
@@ -115,7 +121,7 @@ function runPipeline(string $example, array $input, string $mode, array &$log): 
 {
     $printer   = new Printer();
     $execCache = new ExecutionCache();
-    $pipeline  = new VisitorPipeline(new ScopeStore(), $execCache, new Sandbox($execCache), new ArrayObject(), $input['fileMap'], $input['entry'], $input['environment'], $input['projectDir']);
+    $pipeline  = new VisitorPipeline(new ScopeStore(), $execCache, new Sandbox($execCache), new ArrayObject(), $input['fileMap'], $input['entry'], $input['environment'], $input['projectDir'], $input['runtimeClasses'] ?? []);
     $code      = str_starts_with(ltrim($input['code']), '<?') ? $input['code'] : "<?php\n" . $input['code'];
     $ast       = new ParserFactory()->createForNewestSupportedVersion()->parse($code) ?? [];
     $scheduler = new RuleScheduler($mode, count($pipeline->main()));

@@ -35,6 +35,14 @@ final class Config
     private array $publicContract = [];
 
     /**
+     * Класс записи и его последний сегмент — для проверки за O(1): контракт бывает в тысячи
+     * имён (классы, загруженные во время выполнения, см. CoverageProbe)
+     *
+     * @var array<string, true>
+     */
+    private array $protectedNames = [];
+
+    /**
      * Задаёт публичный контракт — массив FQN, которые нельзя нарушать.
      *
      * Принимаются классы (`App\Foo`), функции (`app_helper`) и методы
@@ -48,6 +56,10 @@ final class Config
             $normalized = $this->normalize($fqn);
             if ($normalized !== '') {
                 $this->publicContract[$normalized] = true;
+                $classPart                          = explode('::', $normalized, 2)[0];
+                $segments                           = explode('\\', $classPart);
+                $this->protectedNames[$classPart]   = true;
+                $this->protectedNames[end($segments)] = true;
             }
         }
 
@@ -83,23 +95,7 @@ final class Config
             return false;
         }
 
-        foreach (array_keys($this->publicContract) as $entry) {
-            if ($entry === $needle) {
-                return true;
-            }
-
-            $classPart = explode('::', $entry, 2)[0];
-            if ($classPart === $needle) {
-                return true;
-            }
-
-            $segments = explode('\\', $classPart);
-            if (end($segments) === $needle) {
-                return true;
-            }
-        }
-
-        return false;
+        return isset($this->publicContract[$needle]) || isset($this->protectedNames[$needle]);
     }
 
     private function normalize(string $fqn): string

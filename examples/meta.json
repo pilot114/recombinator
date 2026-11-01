@@ -32,8 +32,19 @@
       "composer install --no-dev --optimize-autoloader --no-scripts",
       "php bin/console importmap:install",
       "php bin/console sass:build",
-      "php bin/console asset-map:compile"
-    ]
+      "php bin/console asset-map:compile",
+      "php bin/console cache:warmup"
+    ],
+    "environment": {
+      "assumptions": {
+        "onlyProfiledCode": true
+      },
+      "profile": [
+        {"method": "GET", "uri": "/en/blog/"},
+        {"method": "GET", "uri": "/en/blog/search"},
+        {"method": "GET", "uri": "/en/login"}
+      ]
+    }
   },
   "07-slim-demo": {
     "name": "Slim Demo",

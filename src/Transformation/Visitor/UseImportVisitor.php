@@ -99,8 +99,11 @@ class UseImportVisitor extends BaseVisitor
 
     private readonly Parser $parser;
 
-    /** @param array<string, string> $fileMap relative-path → source code */
-    public function __construct(private readonly array $fileMap)
+    /**
+     * @param array<string, string> $fileMap        relative-path → source code
+     * @param list<string>          $runtimeClasses классы, загружаемые во время выполнения по именам из данных
+     */
+    public function __construct(private readonly array $fileMap, private readonly array $runtimeClasses = [])
     {
         $this->parser = new ParserFactory()->createForNewestSupportedVersion();
     }
@@ -340,7 +343,8 @@ class UseImportVisitor extends BaseVisitor
         // runtimeAutoload (`Faker\Provider\en_US\Address` → `Faker_Provider_en_US_Address`)
         if ($canPull) {
             $computed = StringValues::classNames($nodes);
-            foreach ($computed as $fqcn) {
+            // И классы, которые программа загружает по именам из данных (см. CoverageProbe)
+            foreach ([...$computed, ...$this->runtimeClasses] as $fqcn) {
                 if (!isset($this->declared[strtolower(strtr($fqcn, ['\\' => '_']))]) && !isset($this->inlined[$fqcn])) {
                     array_push($pulled, ...$this->resolveClass($fqcn) ?? []);
                 }
@@ -753,9 +757,9 @@ class UseImportVisitor extends BaseVisitor
                     array_push($deps, ...$resolved);
                 }
 
-                if (isset($this->inlined[$fqcn])) {
-                    $aliases[$lower] = strtr($fqcn, ['\\' => '_']);
-                }
+                // Класса нет в карте (внешний, срез по профилю) — полное имя: короткое в плоской
+                // программе означало бы глобальный класс
+                $aliases[$lower] = isset($this->inlined[$fqcn]) ? strtr($fqcn, ['\\' => '_']) : '\\' . $fqcn;
             }
         }
 

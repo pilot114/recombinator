@@ -104,3 +104,13 @@ it('keeps classes named by a finite set of runtime-built strings', function (): 
     expect($result)->toContain('class Faker_Provider_Address')->toContain('class Faker_Provider_Person')
         ->not->toContain('class Faker_Provider_Lorem');
 });
+
+it('keeps classes named in method types that PHP checks against the parent', function (): void {
+    $result = applyRemoveUnusedClass('<?php
+        interface PathIterator extends Iterator {}
+        class Unused {}
+        class Path implements IteratorAggregate { public function getIterator(): PathIterator { return f(); } public function take(Unused $u): void {} }
+        new Path();');
+
+    expect($result)->toContain('interface PathIterator')->toContain('class Unused');
+});

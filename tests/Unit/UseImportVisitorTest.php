@@ -438,3 +438,11 @@ it('treats qualified names in code without namespace as fully qualified', functi
     expect($result)->toContain('class Acme_Base')->toContain('class Child extends Acme_Base')->toContain('Acme_Base::class')
         ->not->toContain('Acme\Base');
 });
+
+it('keeps same-namespace references to classes outside the file map fully qualified', function (): void {
+    $fileMap = ['vendor/acme/src/Router.php' => '<?php namespace Acme; class Router { public function routes(): RouteCollection { return $this->c; } }'];
+    $result  = applyUseImport('<?php $r = new \Acme\Router();', $fileMap);
+
+    // Короткое `RouteCollection` в плоской программе — глобальный класс, а не Acme\RouteCollection
+    expect($result)->toContain('class Acme_Router')->toContain('public function routes(): \Acme\RouteCollection');
+});

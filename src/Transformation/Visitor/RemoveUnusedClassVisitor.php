@@ -18,7 +18,8 @@ use Recombinator\Support\StringValues;
  * ссылается только мёртвый класс, тоже мёртв.
  *
  * Загружает класс: `new`, `::` (вызов, константа, статическое свойство), extends,
- * implements, use трейта, атрибут (Doctrine создаёт их через рефлексию). Тип
+ * implements, use трейта, атрибут (Doctrine создаёт их через рефлексию), тип метода класса
+ * с предком (PHP сверяет его с методом предка при объявлении). В остальных местах тип
  * параметра, `instanceof` и `catch` класс не загружают: если объектов класса нет,
  * проверка ложна и без объявления. Имя строкой (`'App_User'`, `X::class`, callable
  * `'X::m'`) считается ссылкой: из строки делают `new $cls` и ключи контейнера —
@@ -185,7 +186,8 @@ class RemoveUnusedClassVisitor extends BaseVisitor
 
     /**
      * Имена в позициях, где PHP загружает класс: `new`, `::`, extends, implements, use
-     * трейта, атрибут. Тип параметра, `instanceof` и `catch` класс не загружают.
+     * трейта, атрибут, типы методов класса с предком (проверка совместимости). Тип параметра
+     * в остальных местах, `instanceof` и `catch` класс не загружают.
      * Общее правило с UseImportVisitor: встроенный им класс, который здесь не загружается,
      * удалялся бы снова, и правила сменяли бы друг друга без конца.
      *
@@ -209,6 +211,23 @@ class RemoveUnusedClassVisitor extends BaseVisitor
             foreach ($found as $name) {
                 if ($name instanceof Node\Name) {
                     $names[$name] = true;
+                }
+            }
+
+            // Типы метода, который может переопределять метод предка или интерфейса, PHP загружает
+            // при объявлении класса — проверка совместимости: `getIterator(): PathIterator`
+            // против `IteratorAggregate::getIterator(): Traversable`
+            if (
+                $node instanceof Node\Stmt\Class_ && ($node->extends instanceof Node\Name || $node->implements !== [])
+                || $node instanceof Node\Stmt\Interface_ && $node->extends !== []
+                || $node instanceof Node\Stmt\Enum_ && $node->implements !== []
+                || $node instanceof Node\Stmt\Trait_
+            ) {
+                foreach ($node->getMethods() as $method) {
+                    $types = array_filter([$method->returnType, ...array_map(static fn(Node\Param $p): ?Node => $p->type, $method->params)]);
+                    foreach (new NodeFinder()->findInstanceOf($types, Node\Name::class) as $name) {
+                        $names[$name] = true;
+                    }
                 }
             }
         }
