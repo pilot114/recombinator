@@ -88,7 +88,6 @@ use Recombinator\Transformation\Visitor\StaticMethodExtractVisitor;
 use Recombinator\Transformation\Visitor\StaticMethodInlinerVisitor;
 use Recombinator\Transformation\Visitor\StaticPropConstVisitor;
 use Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor;
-use Recombinator\Transformation\Visitor\SymfonyRuntimeVisitor;
 use Recombinator\Transformation\Visitor\TargetEnvironmentVisitor;
 use Recombinator\Transformation\Visitor\TernarReturnVisitor;
 use Recombinator\Transformation\Visitor\TraitInlinerVisitor;
@@ -136,7 +135,6 @@ final readonly class VisitorPipeline
         $visitors = [];
         if ($fileMap !== []) {
             $visitors[] = new FileMapIncludeVisitor($fileMap, $this->entry);
-            $visitors[] = new SymfonyRuntimeVisitor();
             $visitors[] = new UseImportVisitor($fileMap);
             // Сразу убираем недостижимые классы: все следующие визиторы обходят меньше кода
             $visitors[] = new RemoveUnusedClassVisitor();
