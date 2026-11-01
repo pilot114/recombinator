@@ -54,6 +54,9 @@ class TargetEnvironmentVisitor extends BaseVisitor
     /** @var array<string, list<Node\Stmt\ClassLike>> lowercase имя → объявления */
     private array $classNodes = [];
 
+    /** @var array<string, int>|null имя константы → число объявлений (const, define); null — define с вычисляемым именем */
+    private ?array $constants = [];
+
     /** @param array<string, string> $fileMap файлы проекта (путь → код) */
     public function __construct(
         private readonly TargetEnvironment $environment,
@@ -74,6 +77,7 @@ class TargetEnvironmentVisitor extends BaseVisitor
         $this->topFunctions     = [];
         $this->functionCounts   = [];
         $this->classNodes       = [];
+        $this->constants        = [];
         foreach ($this->findNode(Node::class) as $node) {
             if ($node instanceof Node\Stmt\ClassLike && $node->name instanceof Node\Identifier) {
                 $this->program[$node->name->toLowerString()]    = true;
@@ -81,6 +85,8 @@ class TargetEnvironmentVisitor extends BaseVisitor
             } elseif ($node instanceof Node\Stmt\Function_) {
                 $this->programFunctions[$node->name->toLowerString()] = true;
                 $this->functionCounts[$node->name->toLowerString()]   = ($this->functionCounts[$node->name->toLowerString()] ?? 0) + 1;
+            } elseif ($this->constants !== null) {
+                $this->countConstants($node);
             }
         }
 
@@ -331,7 +337,7 @@ class TargetEnvironmentVisitor extends BaseVisitor
      */
     private function constantDefined(Node\Expr\FuncCall $call, string $name): ?bool
     {
-        $declarations = $this->constantDeclarations();
+        $declarations = $this->constants;
         if ($declarations === null) {
             return null; // define() с вычисляемым именем
         }
@@ -373,26 +379,23 @@ class TargetEnvironmentVisitor extends BaseVisitor
         return array_map(strval(...), array_keys($this->environment->extensions ?? []));
     }
 
-    /** @return array<string, int>|null имя → число объявлений в программе; null — имя вычисляется */
-    private function constantDeclarations(): ?array
+    /** Учитывает объявление константы; собирается в beforeTraverse — поиск по всему AST на каждый defined() был квадратичным */
+    private function countConstants(Node $node): void
     {
-        $result = [];
-        foreach ($this->findNode(Node::class) as $node) {
-            if ($node instanceof Node\Stmt\Const_) {
-                foreach ($node->consts as $const) {
-                    $result[$const->name->toString()] = ($result[$const->name->toString()] ?? 0) + 1;
-                }
-            } elseif ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name && ltrim($node->name->toLowerString(), '\\') === 'define') {
-                $first = $node->isPartialFunctionApplication() ? null : ($node->getArgs()[0] ?? null)?->value;
-                if (!$first instanceof Node\Scalar\String_) {
-                    return null;
-                }
-
-                $result[ltrim($first->value, '\\')] = ($result[ltrim($first->value, '\\')] ?? 0) + 1;
+        if ($node instanceof Node\Stmt\Const_) {
+            foreach ($node->consts as $const) {
+                $this->constants[$const->name->toString()] = ($this->constants[$const->name->toString()] ?? 0) + 1;
             }
-        }
+        } elseif ($node instanceof Node\Expr\FuncCall && $node->name instanceof Node\Name && ltrim($node->name->toLowerString(), '\\') === 'define') {
+            $first = $node->isPartialFunctionApplication() ? null : ($node->getArgs()[0] ?? null)?->value;
+            if (!$first instanceof Node\Scalar\String_) {
+                $this->constants = null;
 
-        return $result;
+                return;
+            }
+
+            $this->constants[ltrim($first->value, '\\')] = ($this->constants[ltrim($first->value, '\\')] ?? 0) + 1;
+        }
     }
 
     /** `if (!defined('X')) { … define('X', …); … }` — защита единственного объявления. */
