@@ -310,20 +310,51 @@ class FlattenInheritanceVisitor extends BaseVisitor
      */
     private function redirectSharedStatics(Node\Stmt\Class_ $child, array $names, string $parentName): void
     {
-        if ($names === []) {
-            return;
-        }
+        // Наследники ребёнка видели эти свойства через него, а после склейки он их не объявляет:
+        // `self::$freshCache` в App_Kernel (наследник Kernel, склеенного с AbstractKernel).
+        // Свойство, объявленное заново ниже по иерархии, закрывает родительское для своей ветки
+        for ($queue = [[$child, $names]]; $queue !== [];) {
+            [$class, $visible] = array_pop($queue);
+            if ($class !== $child) {
+                $visible = array_diff_key($visible, $this->staticPropertyNames($class));
+            }
 
-        foreach ($this->findNode(Node\Expr\StaticPropertyFetch::class, $child->stmts) as $fetch) {
-            if (
-                $fetch->class instanceof Node\Name
-                && in_array(strtolower($fetch->class->toString()), ['self', 'static', 'parent'], true)
-                && $fetch->name instanceof Node\VarLikeIdentifier
-                && isset($names[$fetch->name->toString()])
-            ) {
-                $fetch->class = new Node\Name($parentName);
+            if ($visible === []) {
+                continue;
+            }
+
+            foreach ($this->findNode(Node\Expr\StaticPropertyFetch::class, $class->stmts) as $fetch) {
+                if (
+                    $fetch->class instanceof Node\Name
+                    && in_array(strtolower($fetch->class->toString()), ['self', 'static', 'parent'], true)
+                    && $fetch->name instanceof Node\VarLikeIdentifier
+                    && isset($visible[$fetch->name->toString()])
+                ) {
+                    $fetch->class = new Node\Name($parentName);
+                }
+            }
+
+            foreach ($this->classMap as $subclass) {
+                if ($subclass->extends instanceof Node\Name && strcasecmp($subclass->extends->toString(), (string) $class->name) === 0) {
+                    $queue[] = [$subclass, $visible];
+                }
             }
         }
+    }
+
+    /** @return array<string, true> имена статических свойств, объявленных в классе */
+    private function staticPropertyNames(Node\Stmt\Class_ $class): array
+    {
+        $names = [];
+        foreach ($class->stmts as $stmt) {
+            if ($stmt instanceof Node\Stmt\Property && $stmt->isStatic()) {
+                foreach ($stmt->props as $prop) {
+                    $names[$prop->name->toString()] = true;
+                }
+            }
+        }
+
+        return $names;
     }
 
     /**

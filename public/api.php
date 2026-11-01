@@ -106,6 +106,7 @@ use Recombinator\Domain\ScopeStore;
 use Recombinator\Support\LineDiffer;
 use Recombinator\Support\ProjectFiles;
 use Recombinator\Support\RunCache;
+use Recombinator\Support\RuntimeProfile;
 use Recombinator\Support\Sandbox;
 use Recombinator\Core\TargetEnvironment;
 use Recombinator\Support\CoverageProbe;
@@ -293,9 +294,9 @@ if ($projectDir !== null && isset($environment->probes['doctrine'])) {
 $sourceFiles = $fileMap;
 
 // Большой проект: в развёртку идёт только код, выполненный на запросах профиля
-$runtimeClasses = [];
+$runtime = new RuntimeProfile();
 if ($projectDir !== null && $environment->assumes('onlyProfiledCode') && $environment->profile !== []) {
-    [$fileMap, $runtimeClasses] = CoverageProbe::prune((string) realpath($projectDir), $entryRel, $fileMap, $environment->profile, $inputKey, __DIR__ . '/../var/cache/probes');
+    [$fileMap, $runtime] = CoverageProbe::prune((string) realpath($projectDir), $entryRel, $fileMap, $environment->profile, $inputKey, __DIR__ . '/../var/cache/probes');
 }
 
 $runFile  = $runCacheDir . '/' . $runKey . '.run';
@@ -541,7 +542,7 @@ $pipeline = new VisitorPipeline(
     $entryRel,
     $environment,
     $projectDir === null ? null : (string) realpath($projectDir),
-    $runtimeClasses,
+    $runtime,
 );
 
 /** Шаг для журнала: полный код «до/после» — только если он не слишком велик. */

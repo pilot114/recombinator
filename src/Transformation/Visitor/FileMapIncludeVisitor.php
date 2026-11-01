@@ -89,6 +89,14 @@ class FileMapIncludeVisitor extends BaseVisitor
             if ($nodes === null) {
                 return null;
             }
+        } elseif (array_any($nodes, static fn(Node $n): bool => $n instanceof Node\Stmt\Use_ || $n instanceof Node\Stmt\GroupUse)) {
+            // use действует только в своём файле: в общем коде одинаковые алиасы разных файлов
+            // (`use Symfony\Polyfill\Php85 as p;` и `use Symfony\Polyfill\Intl\MessageFormatter as p;`)
+            // смешались бы — имена раскрываются в полные здесь, а use убираются
+            $nodes = array_values(array_filter(
+                new \PhpParser\NodeTraverser(new \PhpParser\NodeVisitor\NameResolver(null, ['replaceNodes' => true]))->traverse($nodes),
+                static fn(Node $n): bool => !$n instanceof Node\Stmt\Use_ && !$n instanceof Node\Stmt\GroupUse,
+            ));
         }
 
         $this->nonStrictInlined = $this->nonStrictInlined || !UseImportVisitor::isStrictFile($nodes);

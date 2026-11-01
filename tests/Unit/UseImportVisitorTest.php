@@ -6,6 +6,8 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Support\RuntimeProfile;
+use Recombinator\Support\TypeInference;
 use Recombinator\Transformation\Visitor\UseImportVisitor;
 
 function applyUseImport(string $code, array $fileMap): string
@@ -445,4 +447,16 @@ it('keeps same-namespace references to classes outside the file map fully qualif
 
     // Короткое `RouteCollection` в плоской программе — глобальный класс, а не Acme\RouteCollection
     expect($result)->toContain('class Acme_Router')->toContain('public function routes(): \Acme\RouteCollection');
+});
+
+it('marks classes extended by code included at runtime', function (): void {
+    $fileMap = ['vendor/acme/src/Container.php' => '<?php namespace Acme; class Container { public function bag() { return 1; } }'];
+    $ast     = new ParserFactory()->createForNewestSupportedVersion()->parse('<?php $c = new \Acme\Container();') ?? [];
+    $ast     = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
+    $ast     = new NodeTraverser(new UseImportVisitor($fileMap, new RuntimeProfile(extended: ['Acme\Container'])))->traverse($ast);
+
+    // Скомпилированный контейнер в var/cache наследует Container: вызов bag() нельзя девиртуализировать
+    $class = new PhpParser\NodeFinder()->findFirstInstanceOf($ast, PhpParser\Node\Stmt\Class_::class);
+    expect($class?->getAttribute('extendedOutside'))->toBeTrue()
+        ->and(new TypeInference(['acme_container' => $class], $ast)->subtypes('acme_container'))->toBeNull();
 });

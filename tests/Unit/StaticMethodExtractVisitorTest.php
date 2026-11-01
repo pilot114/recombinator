@@ -6,13 +6,14 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Core\Config;
 use Recombinator\Transformation\Visitor\StaticMethodExtractVisitor;
 
-function applyStaticExtract(string $code): string
+function applyStaticExtract(string $code, ?Config $config = null): string
 {
     $ast = new ParserFactory()->createForNewestSupportedVersion()->parse($code) ?? [];
     $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
-    $ast = new NodeTraverser(new StaticMethodExtractVisitor())->traverse($ast);
+    $ast = new NodeTraverser(new StaticMethodExtractVisitor($config))->traverse($ast);
 
     return new Printer()->prettyPrint($ast);
 }
@@ -126,4 +127,14 @@ it('keeps static methods of dynamically created plugin classes', function (): vo
 
     expect($result)->toContain('public static function freeEmailDomain()')->toContain('public static function pick()')
         ->not->toContain('function Internet_freeEmailDomain');
+});
+
+it('keeps static methods of public contract classes callable as methods', function (): void {
+    $result = applyStaticExtract(
+        '<?php class Ctx { public static function fromUri(string $u) { return strlen($u); } } echo Ctx::fromUri("/a");',
+        new Config()->setPublicContract(['Ctx']),
+    );
+
+    // Код вне программы (кэш контейнера) вызывает Ctx::fromUri() — метод остаётся обёрткой
+    expect($result)->toContain('public static function fromUri(string $u)')->toContain('function Ctx_fromUri(string $u)');
 });

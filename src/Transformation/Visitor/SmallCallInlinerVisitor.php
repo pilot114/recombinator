@@ -572,7 +572,10 @@ class SmallCallInlinerVisitor extends BaseVisitor
             return $this->subtypeCache[$type];
         }
 
-        if (!isset($this->classes[$type]) || $this->external?->extendsOrImplements((string) $this->classes[$type]->name) === true) {
+        if (
+            !isset($this->classes[$type]) || $this->classes[$type]->getAttribute('extendedOutside') === true
+            || $this->external?->extendsOrImplements((string) $this->classes[$type]->name) === true
+        ) {
             return $this->subtypeCache[$type] = null;
         }
 
@@ -788,7 +791,7 @@ class SmallCallInlinerVisitor extends BaseVisitor
             }
 
             $seen[$current->name->toLowerString()] = true;
-            $result = $this->external?->extendsOrImplements($current->name->toString()) ?? false;
+            $result = $current->getAttribute('extendedOutside') === true || ($this->external?->extendsOrImplements($current->name->toString()) ?? false);
             array_push($queue, ...$this->subclasses[$current->name->toLowerString()] ?? []);
         }
 

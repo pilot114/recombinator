@@ -213,6 +213,11 @@ final class TypeInference
             return $this->subtypes[$type];
         }
 
+        // Наследник есть в коде, подключаемом во время выполнения (UseImportVisitor::markExtendedOutside)
+        if (($this->classes[$type] ?? null)?->getAttribute('extendedOutside') === true) {
+            return $this->subtypes[$type] = null;
+        }
+
         $this->allClasses ??= array_values(new NodeFinder()->findInstanceOf($this->ast, Node\Stmt\Class_::class));
         $result             = [];
         foreach ($this->allClasses as $class) {

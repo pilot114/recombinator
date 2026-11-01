@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Core\Config;
 use Recombinator\Support\TypeInference;
 
 /**
@@ -36,6 +37,13 @@ class RemoveInterfacesVisitor extends BaseVisitor
     /** @var array<string, Node\Stmt\Interface_> lowercase имя → объявление */
     private array $interfaces = [];
 
+    private readonly Config $config;
+
+    public function __construct(?Config $config = null)
+    {
+        $this->config = $config ?? new Config();
+    }
+
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
     {
@@ -56,7 +64,9 @@ class RemoveInterfacesVisitor extends BaseVisitor
             return null;
         }
 
-        $queue = array_keys(array_intersect_key(self::typeReferences($nodes), $interfaces));
+        // Интерфейс публичного контракта проверяет код вне программы (кэш контейнера: тип возврата)
+        $protected = array_filter(array_keys($interfaces), $this->config->isProtected(...));
+        $queue     = [...array_keys(array_intersect_key(self::typeReferences($nodes), $interfaces)), ...$protected];
         $kept  = [];
         while ($queue !== []) {
             $name = array_pop($queue);

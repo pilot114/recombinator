@@ -70,7 +70,8 @@ class ProfileGuardVisitor extends BaseVisitor
         foreach ($this->findNode(Node\Expr\MethodCall::class) as $call) {
             if (
                 $call->name instanceof Node\Identifier && !$call->isFirstClassCallable() && isset($methods[$call->name->toLowerString()])
-                && $call->getAttribute('profileFallback') !== true && !$this->resolved($call, $inference)
+                && $call->getAttribute('profileFallback') !== true && $call->getAttribute('profileDirect') !== true
+                && !$this->resolved($call, $inference)
                 && !$this->insideConstantExpression($call) && $inference->enclosingFunction($call) instanceof Node\FunctionLike
             ) {
                 $call->setAttribute('profileSite', count($this->sites));
@@ -110,6 +111,8 @@ class ProfileGuardVisitor extends BaseVisitor
 
         $temp     = 'devirt' . $id . '_' . substr(sha1(spl_object_id($node) . microtime()), 0, 4);
         $direct   = new Node\Expr\MethodCall(new Node\Expr\Variable($temp), $node->name, $node->args);
+        // Прямую ветку повторно не защищать: защита внутри защиты росла бы с каждым проходом
+        $direct->setAttribute('profileDirect', true);
         $fallback = new Node\Expr\MethodCall(new Node\Expr\Variable($temp), $node->name, array_map($this->deepClone(...), $node->args));
         $fallback->setAttribute('profileFallback', true);
 

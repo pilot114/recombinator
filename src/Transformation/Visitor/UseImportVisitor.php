@@ -10,6 +10,7 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
+use Recombinator\Support\RuntimeProfile;
 use Recombinator\Support\StringValues;
 
 /**
@@ -99,13 +100,18 @@ class UseImportVisitor extends BaseVisitor
 
     private readonly Parser $parser;
 
+    /** @var array<string, true> плоские имена классов, которые наследует код, подключаемый во время выполнения */
+    private readonly array $extendedOutside;
+
     /**
      * @param array<string, string> $fileMap        relative-path → source code
-     * @param list<string>          $runtimeClasses классы, загружаемые во время выполнения по именам из данных
+     * @param RuntimeProfile        $runtime        классы, известные по выполнению: загружаемые по именам из
+     *                                               данных встраиваются, наследуемые подключаемым кодом помечаются
      */
-    public function __construct(private readonly array $fileMap, private readonly array $runtimeClasses = [])
+    public function __construct(private readonly array $fileMap, private readonly RuntimeProfile $runtime = new RuntimeProfile())
     {
-        $this->parser = new ParserFactory()->createForNewestSupportedVersion();
+        $this->extendedOutside = $runtime->extendedFlat();
+        $this->parser          = new ParserFactory()->createForNewestSupportedVersion();
     }
 
     #[\Override]
@@ -128,6 +134,8 @@ class UseImportVisitor extends BaseVisitor
                 $this->declared[strtolower($class->name->toString())] = true;
             }
         }
+
+        $this->markExtendedOutside($nodes);
 
         foreach ($nodes as $node) {
             foreach ($node instanceof Node\Stmt\Namespace_ ? $node->stmts : [$node] as $stmt) {
@@ -344,7 +352,7 @@ class UseImportVisitor extends BaseVisitor
         if ($canPull) {
             $computed = StringValues::classNames($nodes);
             // И классы, которые программа загружает по именам из данных (см. CoverageProbe)
-            foreach ([...$computed, ...$this->runtimeClasses] as $fqcn) {
+            foreach ([...$computed, ...$this->runtime->classes] as $fqcn) {
                 if (!isset($this->declared[strtolower(strtr($fqcn, ['\\' => '_']))]) && !isset($this->inlined[$fqcn])) {
                     array_push($pulled, ...$this->resolveClass($fqcn) ?? []);
                 }
@@ -616,6 +624,26 @@ class UseImportVisitor extends BaseVisitor
     }
 
     /**
+     * Класс, который наследует код вне программы (контейнер из var/cache наследует Container),
+     * помечается: вызов его метода нельзя девиртуализировать — объект может быть наследником
+     * (см. TypeInference::subtypes)
+     *
+     * @param array<Node> $nodes
+     */
+    private function markExtendedOutside(array $nodes): void
+    {
+        if ($this->extendedOutside === []) {
+            return;
+        }
+
+        foreach (new NodeFinder()->findInstanceOf($nodes, Node\Stmt\ClassLike::class) as $class) {
+            if ($class->name instanceof Node\Identifier && isset($this->extendedOutside[$class->name->toLowerString()])) {
+                $class->setAttribute('extendedOutside', true);
+            }
+        }
+    }
+
+    /**
      * Ищет файл в fileMap по FQCN и рекурсивно разворачивает все его зависимости.
      * Помечает FQCN в $inlined до рекурсии — разрывает циклы и предотвращает дубли.
      *
@@ -656,6 +684,7 @@ class UseImportVisitor extends BaseVisitor
                 $raw                         = $this->extractFromFile($key, $shortName, $fqcn);
                 if ($raw !== null) {
                     $result = $this->expandInlinedUses(...$raw);
+                    $this->markExtendedOutside($result);
                     unset($this->filesInProgress[$key]);
                     return $result;
                 }

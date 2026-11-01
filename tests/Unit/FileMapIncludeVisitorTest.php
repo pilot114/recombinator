@@ -288,3 +288,16 @@ it('inlines files with early returns as branches', function (): void {
         ->toContain("} else if (!defined('X')) {")
         ->not->toContain('return require');
 });
+
+it('resolves use aliases of each inlined file within that file', function (): void {
+    $result = parseAndApply(
+        '<?php require "a.php"; require "b.php";',
+        [
+            'a.php' => '<?php use Acme\Php85 as p; function first() { return p\Php85::x(); }',
+            'b.php' => '<?php use Acme\Intl as p; function second() { return new p\Formatter(); }',
+        ],
+    );
+
+    expect($result)->toContain('return \Acme\Php85\Php85::x();')->toContain('return new \Acme\Intl\Formatter();')
+        ->not->toContain('use Acme');
+});

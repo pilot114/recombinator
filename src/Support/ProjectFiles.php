@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Support;
 
 /**
- * Исходники проекта-примера для конвейера: src/, vendor/ и файлы корня (bootstrap.php,
+ * Исходники проекта-примера для конвейера: src/, vendor/, var/cache/ и файлы корня (bootstrap.php,
  * settings.php и т.п. подключаются через require).
  */
 final class ProjectFiles
@@ -18,7 +18,9 @@ final class ProjectFiles
     public static function collect(string $projectDir): array
     {
         $fileMap = [];
-        foreach (['src', 'vendor'] as $subdir) {
+        // var/cache — прогретые кэши фреймворка (контейнер Symfony): их подключает код во время
+        // выполнения, и правила должны видеть объявленные там наследники классов программы
+        foreach (['src', 'vendor', 'var/cache'] as $subdir) {
             $scanDir = $projectDir . '/' . $subdir;
             if (!is_dir($scanDir)) {
                 continue;

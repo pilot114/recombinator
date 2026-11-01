@@ -7,6 +7,7 @@ namespace Recombinator\Transformation\Visitor;
 use PhpParser\Modifiers;
 use Recombinator\Support\VisibilityConsistency;
 use PhpParser\Node;
+use Recombinator\Core\Config;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
@@ -55,6 +56,14 @@ class StaticMethodExtractVisitor extends BaseVisitor
 
     /** @var list<string> стек lowercase имён объемлющих классов */
     private array $classStack = [];
+
+    private readonly Config $config;
+
+    /** @param Config|null $config публичный контракт: метод защищённого класса остаётся методом-обёрткой */
+    public function __construct(?Config $config = null)
+    {
+        $this->config = $config ?? new Config();
+    }
 
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
@@ -121,7 +130,9 @@ class StaticMethodExtractVisitor extends BaseVisitor
                     continue;
                 }
 
+                // Класс публичного контракта (его вызывает код вне программы, кэш контейнера) — тоже
                 $wrap = $descendants !== [] || isset($blockedNames[$key]) || isset($blockedClasses[$lower])
+                    || $this->config->isProtected($class->name->toString())
                     || $this->declaredByInterface($class, $name, $declarations);
                 // Обёртка оправдана, только если есть статические вызовы, которые станут функцией
                 if ($wrap && ($method->byRef || $this->usesArgumentList($method) || !isset($staticNames[$key]))) {

@@ -329,3 +329,16 @@ it('keeps unused calls that change their arguments or run impure callbacks', fun
         ->toContain("array_map('printf', \$a);")
         ->not->toContain('strlen($a);')->not->toContain("array_map('strlen'");
 });
+
+it('redirects static properties of a flattened grandparent in grandchildren', function (): void {
+    $code = '<?php abstract class A { protected static array $cache = []; }
+        class B extends A { public function b() { return self::$cache; } }
+        class C extends B { public function c() { self::$cache["x"] = 1; return static::$cache; } }';
+    $result = applySemantics($code, new FlattenInheritanceVisitor());
+    for ($i = 0; $i < 2; $i++) {
+        $result = applySemantics('<?php ' . $result, new FlattenInheritanceVisitor());
+    }
+
+    expect($result)->toContain('A::$cache["x"] = 1;')->toContain('return A::$cache;')
+        ->not->toContain('self::$cache')->not->toContain('static::$cache');
+});

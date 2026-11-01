@@ -6,9 +6,10 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Core\Config;
 use Recombinator\Transformation\Visitor\RemoveInterfacesVisitor;
 
-function applyRemoveInterfaces(string $code): string
+function applyRemoveInterfaces(string $code, ?Config $config = null): string
 {
     $parser = new ParserFactory()->createForNewestSupportedVersion();
     $ast    = $parser->parse($code) ?? [];
@@ -19,7 +20,7 @@ function applyRemoveInterfaces(string $code): string
     $ast = $t1->traverse($ast);
 
     $t2 = new NodeTraverser();
-    $t2->addVisitor(new RemoveInterfacesVisitor());
+    $t2->addVisitor(new RemoveInterfacesVisitor($config));
 
     $ast = $t2->traverse($ast);
 
@@ -96,4 +97,11 @@ it('keeps type-checked ancestors of removed interfaces', function (): void {
     );
 
     expect($result)->not->toContain('interface Manager')->toContain('class M implements Dispatcher');
+});
+
+it('keeps interfaces of the public contract and their implements', function (): void {
+    // Код вне программы (кэш контейнера) проверяет тип возврата по интерфейсу
+    $result = applyRemoveInterfaces('<?php interface Bag {} interface Other {} class Frozen implements Bag, Other {}', new Config()->setPublicContract(['Bag']));
+
+    expect($result)->toContain('interface Bag')->toContain('class Frozen implements Bag')->not->toContain('interface Other');
 });
