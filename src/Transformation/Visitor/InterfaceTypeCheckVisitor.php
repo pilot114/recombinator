@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Core\Config;
 use Recombinator\Support\ExternalCode;
 use Recombinator\Support\TypeInference;
 
@@ -22,7 +23,7 @@ use Recombinator\Support\TypeInference;
  * разворачивается).
  *
  * Интерфейс не трогается, если: его имя встречается строкой или в `I::…`; его
- * реализует или расширяет внешний код или анонимный класс; он входит в
+ * реализует или расширяет внешний код или анонимный класс; он в публичном контракте; он входит в
  * тип-пересечение; проверяемое instanceof выражение — не переменная/свойство
  * (повторять его нельзя); в типе он без реализаций; есть невстроенный include.
  */
@@ -45,9 +46,15 @@ class InterfaceTypeCheckVisitor extends BaseVisitor
     /** @var array<string, true> параметры, которые сейчас проверяются (защита от циклов) */
     private array $visiting = [];
 
-    /** @param array<string, string> $fileMap */
-    public function __construct(private readonly array $fileMap = [])
+    private readonly Config $config;
+
+    /**
+     * @param array<string, string> $fileMap
+     * @param Config|null           $config  публичный контракт: по его интерфейсам проверяет тип код вне программы
+     */
+    public function __construct(private readonly array $fileMap = [], ?Config $config = null)
     {
+        $this->config = $config ?? new Config();
     }
 
     #[\Override]
@@ -87,6 +94,7 @@ class InterfaceTypeCheckVisitor extends BaseVisitor
             $viaAnonymous = array_any($anonymous, fn(Node\Stmt\Class_ $c): bool => !$c->name instanceof Node\Identifier && $this->anonymousImplements($c, $lower, $inference));
             if (
                 isset($blocked[$lower]) || $external?->extendsOrImplements((string) $interface->name) === true
+                || $this->config->isProtected((string) $interface->name)
                 || $viaAnonymous || count($implementors) > self::MAX_IMPLEMENTORS
             ) {
                 $kept[] = $interface;

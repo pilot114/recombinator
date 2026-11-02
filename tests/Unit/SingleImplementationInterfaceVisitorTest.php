@@ -6,14 +6,15 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Core\Config;
 use Recombinator\Transformation\Visitor\SingleImplementationInterfaceVisitor;
 
 /** @param array<string, string> $files */
-function applySingleImplementation(string $code, array $files = []): string
+function applySingleImplementation(string $code, array $files = [], ?Config $config = null): string
 {
     $ast = new ParserFactory()->createForNewestSupportedVersion()->parse('<?php ' . $code) ?? [];
     $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
-    $ast = new NodeTraverser(new SingleImplementationInterfaceVisitor($files))->traverse($ast);
+    $ast = new NodeTraverser(new SingleImplementationInterfaceVisitor($files, $config))->traverse($ast);
 
     return new Printer()->prettyPrint($ast);
 }
@@ -46,3 +47,14 @@ it('keeps interfaces that several hierarchies or outside code implement', functi
     'anonymous'      => ['interface I {} class A implements I {} $o = new class implements I {}; $x instanceof I;', []],
     'external file'  => ['interface I {} class A implements I {} $x instanceof I; $c = "V\\\\X";', ['vendor/X.php' => '<?php namespace V; class X implements \I {}']],
 ]);
+
+it('keeps interfaces of the public contract in types', function (): void {
+    $result = applySingleImplementation(
+        'interface Catalogue { public function add(Catalogue $c): void; } class Messages implements Catalogue { public function add(Catalogue $c): void {} }',
+        [],
+        new Config()->setPublicContract(['Catalogue']),
+    );
+
+    // Код вне программы проверяет тип по интерфейсу; частичная замена ломала бы совместимость методов
+    expect($result)->toContain("public function add(Catalogue \$c): void\n    {")->not->toContain('add(Messages $c)');
+});

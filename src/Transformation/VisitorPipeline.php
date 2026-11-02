@@ -154,7 +154,7 @@ final readonly class VisitorPipeline
         }
 
         // Замкнутый мир: все классы программы известны, только если их подтянули из карты файлов
-        $closedWorld = $fileMap !== [] ? [new ClassExistsFoldVisitor(), new UnwrittenArrayKeyVisitor(), new AnonymousClassHoistVisitor(), new InterfaceTypeCheckVisitor($fileMap), new RuntimeAutoloadVisitor($fileMap)] : [];
+        $closedWorld = $fileMap !== [] ? [new ClassExistsFoldVisitor(), new UnwrittenArrayKeyVisitor(), new AnonymousClassHoistVisitor(), new InterfaceTypeCheckVisitor($fileMap, $this->config()), new RuntimeAutoloadVisitor($fileMap)] : [];
         // Допущения о целевом сервере: class_exists, extension_loaded, PHP_VERSION_ID, getenv…
         if (!$env->isEmpty()) {
             $closedWorld[] = new TargetEnvironmentVisitor($env, $fileMap, $this->projectDir);
@@ -197,7 +197,7 @@ final readonly class VisitorPipeline
             new SingleUseInlinerVisitor(),
 
             // Инлайнинг иерархии классов
-            new SingleImplementationInterfaceVisitor($fileMap),
+            new SingleImplementationInterfaceVisitor($fileMap, $this->config()),
             new RemoveInterfacesVisitor($this->config()),
             new TraitInlinerVisitor(),
             new FlattenInheritanceVisitor(),
@@ -238,7 +238,7 @@ final readonly class VisitorPipeline
             new ClassInlinerVisitor($this->config()),
 
             // Удаление type-hints локальных классов и мёртвых prop-записей
-            new StripLocalClassTypeHintsVisitor(),
+            new StripLocalClassTypeHintsVisitor($this->config()),
             new RemoveUnusedPropWriteVisitor(),
 
             // Отслеживание коллекций объектов

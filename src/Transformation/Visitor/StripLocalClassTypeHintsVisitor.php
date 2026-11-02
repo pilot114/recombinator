@@ -6,6 +6,7 @@ namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Modifiers;
 use PhpParser\Node;
+use Recombinator\Core\Config;
 
 /**
  * Убирает type-hints, ссылающиеся на классы, объявленные в этом же файле.
@@ -13,7 +14,9 @@ use PhpParser\Node;
  * RemoveInterfacesVisitor — интерфейсы, на которые ссылаются только через
  * type-hints, а не через new/instanceof/catch.
  *
- * Снятие типа — расширение: корректная программа ведёт себя так же.
+ * Снятие типа — расширение: корректная программа ведёт себя так же. Кроме рефлексии:
+ * у классов публичного контракта (Config) типы остаются — фреймворк читает их, разбирая
+ * аргументы контроллера.
  * - Тип с локальным классом снимается целиком (`Foo|null`, `?Foo`).
  * - У свойств и promoted-параметров тип становится `mixed`: readonly обязано иметь
  *   тип, а типизированное свойство без значения остаётся неинициализированным.
@@ -32,6 +35,14 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
 
     /** @var array<string, Node\Stmt\ClassLike> lowercase имя → объявление */
     private array $declarations = [];
+
+    private readonly Config $config;
+
+    /** @param Config|null $config публичный контракт: типы его классов читает рефлексия фреймворка (аргументы контроллера) */
+    public function __construct(?Config $config = null)
+    {
+        $this->config = $config ?? new Config();
+    }
 
     #[\Override]
     public function beforeTraverse(array $nodes): ?array
@@ -69,6 +80,10 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
     #[\Override]
     public function leaveNode(Node $node): int|Node|array|null
     {
+        if ($this->inContractClass($node)) {
+            return parent::leaveNode($node);
+        }
+
         // Strip return types on class methods and functions
         if (
             ($node instanceof Node\Stmt\ClassMethod || $node instanceof Node\Stmt\Function_)
@@ -99,6 +114,21 @@ class StripLocalClassTypeHintsVisitor extends BaseVisitor
         }
 
         return parent::leaveNode($node);
+    }
+
+    /** Метод, параметр или свойство класса публичного контракта: снятый тип изменил бы рефлексию */
+    private function inContractClass(Node $node): bool
+    {
+        if (!$node instanceof Node\Stmt\ClassMethod && !$node instanceof Node\Param && !$node instanceof Node\Stmt\Property) {
+            return false;
+        }
+
+        $parent = $node->getAttribute('parent');
+        if ($parent instanceof Node\Stmt\ClassMethod) {
+            $parent = $parent->getAttribute('parent');
+        }
+
+        return $parent instanceof Node\Stmt\ClassLike && $parent->name instanceof Node\Identifier && $this->config->isProtected($parent->name->toString());
     }
 
     /**

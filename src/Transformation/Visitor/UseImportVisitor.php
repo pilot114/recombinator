@@ -742,7 +742,7 @@ class UseImportVisitor extends BaseVisitor
             }
 
             foreach ($stmt->uses as $use) {
-                $imported[strtolower($use->getAlias()->toString())] = true;
+                $imported[strtolower($use->getAlias()->toString())] = $use->name->toString();
                 $depFqcn  = $use->name->toString();
                 $resolved = $this->resolveClass($depFqcn);
                 if ($resolved !== null) {
@@ -780,7 +780,11 @@ class UseImportVisitor extends BaseVisitor
                     continue;
                 }
 
-                $fqcn     = $namespace . '\\' . $name->toString();
+                // `AST\DeleteStatement` при `use Doctrine\ORM\Query\AST;` — от импорта, а не от namespace файла
+                $first    = strtolower($name->getFirst());
+                $fqcn     = count($name->getParts()) > 1 && isset($imported[$first])
+                    ? $imported[$first] . '\\' . implode('\\', array_slice($name->getParts(), 1))
+                    : $namespace . '\\' . $name->toString();
                 $resolved = $this->resolveClass($fqcn);
                 if ($resolved !== null) {
                     array_push($deps, ...$resolved);

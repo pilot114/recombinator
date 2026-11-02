@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Recombinator\Transformation\Visitor;
 
 use PhpParser\Node;
+use Recombinator\Core\Config;
 use Recombinator\Support\ExternalCode;
 
 /**
@@ -34,9 +35,16 @@ class SingleImplementationInterfaceVisitor extends BaseVisitor
     /** @var array<string, string|false> lowercase интерфейс → имя класса-реализации (false — реализаций нет) */
     private array $replacement = [];
 
-    /** @param array<string, string> $fileMap файлы проекта (путь → код) */
-    public function __construct(private readonly array $fileMap = [])
+    private readonly Config $config;
+
+    /**
+     * @param array<string, string> $fileMap файлы проекта (путь → код)
+     * @param Config|null           $config  публичный контракт: по его интерфейсам проверяет тип
+     *                                        код вне программы — они не заменяются
+     */
+    public function __construct(private readonly array $fileMap = [], ?Config $config = null)
     {
+        $this->config = $config ?? new Config();
     }
 
     #[\Override]
@@ -94,7 +102,7 @@ class SingleImplementationInterfaceVisitor extends BaseVisitor
 
         $external = ExternalCode::forProgram($this->fileMap, $declared, $this->ast);
         foreach ($interfaces as $lower => $name) {
-            if (isset($blocked[$lower]) || $external->extendsOrImplements($name)) {
+            if (isset($blocked[$lower]) || $external->extendsOrImplements($name) || $this->config->isProtected($name)) {
                 continue;
             }
 

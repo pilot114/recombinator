@@ -460,3 +460,11 @@ it('marks classes extended by code included at runtime', function (): void {
     expect($class?->getAttribute('extendedOutside'))->toBeTrue()
         ->and(new TypeInference(['acme_container' => $class], $ast)->subtypes('acme_container'))->toBeNull();
 });
+
+it('resolves names qualified by an imported namespace to that namespace', function (): void {
+    $fileMap = ['vendor/acme/src/Pagination/Walker.php' => '<?php namespace Acme\Pagination; use Acme\Query\AST; class Walker { public function finalize(AST\DeleteStatement $ast) { return $ast; } }'];
+    $result  = applyUseImport('<?php $w = new \Acme\Pagination\Walker();', $fileMap);
+
+    // Не Acme\Pagination\AST\DeleteStatement: первый сегмент — импортированный namespace
+    expect($result)->toContain('public function finalize(\Acme\Query\AST\DeleteStatement $ast)');
+});

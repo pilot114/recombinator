@@ -287,6 +287,11 @@ class FlattenInheritanceVisitor extends BaseVisitor
 
             if (!isset($parentCalls[$name])) {
                 // Переопределён и parent:: не вызывают — родительская версия не нужна.
+                // Но promoted-параметры конструктора — объявления свойств: они остаются (`$this->resource`)
+                if ($name === '__construct') {
+                    array_push($copied, ...$this->promotedProperties($stmt, $childProps));
+                }
+
                 continue;
             }
 
@@ -358,6 +363,28 @@ class FlattenInheritanceVisitor extends BaseVisitor
     }
 
     /**
+     * Свойства, которые объявляют promoted-параметры конструктора родителя и которых
+     * ещё нет у ребёнка.
+     *
+     * @param  array<string, true>        $childProps будет мутирован: добавятся имена свойств
+     * @return list<Node\Stmt\Property>
+     */
+    private function promotedProperties(Node\Stmt\ClassMethod $constructor, array &$childProps): array
+    {
+        $properties = [];
+        foreach ($constructor->params as $param) {
+            if ($param->flags === 0 || !$param->var instanceof Node\Expr\Variable || !is_string($param->var->name) || isset($childProps[$param->var->name])) {
+                continue;
+            }
+
+            $properties[]                  = new Node\Stmt\Property($param->flags, [new Node\PropertyItem($param->var->name)], [], $param->type);
+            $childProps[$param->var->name] = true;
+        }
+
+        return $properties;
+    }
+
+    /**
      * Создаёт копию родительского метода под именем `__parent_<name>`.
      * Снимает promotion-флаги с параметров (вне __construct они невалидны),
      * добавляет в $copied соответствующие Property-узлы и эмитит ручное
@@ -373,33 +400,17 @@ class FlattenInheritanceVisitor extends BaseVisitor
         array &$copied,
     ): Node\Stmt\ClassMethod {
         $copy = $this->deepClone($method);
+        assert($copy instanceof Node\Stmt\ClassMethod);
         $copy->name = new Node\Identifier($copyName);
 
+        array_push($copied, ...$this->promotedProperties($copy, $childProps));
         $assigns = [];
         foreach ($copy->params as $param) {
-            if ($param->flags === 0) {
+            if ($param->flags === 0 || !$param->var instanceof Node\Expr\Variable || !is_string($param->var->name)) {
                 continue;
             }
 
-            if (!$param->var instanceof Node\Expr\Variable) {
-                continue;
-            }
-
-            if (!is_string($param->var->name)) {
-                continue;
-            }
-
-            $pname = $param->var->name;
-            if (!isset($childProps[$pname])) {
-                $copied[] = new Node\Stmt\Property(
-                    $param->flags,
-                    [new Node\PropertyItem($pname)],
-                    [],
-                    $param->type,
-                );
-                $childProps[$pname] = true;
-            }
-
+            $pname     = $param->var->name;
             $assigns[] = new Node\Stmt\Expression(
                 new Node\Expr\Assign(
                     new Node\Expr\PropertyFetch(new Node\Expr\Variable('this'), $pname),

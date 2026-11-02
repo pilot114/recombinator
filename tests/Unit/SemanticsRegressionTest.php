@@ -7,6 +7,7 @@ use PhpParser\NodeVisitor;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Core\Config;
 use Recombinator\Domain\ScopeStore;
 use Recombinator\Transformation\Visitor\ConstructorAndMethodsVisitor;
 use Recombinator\Transformation\Visitor\EnumCaseInlinerVisitor;
@@ -14,6 +15,7 @@ use Recombinator\Transformation\Visitor\FlattenInheritanceVisitor;
 use Recombinator\Transformation\Visitor\PreExecutionVisitor;
 use Recombinator\Transformation\Visitor\PropertyStateTrackerVisitor;
 use Recombinator\Transformation\Visitor\RemoveUnusedPureVisitor;
+use Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor;
 use Recombinator\Transformation\Visitor\VarToScalarVisitor;
 
 /*
@@ -341,4 +343,24 @@ it('redirects static properties of a flattened grandparent in grandchildren', fu
 
     expect($result)->toContain('A::$cache["x"] = 1;')->toContain('return A::$cache;')
         ->not->toContain('self::$cache')->not->toContain('static::$cache');
+});
+
+it('keeps type hints of public contract classes that frameworks read by reflection', function (): void {
+    $code = '<?php class Request {} class Controller { public function index(Request $request): Request { return $request; } }
+        class Helper { public function run(Request $request) { return $request; } }';
+    $result = applySemantics($code, new StripLocalClassTypeHintsVisitor(new Config()->setPublicContract(['Controller'])));
+
+    // Аргументы контроллера Symfony разбирает по типам параметров через рефлексию
+    expect($result)->toContain('public function index(Request $request): Request')->toContain('public function run($request)');
+});
+
+it('keeps promoted properties of a parent constructor the child overrides without parent::__construct', function (): void {
+    $result = applySemantics(
+        '<?php class Base { public function __construct(protected mixed $resource, protected array $options = []) {} public function res() { return $this->resource; } }
+        final class Child extends Base { public function __construct(mixed $resource) { $this->resource = $resource; } }',
+        new FlattenInheritanceVisitor(),
+    );
+
+    // Иначе `$this->resource = …` создаёт динамическое свойство (deprecation → обработчик ошибок)
+    expect($result)->toContain('protected mixed $resource;')->toContain('protected array $options;');
 });

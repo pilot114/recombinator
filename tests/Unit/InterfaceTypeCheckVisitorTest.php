@@ -6,13 +6,14 @@ use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NodeConnectingVisitor;
 use PhpParser\ParserFactory;
 use PhpParser\PrettyPrinter\Standard as Printer;
+use Recombinator\Core\Config;
 use Recombinator\Transformation\Visitor\InterfaceTypeCheckVisitor;
 
-function applyInterfaceTypeCheck(string $code): string
+function applyInterfaceTypeCheck(string $code, ?Config $config = null): string
 {
     $ast = new ParserFactory()->createForNewestSupportedVersion()->parse('<?php ' . $code) ?? [];
     $ast = new NodeTraverser(new NodeConnectingVisitor())->traverse($ast);
-    $ast = new NodeTraverser(new InterfaceTypeCheckVisitor())->traverse($ast);
+    $ast = new NodeTraverser(new InterfaceTypeCheckVisitor([], $config))->traverse($ast);
 
     return new Printer()->prettyPrint($ast);
 }
@@ -80,4 +81,14 @@ it('skips first-class callables of check functions', function (): void {
     }
 
     expect($result)->toContain('$check = is_subclass_of(...);');
+});
+
+it('keeps public contract interfaces in types', function (): void {
+    $result = applyInterfaceTypeCheck(
+        'interface Catalogue { public function add(self $c): void; } class Messages implements Catalogue { public function add(Catalogue $c): void {} }',
+        new Config()->setPublicContract(['Catalogue']),
+    );
+
+    // Интерфейс объявляет `self`: замена типа в реализации нарушила бы совместимость методов
+    expect($result)->toContain('public function add(Catalogue $c): void')->not->toContain('add(\Messages $c)');
 });

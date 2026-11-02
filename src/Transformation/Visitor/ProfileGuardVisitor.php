@@ -113,6 +113,7 @@ class ProfileGuardVisitor extends BaseVisitor
         $direct   = new Node\Expr\MethodCall(new Node\Expr\Variable($temp), $node->name, $node->args);
         // Прямую ветку повторно не защищать: защита внутри защиты росла бы с каждым проходом
         $direct->setAttribute('profileDirect', true);
+
         $fallback = new Node\Expr\MethodCall(new Node\Expr\Variable($temp), $node->name, array_map($this->deepClone(...), $node->args));
         $fallback->setAttribute('profileFallback', true);
 
