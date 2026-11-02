@@ -67,7 +67,7 @@ final class CoverageProbe
         // Входной файл выполняется всегда
         $pruned[$entry] = $fileMap[$entry] ?? '';
 
-        return [$pruned, new RuntimeProfile($coverage['classes'], $coverage['types'], $coverage['extended'])];
+        return [$pruned, new RuntimeProfile($coverage['classes'], $coverage['types'], $coverage['extended'], $coverage['included'])];
     }
 
     /**
@@ -111,7 +111,7 @@ final class CoverageProbe
      * хотя бы одним запросом. null — покрытие не снять.
      *
      * @param  list<array<string, string>> $requests
-     * @return array{files: array<string, list<int>>, classes: list<string>, types: list<string>, extended: list<string>}|null
+     * @return array{files: array<string, list<int>>, classes: list<string>, types: list<string>, extended: list<string>, included: list<string>}|null
      */
     private static function coverage(string $projectDir, string $entry, array $requests, string $cacheKey, string $cacheDir): ?array
     {
@@ -119,8 +119,8 @@ final class CoverageProbe
         $file = $cacheDir . '/coverage-' . sha1($cacheKey . "\0" . json_encode($requests) . "\0" . self::script($projectDir, $projectDir . '/' . $entry)) . '.json';
         if (is_file($file)) {
             $cached = json_decode((string) file_get_contents($file), true);
-            if (is_array($cached) && is_array($cached['files'] ?? null) && is_array($cached['classes'] ?? null) && is_array($cached['types'] ?? null) && is_array($cached['extended'] ?? null)) {
-                /** @var array{files: array<string, list<int>>, classes: list<string>, types: list<string>, extended: list<string>} $cached */
+            if (is_array($cached) && is_array($cached['files'] ?? null) && is_array($cached['classes'] ?? null) && is_array($cached['types'] ?? null) && is_array($cached['extended'] ?? null) && is_array($cached['included'] ?? null)) {
+                /** @var array{files: array<string, list<int>>, classes: list<string>, types: list<string>, extended: list<string>, included: list<string>} $cached */
                 return $cached;
             }
         }
@@ -137,6 +137,7 @@ final class CoverageProbe
         $classes = [];
         $types   = [];
         $extended = [];
+        $included = [];
         try {
             foreach ($requests as $request) {
                 @unlink($out);
@@ -149,13 +150,14 @@ final class CoverageProbe
                 exec('cd ' . escapeshellarg(dirname($entryPath)) . ' && ' . $env . ' timeout 120 ' . escapeshellarg(PHP_BINARY)
                     . ' -d xdebug.mode=coverage -d memory_limit=1G ' . escapeshellarg($script) . ' > /dev/null 2>&1');
                 $data = is_file($out) ? json_decode((string) file_get_contents($out), true) : null;
-                if (!is_array($data) || !is_array($data['files'] ?? null) || !is_array($data['classes'] ?? null) || !is_array($data['types'] ?? null) || !is_array($data['extended'] ?? null)) {
+                if (!is_array($data) || !is_array($data['files'] ?? null) || !is_array($data['classes'] ?? null) || !is_array($data['types'] ?? null) || !is_array($data['extended'] ?? null) || !is_array($data['included'] ?? null)) {
                     return null; // нет Xdebug или запрос не выполнился
                 }
 
                 $classes = [...$classes, ...array_values(array_filter($data['classes'], is_string(...)))];
                 $types   = [...$types, ...array_values(array_filter($data['types'], is_string(...)))];
                 $extended = [...$extended, ...array_values(array_filter($data['extended'], is_string(...)))];
+                $included = [...$included, ...array_values(array_filter($data['included'], is_string(...)))];
                 foreach ($data['files'] as $path => $lines) {
                     $relative = str_starts_with((string) $path, rtrim($projectDir, '/') . '/') ? substr((string) $path, strlen(rtrim($projectDir, '/')) + 1) : null;
                     if ($relative !== null && is_array($lines)) {
@@ -168,7 +170,7 @@ final class CoverageProbe
             @unlink($out);
         }
 
-        $result = ['files' => $merged, 'classes' => array_values(array_unique($classes)), 'types' => array_values(array_unique($types)), 'extended' => array_values(array_unique($extended))];
+        $result = ['files' => $merged, 'classes' => array_values(array_unique($classes)), 'types' => array_values(array_unique($types)), 'extended' => array_values(array_unique($extended)), 'included' => array_values(array_unique($included))];
         @mkdir($cacheDir, 0777, true);
         file_put_contents($file, json_encode($result));
 
@@ -222,15 +224,17 @@ final class CoverageProbe
                     [...get_declared_classes(), ...get_declared_interfaces(), ...get_declared_traits()],
                     static fn(string \$type): bool => !new ReflectionClass(\$type)->isInternal() && !new ReflectionClass(\$type)->isAnonymous(),
                 );
-                // Предки классов из var/ (контейнер наследует Container): у них есть наследник вне программы
+                // Классы из var/ (кэш контейнера), их предки (у них есть наследник вне программы)
                 \$extended = [];
+                \$included = [];
                 foreach (get_declared_classes() as \$class) {
                     if (str_starts_with((string) new ReflectionClass(\$class)->getFileName(), {$runtime})) {
+                        \$included[] = \$class;
                         \$extended = [...\$extended, ...array_values(class_parents(\$class)), ...array_values(class_implements(\$class))];
                     }
                 }
 
-                file_put_contents((string) getenv('RCB_COVERAGE_OUT'), json_encode(['files' => \$result, 'classes' => array_values(\$classes), 'types' => array_values(\$types), 'extended' => array_values(array_unique(\$extended))]));
+                file_put_contents((string) getenv('RCB_COVERAGE_OUT'), json_encode(['files' => \$result, 'classes' => array_values(\$classes), 'types' => array_values(\$types), 'extended' => array_values(array_unique(\$extended)), 'included' => \$included]));
             }));
             xdebug_start_code_coverage();
             require {$entry};

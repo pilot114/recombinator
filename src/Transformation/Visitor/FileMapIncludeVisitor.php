@@ -111,7 +111,7 @@ class FileMapIncludeVisitor extends BaseVisitor
         // Аннотируем include-выражения внутри инлайнированного содержимого,
         // чтобы на следующем проходе они разрешались относительно своего файла.
         $this->annotateIncludes($nodes, $resolvedKey);
-        $nodes = $this->relocateMagicConstants($nodes, $resolvedKey);
+        $nodes = self::relocateMagicConstants($nodes, $resolvedKey, $this->currentFile);
 
         $parent = $node->getAttribute('parent');
         if ($parent instanceof Node\Stmt\Expression) {
@@ -574,9 +574,9 @@ class FileMapIncludeVisitor extends BaseVisitor
      * @param  array<Node> $nodes
      * @return array<Node>
      */
-    private function relocateMagicConstants(array $nodes, string $fileKey): array
+    public static function relocateMagicConstants(array $nodes, string $fileKey, string $entry): array
     {
-        $entryParts = array_values(array_filter(explode('/', dirname($this->currentFile)), static fn(string $p): bool => $p !== '.' && $p !== ''));
+        $entryParts = array_values(array_filter(explode('/', dirname($entry)), static fn(string $p): bool => $p !== '.' && $p !== ''));
         $fileParts  = array_values(array_filter(explode('/', dirname($fileKey)), static fn(string $p): bool => $p !== '.' && $p !== ''));
         if ($entryParts === $fileParts) {
             return $nodes;

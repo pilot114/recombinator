@@ -145,7 +145,7 @@ class StaticMethodExtractVisitor extends BaseVisitor
 
         // Тело с обращением к закрытым членам объектов класса вынести нельзя
         foreach ($candidates as $lower => $methods) {
-            $private = $this->privateInstanceMembers(reset($methods)[0]);
+            $private = $this->privateInstanceMembers(reset($methods)[0], $declarations);
             foreach ($methods as $key => [$class, $method]) {
                 if ($this->touchesPrivateInstanceMembers($method, $private) || $this->usesParentOrThis($method)) {
                     unset($candidates[$lower][$key]);
@@ -542,10 +542,20 @@ class StaticMethodExtractVisitor extends BaseVisitor
         return false;
     }
 
-    /** @return array<string, true> имена закрытых свойств и методов экземпляра */
-    private function privateInstanceMembers(Node\Stmt\Class_ $class): array
+    /**
+     * @param  array<string, Node\Stmt\ClassLike> $declarations
+     * @return array<string, true> имена закрытых свойств и методов экземпляра
+     */
+    private function privateInstanceMembers(Node\Stmt\Class_ $class, array $declarations): array
     {
-        $names = [];
+        // И унаследованные: `$container->privates` — protected-свойство предка (Container)
+        $names  = [];
+        $parent = $this->parents[strtolower((string) $class->name)] ?? null;
+        $above  = $parent !== null ? $declarations[$parent] ?? null : null;
+        if ($above instanceof Node\Stmt\Class_) {
+            $names = $this->privateInstanceMembers($above, $declarations);
+        }
+
         foreach ($class->getProperties() as $property) {
             if (!$property->isStatic() && !$property->isPublic()) {
                 foreach ($property->props as $prop) {

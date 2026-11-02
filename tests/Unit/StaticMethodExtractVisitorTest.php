@@ -138,3 +138,14 @@ it('keeps static methods of public contract classes callable as methods', functi
     // Код вне программы (кэш контейнера) вызывает Ctx::fromUri() — метод остаётся обёрткой
     expect($result)->toContain('public static function fromUri(string $u)')->toContain('function Ctx_fromUri(string $u)');
 });
+
+it('keeps static methods that touch inherited protected members of an object', function (): void {
+    $result = applyStaticExtract(
+        '<?php class Container { protected array $privates = []; }
+        class Service extends Container { public static function do($container) { return $container->privates["x"] ??= 1; } }
+        echo Service::do(new Container());',
+    );
+
+    // Вне класса `$container->privates` (protected в предке) недоступно
+    expect($result)->toContain('public static function do($container)')->not->toContain('function Service_do(');
+});

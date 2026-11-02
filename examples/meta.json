@@ -37,7 +37,8 @@
     ],
     "environment": {
       "assumptions": {
-        "onlyProfiledCode": true
+        "onlyProfiledCode": true,
+        "symfonyContainerCached": true
       },
       "profile": [
         {"method": "GET", "uri": "/en/blog/"},

@@ -468,3 +468,15 @@ it('resolves names qualified by an imported namespace to that namespace', functi
     // Не Acme\Pagination\AST\DeleteStatement: первый сегмент — импортированный namespace
     expect($result)->toContain('public function finalize(\Acme\Query\AST\DeleteStatement $ast)');
 });
+
+it('resolves __NAMESPACE__ of inlined classes and flattens class names built from it', function (): void {
+    $container = <<<'PHP'
+        <?php
+        namespace C1;
+        class Container { public function load($file) { $ns = __NAMESPACE__; return __NAMESPACE__ . '\\' . $file; } }
+        PHP;
+    $result = applyUseImport('<?php $c = new \C1\Container();', ['var/cache/C1/Container.php' => $container]);
+
+    // Имя сервиса-класса собирается во время выполнения: плоское, как встроенные классы
+    expect($result)->toContain("\$ns = 'C1';")->toContain("return 'C1_' . \$file;");
+});

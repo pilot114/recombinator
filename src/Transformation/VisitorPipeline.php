@@ -90,6 +90,7 @@ use Recombinator\Transformation\Visitor\StaticMethodExtractVisitor;
 use Recombinator\Transformation\Visitor\StaticMethodInlinerVisitor;
 use Recombinator\Transformation\Visitor\StaticPropConstVisitor;
 use Recombinator\Transformation\Visitor\StripLocalClassTypeHintsVisitor;
+use Recombinator\Transformation\Visitor\SymfonyContainerCacheVisitor;
 use Recombinator\Transformation\Visitor\SymfonyRuntimeVisitor;
 use Recombinator\Transformation\Visitor\TargetEnvironmentVisitor;
 use Recombinator\Transformation\Visitor\TernarReturnVisitor;
@@ -147,7 +148,12 @@ final readonly class VisitorPipeline
         if ($fileMap !== []) {
             $visitors[] = new FileMapIncludeVisitor($fileMap, $this->entry);
             $visitors[] = new SymfonyRuntimeVisitor();
-            $visitors[] = new UseImportVisitor($fileMap, $this->runtime);
+            if ($env->assumes('symfonyContainerCached')) {
+                $visitors[] = new SymfonyContainerCacheVisitor($fileMap, $this->entry);
+            }
+
+            // Контейнер Symfony встроен — классы его сервисов тоже: load() находит их по имени
+            $visitors[] = new UseImportVisitor($fileMap, $env->assumes('symfonyContainerCached') ? $this->runtime->withIncludedInlined() : $this->runtime);
             // Сразу убираем недостижимые классы: все следующие визиторы обходят меньше кода
             $visitors[] = new RemoveUnusedClassVisitor($this->config());
             $visitors[] = new ExternalParentGuardVisitor();

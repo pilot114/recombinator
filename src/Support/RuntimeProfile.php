@@ -17,12 +17,20 @@ final readonly class RuntimeProfile
      *                               их методы вызывает подключаемый код
      * @param list<string> $extended классы и интерфейсы, которые наследует подключаемый код:
      *                               вызов их метода нельзя девиртуализировать
+     * @param list<string> $included классы, объявленные в подключаемом коде (кэш контейнера в var/)
      */
     public function __construct(
         public array $classes = [],
         public array $types = [],
         public array $extended = [],
+        public array $included = [],
     ) {
+    }
+
+    /** Подключаемый код встроен в программу (контейнер Symfony): его классы встраиваются по имени, как загружаемые */
+    public function withIncludedInlined(): self
+    {
+        return new self([...$this->classes, ...$this->included], $this->types, $this->extended);
     }
 
     /** @return array<string, true> плоские lowercase имена из $extended */

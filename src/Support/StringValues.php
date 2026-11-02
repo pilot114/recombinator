@@ -46,16 +46,17 @@ final class StringValues
      * `class_exists()` и т.п. или `new (…)` с конечным набором значений.
      *
      * @param  array<Node> $nodes
+     * @param  bool        $flat  и имена без namespace (`'Container3uUE0Op_' . $file` — плоское имя встроенного класса)
      * @return list<string>
      */
-    public static function classNames(array $nodes): array
+    public static function classNames(array $nodes, bool $flat = false): array
     {
         $values = new self($nodes);
         $names  = [];
         foreach (self::classNameSites($nodes) as $expr) {
             foreach ($values->of($expr) ?? [] as $value) {
                 $value = ltrim($value, '\\');
-                if (preg_match('/^[A-Za-z_\x80-\xff][\w\x80-\xff]*(?:\\\\[A-Za-z_\x80-\xff][\w\x80-\xff]*)+$/', $value) === 1) {
+                if (preg_match($flat ? '/^[A-Za-z_\x80-\xff][\w\x80-\xff]*(?:\\\\[A-Za-z_\x80-\xff][\w\x80-\xff]*)*$/' : '/^[A-Za-z_\x80-\xff][\w\x80-\xff]*(?:\\\\[A-Za-z_\x80-\xff][\w\x80-\xff]*)+$/', $value) === 1) {
                     $names[$value] = true;
                 }
             }

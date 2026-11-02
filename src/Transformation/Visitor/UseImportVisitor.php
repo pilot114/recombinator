@@ -103,6 +103,12 @@ class UseImportVisitor extends BaseVisitor
     /** @var array<string, true> плоские имена классов, которые наследует код, подключаемый во время выполнения */
     private readonly array $extendedOutside;
 
+    /** @var array<string, true>|null lowercase namespace файлов карты, см. namespaces() */
+    private ?array $namespaces = null;
+
+    /** @var array<string, string>|null lowercase плоское имя класса карты → FQCN, см. flatNames() */
+    private ?array $flatNames = null;
+
     /**
      * @param array<string, string> $fileMap        relative-path → source code
      * @param RuntimeProfile        $runtime        классы, известные по выполнению: загружаемые по именам из
@@ -346,13 +352,26 @@ class UseImportVisitor extends BaseVisitor
             }
         }
 
+        // Строка-namespace классов программы (`'App\Entity'` в настройках Doctrine: префикс,
+        // с которым сравнивают имена классов) — плоская, как и имена классов в нём
+        foreach ($refs as $ref) {
+            if ($ref instanceof Node\Scalar\String_ && str_contains($ref->value, '\\') && $this->isProgramNamespace($ref->value)) {
+                $ref->value = strtr($ref->value, ['\\' => '_']);
+            }
+        }
+
         // Имя, собранное во время выполнения из конечного набора строк (провайдеры
         // Faker): классы набора встраиваются, исходное имя на месте свяжет алиас
         // runtimeAutoload (`Faker\Provider\en_US\Address` → `Faker_Provider_en_US_Address`)
         if ($canPull) {
-            $computed = StringValues::classNames($nodes);
+            $computed = StringValues::classNames($nodes, true);
+            // Плоское имя (`'Container3uUE0Op_' . $file`) — класс из карты с таким плоским именем
+            $fqcns = array_filter(array_map(
+                fn(string $name): ?string => str_contains($name, '\\') ? $name : $this->flatNames()[strtolower($name)] ?? null,
+                $computed,
+            ));
             // И классы, которые программа загружает по именам из данных (см. CoverageProbe)
-            foreach ([...$computed, ...$this->runtime->classes] as $fqcn) {
+            foreach ([...$fqcns, ...$this->runtime->classes] as $fqcn) {
                 if (!isset($this->declared[strtolower(strtr($fqcn, ['\\' => '_']))]) && !isset($this->inlined[$fqcn])) {
                     array_push($pulled, ...$this->resolveClass($fqcn) ?? []);
                 }
@@ -621,6 +640,89 @@ class UseImportVisitor extends BaseVisitor
         $node->setAttribute('replace', $replacements);
 
         return null;
+    }
+
+    /**
+     * __NAMESPACE__ встроенного класса — namespace его файла (в плоской программе
+     * namespace нет). Имя класса, собранное из него (`__NAMESPACE__ . '\\' . $file` в
+     * контейнере Symfony), — плоское, как и встроенные классы: `'Container3uUE0Op_' . $file`.
+     *
+     * @param array<Node> $nodes
+     */
+    private function resolveNamespaceConstant(array $nodes, string $namespace): void
+    {
+        new NodeTraverser(new class ($namespace) extends NodeVisitorAbstract {
+            public function __construct(private readonly string $namespace)
+            {
+            }
+
+            public function leaveNode(Node $node): ?Node
+            {
+                if ($node instanceof Node\Scalar\MagicConst\Namespace_) {
+                    return new Node\Scalar\String_($this->namespace, [...$node->getAttributes(), 'namespaceConstant' => true]);
+                }
+
+                if (
+                    $node instanceof Node\Expr\BinaryOp\Concat && $node->left instanceof Node\Scalar\String_
+                    && $node->left->getAttribute('namespaceConstant') === true
+                    && $node->right instanceof Node\Scalar\String_ && str_starts_with($node->right->value, '\\')
+                ) {
+                    return new Node\Scalar\String_(strtr($this->namespace . $node->right->value, ['\\' => '_']), $node->getAttributes());
+                }
+
+                return null;
+            }
+        })->traverse($nodes);
+    }
+
+    /**
+     * Namespace файла из карты, классы которого есть в программе (по плоскому префиксу).
+     */
+    private function isProgramNamespace(string $value): bool
+    {
+        $namespace = strtolower(trim($value, '\\'));
+        if (!isset($this->namespaces()[$namespace])) {
+            return false;
+        }
+
+        $prefix = strtr($namespace, ['\\' => '_']) . '_';
+
+        return array_any(array_keys($this->declared), static fn(string $class): bool => str_starts_with($class, $prefix));
+    }
+
+    /** @return array<string, string> lowercase плоское имя класса из карты → FQCN */
+    private function flatNames(): array
+    {
+        if ($this->flatNames === null) {
+            $this->flatNames = [];
+            foreach ($this->fileMap as $code) {
+                $namespace = preg_match('/^namespace\s+([\w\\\\]+)\s*[;{]/m', $code, $m) === 1 ? $m[1] . '\\' : '';
+                if (preg_match_all('/^\s*(?:(?:final|abstract|readonly)\s+)*(?:class|interface|trait|enum)\s+(\w+)/m', $code, $found) > 0) {
+                    foreach ($found[1] as $short) {
+                        $this->flatNames[strtolower(strtr($namespace . $short, ['\\' => '_']))] = $namespace . $short;
+                    }
+                }
+            }
+        }
+
+        return $this->flatNames;
+    }
+
+    /** @return array<string, true> lowercase namespace файлов карты */
+    private function namespaces(): array
+    {
+        if ($this->namespaces === null) {
+            $this->namespaces = [];
+            foreach ($this->fileMap as $code) {
+                if (preg_match_all('/^namespace\s+([\w\\\\]+)\s*[;{]/m', $code, $m) > 0) {
+                    foreach ($m[1] as $namespace) {
+                        $this->namespaces[strtolower($namespace)] = true;
+                    }
+                }
+            }
+        }
+
+        return $this->namespaces;
     }
 
     /**
@@ -1084,6 +1186,10 @@ class UseImportVisitor extends BaseVisitor
                 $declaration->name = new Node\Identifier(strtr($fqcn, ['\\' => '_']));
                 $declaration->setAttribute('originalName', $fqcn);
             }
+        }
+
+        if ($fileNamespace !== null) {
+            $this->resolveNamespaceConstant([$classNode, ...$companionNodes], $fileNamespace);
         }
 
         return [[...$useStmts, ...$companionNodes, $classNode], $aliases, $fileNamespace];
